@@ -43,10 +43,7 @@ create distable 256 cells allot
 ;
 
 : defdisam [compile] :noname ;
-: ;dis
-    [compile] ;
-    swap cells distable + !
-; immediate
+: ;dis     [compile] ; swap cells distable + ! ; immediate
 
 : disassemble-name ( addr -- )
     dup print-hex-number
@@ -63,10 +60,9 @@ create distable 256 cells allot
 
 : disassemble-instruction ( addr -- next-addr )
     dup addr-column
-    dup c@ cells distable + @ execute cr
-;
+    dup c@ cells distable + @ execute cr ;
 
-: ret? $c32 = ;
+: ret? $c3 = ;
 : disassemble-memory
     begin dup disassemble-instruction swap c@ ret? until
     drop ;
