@@ -17,6 +17,8 @@
 \ You should have received a copy of the GNU General Public License
 \ along with Eulex.  If not, see <http://www.gnu.org/licenses/>.
 
+require @structures.fs
+
 : get-current current @ ;
 : set-current current ! ;
 
@@ -31,9 +33,6 @@
 
 : wordlist ( -- wid)
     here  0 , ;
-
-: vocabulary
-    create 0 , does> context ! ;
 
 : also
     sorder_tos @ sorder_stack < if
@@ -52,6 +51,30 @@
 : only
     sorder_tos 0!
     forth-impl ;
+
+
+\ In order to implement VOCS word, we need a kind of introspection for
+\ vocabularies. This is provided storing a single-linked list of the
+\ available vocabularies in the system.
+
+variable vocentry-root
+
+struct
+    1 cells field vocentry-previous
+    1 cells field vocentry-size
+    0 cells field vocentry-name
+end-struct vocentry%
+
+: ,vocentry
+    vocentry-root @ , dup , s, ;
+
+: add-vocentry
+    here -rot ,vocentry vocentry-root ! ;
+
+: vocabulary
+    parse-name
+    2dup add-vocentry
+    nextname create 0 , does> context ! ;
 
 
 \ vocabulary.fs ends here

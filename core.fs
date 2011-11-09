@@ -595,7 +595,6 @@ variable defer-routine
 ;
 
 require @structures.fs
-require @vocabulary.fs
 
 require @exceptions.fs
 ' abort defer-routine !
@@ -621,7 +620,6 @@ require @string.fs
 : parse-name ( -- addr u )
     parse-cname count ;
 
-
 \ NAMED AND NONAMED WORDS
 
 create nextname-buffer 32 allot
@@ -633,6 +631,7 @@ create nextname-buffer 32 allot
 : noname 0 0 nextname ;
 : :noname noname : latestxt ;
 
+require @vocabulary.fs
 require @kernel/console.fs
 require @output.fs
 page ." Loading..." cr

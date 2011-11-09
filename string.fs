@@ -66,7 +66,7 @@ variable read-string-index
 ;
 
 \ Store N bytes from ADDR to the dictionary.
-: s, ( addr n )
+: s, ( addr n -- )
     here over allot swap move ;
 
 \ Re-store a string in the dictionary.

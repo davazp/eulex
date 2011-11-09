@@ -97,6 +97,22 @@ variable count_words
 ;
 
 
+( Display the list of vocabularies in the system )
+
+: vocs-print-vocentry ( ve -- )
+    dup vocentry-name swap vocentry-size @ type space ;
+
+: vocs
+    vocentry-root @
+    begin
+    ?dup while
+        dup vocs-print-vocentry
+        vocentry-previous @
+    repeat
+;
+
+
+( Disassembler. SEE )
 require @disassem.fs
 
 
