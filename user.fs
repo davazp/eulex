@@ -45,10 +45,10 @@ cr
     ." You should have received a copy of the GNU General Public License" cr
     ." along with this program. If not, see http://www.gnu.org/licenses/." cr ;
 
-create input 1024 allot
+create input video-width allot
 
 : read-line
-    input 1024 accept input swap ;
+    input video-width accept input swap ;
 
 : response
     state @ 0<> if
