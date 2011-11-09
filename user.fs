@@ -45,14 +45,28 @@ cr
     ." You should have received a copy of the GNU General Public License" cr
     ." along with this program. If not, see http://www.gnu.org/licenses/." cr ;
 
-: main-loop-interactive
-    0 0 evaluate-buffer ;
+create input 1024 allot
 
-: last-read-word read_word_buffer count ;
+: read-line
+    input 1024 accept input swap ;
+
+: response
+    state @ 0<> if
+        ."  compiled" cr
+    else
+        ."  ok" cr
+    endif ;
+
+: interactive-loop
+    begin
+        read-line space
+        evaluate
+        response
+    again ;
 
 : main-loop
     begin
-        ['] main-loop-interactive %catch-without-unwind
+        ['] interactive-loop %catch-without-unwind
         ?dup 0<> if
             ." ERROR: "
             case
@@ -60,8 +74,8 @@ cr
                  -3 of ." Stack overflow" cr endof
                  -4 of ." Stack underflow" cr endof
                 -10 of ." Division by zero" cr endof
-                -13 of ." Unknown word `"      last-read-word type ." '" cr endof
-                -14 of ." Compile-only word `" last-read-word type ." '" cr endof
+                -13 of ." Unknown word" cr endof
+                -14 of ." Compile-only word" cr endof
                 ." Ocurred an unexpected error of code " dup . cr
             endcase
             backtrace

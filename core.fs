@@ -722,8 +722,8 @@ also forth definitions
     ." Initializing serial port interface..." cr
     ['] read-byte input_routine ! ;
 
-serial-echo-on
-serial-loop
+\ serial-echo-on
+\ serial-loop
 
 :noname  -3 throw ; stack_overflow_err_routine !
 :noname  -4 throw ; stack_underflow_err_routine !
