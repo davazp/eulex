@@ -17,6 +17,13 @@
 \ You should have received a copy of the GNU General Public License
 \ along with Eulex.  If not, see <http://www.gnu.org/licenses/>.
 
+\ NOTE ON THE IMPLEMENTATION:
+\    Exception handling relies on the couple of words CATCH...THROW.
+\    CATCH installs an exception handler and THROW signal an exception,
+\    jumping to the innermost exception handler.  The stack is unwinded
+\    in CATCH time. Hence, we can access to the context of signal and
+\    display useful debugging information (e.g: backtraces).
+
 variable exception-handler
 
 : exception-handler-target
