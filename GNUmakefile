@@ -34,26 +34,27 @@ FORTH_SRC= \
         kernel/keyboard.fs \
         kernel/speaker.fs \
 	kernel/serial.fs \
-	tests/tests.fs \
-	tests/tsuite.fs \
-        tests/base.fs \
-	tests/strings.fs \
 	linedit.fs \
 	user.fs \
 	eulexrc.fs
+
+TESTING_SRC=tests/tests.fs \
+	    tests/tsuite.fs \
+            tests/base.fs \
+	    tests/strings.fs
 
 ASM_SRC=boot.S forth.S
 
 SOURCES=$(ASM_SRC)
 HEADERS=multiboot.h
 
-OBJS = $(ASM_SRC:.S=.o) $(FORTH_SRC:.fs=.o)
+OBJS = $(ASM_SRC:.S=.o) $(FORTH_SRC:.fs=.o) $(TESTING_SRC:.fs=.o)
 
 $(KERNEL): $(OBJS) $(LINKER_SCRIPT)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
 
 clean:
-	-rm -f *.[do] $(KERNEL) BUILTIN-FILES.S
+	-rm -f *.[do] kernel/*.[do] tests/*.[do] $(KERNEL) BUILTIN-FILES.S
 
 %.d: %.S GNUmakefile
 	@$(CC) $(DEPEND_FLAGS) $(CPPFLAGS) $< > $@.tmp; \
@@ -68,7 +69,7 @@ eulexrc.fs:
 
 forth.S: BUILTIN-FILES.S
 BUILTIN-FILES.S: GNUmakefile
-	sh ./generate-builtin-files.sh $(FORTH_SRC)
+	sh ./generate-builtin-files.sh $(FORTH_SRC) $(TESTING_SRC)
 
 dist:
 	git archive --format=tar --prefix=eulex/ HEAD | gzip > eulex.tar.gz
