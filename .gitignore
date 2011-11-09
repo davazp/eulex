@@ -1,0 +1,6 @@
+*~
+*.o
+*.d
+eulex
+BUILTIN-FILES.S
+/eulexrc.fs
