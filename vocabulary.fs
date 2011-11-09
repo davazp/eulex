@@ -62,19 +62,26 @@ variable vocentry-root
 struct
     1 cells field vocentry-previous
     1 cells field vocentry-size
+    1 cells field vocentry-wid
     0 cells field vocentry-name
 end-struct vocentry%
 
 : ,vocentry
-    vocentry-root @ , dup , s, ;
+    vocentry-root @ , dup , 0 , s, ;
 
 : add-vocentry
     here -rot ,vocentry vocentry-root ! ;
 
+: set-last-vocentry-wid ( wid -- )
+    vocentry-root @ vocentry-wid ! ;
+
+: vocentry>name ( vc -- addr n )
+    dup vocentry-name swap vocentry-size @ ;
+
 : vocabulary
     parse-name
     2dup add-vocentry
-    nextname create 0 , does> context ! ;
-
+    nextname
+    create here set-last-vocentry-wid 0 , does> context ! ;
 
 \ vocabulary.fs ends here
