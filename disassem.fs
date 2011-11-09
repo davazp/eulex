@@ -20,8 +20,8 @@
 \ This file implements an ad-hoc disassembler for non-primitive Forth
 \ words. It is a big CASE for every opcodes which we emitted in some
 \ other point basically, but it was useful for debugging control-flow
-\ words specially. Eventually, however, the Forth implementation was
-\ good and mature and it would be able to run a good disassembler,
+\ words specially. Eventually, however, if the Forth implementation
+\ was good and mature and it would be able to run a good disassembler,
 \ turning this code obsolete.
 
 create distable 256 cells allot
