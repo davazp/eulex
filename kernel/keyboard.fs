@@ -62,7 +62,7 @@ variable kbdbuff-rp
     kbdbuff-empty? not ;
 
 : wait-scancode
-    begin scancode? until ;
+    begin scancode? not while halt repeat ;
 
 : discard-scancode
     kbdbuff-rp kbdp++ ;
