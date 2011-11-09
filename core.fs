@@ -594,6 +594,7 @@ variable defer-routine
     0 0
 ;
 
+require @structures.fs
 require @vocabulary.fs
 
 require @exceptions.fs
@@ -636,7 +637,6 @@ require @kernel/console.fs
 require @output.fs
 page ." Loading..." cr
 require @tools.fs
-require @structures.fs
 require @kernel/multiboot.fs
 require @kernel/interrupts.fs
 require @kernel/exceptions.fs
