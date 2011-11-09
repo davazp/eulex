@@ -45,7 +45,7 @@ variable countdown
 ; 0 IRQ
 
 : set-countdown countdown ! ;
-: wait-for-countdown begin countdown @ while repeat ;
+: wait-for-countdown begin countdown @ while halt repeat ;
 
 \ Wait for (rougly) N milliseconds.
 : ms ( n -- ) set-countdown wait-for-countdown ;
