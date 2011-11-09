@@ -71,9 +71,6 @@
 : clearstack sp-limit sp! ;
 : depth sp-limit sp - cell / 1- ;
 
-: context
-    sorder_stack sorder_tos @ cells + ;
-
 create pad 1024 allot
 
 \ Dictionary's entries (name token -- NT )
@@ -366,47 +363,14 @@ variable defer-routine
     ' postpone literal
 ; immediate compile-only
 
-\ Vocabularies
 
-: get-current current @ ;
-: set-current current ! ;
+\ Low-level search-order manipulation
 
-: previous
-    sorder_tos @ 1 >= if
-        -1 sorder_tos +!
-    then ;
-
-: definitions
-    context @
-    current ! ;
-
-: wordlist ( -- wid)
-    here  0 , ;
-
-: vocabulary
-    create 0 , does> context ! ;
-
-: also
-    sorder_tos @ sorder_stack < if
-        context @
-        1 sorder_tos +!
-        context !
-        \ This is commented because we have not ." in this point.
-        \ else
-        \ ." ERROR: Too wordlists in the search order stack." cr
-    then
-;
-
-: >order ( wid -- )
-    also context ! ;
+: context
+    sorder_stack sorder_tos @ cells + ;
 
 : forth-impl
-    [ context @ ]L
-    context ! ;
-
-: only
-    sorder_tos 0!
-    forth-impl ;
+    [ context @ ]L context ! ;
 
 : get-order ( -- widn .. wid1 n )
     sorder_stack
@@ -432,42 +396,6 @@ variable defer-routine
     then
 ;
 
-: unfind-in-wordlist ( xt wordlist -- addr c )
-    @
-    begin
-        dup 0<> while
-            2dup nt>xt = if
-                nip nt>name
-                exit
-            else
-                previous-word
-            then
-    repeat
-    2drop
-    0 0
-;
-
-\ Find the first avalaible word whose CFA is XT, pushing the name to
-\ the stack or two zeros if it is not found.
-: unfind ( xt -- addr u )
-    get-order dup 1+ roll
-    ( widn ... wid1 n xt )
-    begin
-        over 0<> while
-            swap 1- swap rot
-            over swap unfind-in-wordlist
-            dup 0= if
-                2drop
-            else
-                >r >r
-                drop 0 ?do drop loop
-                r> r>
-                exit
-            then
-    repeat
-    2drop
-    0 0
-;
 
 : [char] char postpone literal ; immediate
 
@@ -628,7 +556,46 @@ variable defer-routine
 : enum dup constant 1+ ;
 : end-enum drop ;
 
-\ Load subsystems
+
+: unfind-in-wordlist ( xt wordlist -- addr c )
+    @
+    begin
+        dup 0<> while
+            2dup nt>xt = if
+                nip nt>name
+                exit
+            else
+                previous-word
+            then
+    repeat
+    2drop
+    0 0
+;
+
+\ Find the first avalaible word whose CFA is XT, pushing the name to
+\ the stack or two zeros if it is not found.
+: unfind ( xt -- addr u )
+    get-order dup 1+ roll
+    ( widn ... wid1 n xt )
+    begin
+        over 0<> while
+            swap 1- swap rot
+            over swap unfind-in-wordlist
+            dup 0= if
+                2drop
+            else
+                >r >r
+                drop 0 ?do drop loop
+                r> r>
+                exit
+            then
+    repeat
+    2drop
+    0 0
+;
+
+require @vocabulary.fs
+
 require @exceptions.fs
 ' abort defer-routine !
 

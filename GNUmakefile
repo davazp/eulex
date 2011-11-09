@@ -15,6 +15,7 @@ DEPEND_FLAGS=-MM
 LDFLAGS=-Wl,-T$(LINKER_SCRIPT)
 FORTH_SRC= \
 	core.fs \
+        vocabulary.fs \
         exceptions.fs \
 	output.fs \
 	string.fs \
