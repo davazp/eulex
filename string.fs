@@ -65,12 +65,13 @@ variable read-string-index
     drop
 ;
 
+\ Store N bytes from ADDR to the dictionary.
+: s, ( addr n )
+    here over allot swap move ;
+
+\ Re-store a string in the dictionary.
 : string, ( addr n -- new-addr n )
-    dup >r
-    here dup >r
-    swap move
-    r> r>
-    dup allot ;
+    here -rot tuck s, ;
 
 : s"
     \ Emit a branch before the string, we could be in a definition.
