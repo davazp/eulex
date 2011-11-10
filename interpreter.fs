@@ -22,11 +22,7 @@
 : hex     16 base ! ;
 
 : evaluate ( addr u -- )
-    save-search-order
-    current @ >r
-    over + evaluate-buffer
-    r> current !
-    restore-search-order ;
+    over + evaluate-buffer ;
 
 \ Directivas
 
