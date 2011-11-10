@@ -240,9 +240,9 @@ variable finishp
 
 : looping ( -- )
     begin
+        render
         ekey
         command-dispatcher
-        render
     finishp @ until ;
 
 
