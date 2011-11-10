@@ -176,6 +176,7 @@ eflags xor 21 bit? feature __CPUID__
 ;
 
 : cpuinfo
+    cr
     ." Vendor-ID: " vendor-id type cr
     ." Flags    : " cpuflags cr
 ;

@@ -48,6 +48,7 @@ variable count_words
 
 :noname drop count_words 1+! ;
 : stats
+    cr
     count_words 0!
     literal map-nt
     ." Words in the context: " count_words @ . cr

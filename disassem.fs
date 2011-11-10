@@ -64,6 +64,7 @@ create distable 256 cells allot
 
 : ret? $c3 = ;
 : disassemble-memory
+    cr
     begin dup disassemble-instruction swap c@ ret? until
     drop ;
 
