@@ -1,4 +1,4 @@
-\ structures.fs --- Estructuras
+\ structures.fs ---
 
 \ Copyright 2011 (C) David Vazquez
 
