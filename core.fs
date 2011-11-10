@@ -18,8 +18,11 @@
 \ along with Eulex.  If not, see <http://www.gnu.org/licenses/>.
 
 : noop ;
+: chars ;
+: char+ 1 chars + ;
 : cell 4 ;
 : cells cell * ;
+: cell+ 1 cells + ;
 : here dp ;
 : allot dp + dp! ;
 : , here cell allot ! ;
