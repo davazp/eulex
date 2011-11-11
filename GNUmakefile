@@ -36,6 +36,7 @@ FORTH_SRC= \
         kernel/speaker.fs \
 	kernel/serial.fs \
 	linedit.fs \
+        input.fs \
 	user.fs \
 	eulexrc.fs
 

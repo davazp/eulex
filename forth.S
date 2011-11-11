@@ -185,12 +185,42 @@ BUILTIN_VARIABLE(stack_overflow_err_routine, 0)
 BUILTIN_VARIABLE(unknown_word_err_routine, 0)
 BUILTIN_VARIABLE(compile_only_err_routine, 0)
 
-/* Interpreter's input source */
-BUILTIN_VARIABLE(input_routine, 0)
-BUILTIN_VARIABLE(input_source, 0)
-BUILTIN_VARIABLE(input_source_limit, 0)
+/* Interpreter's input sources */
+
+/* The role of the following variables may vary according to the kind
+   of tye input source which is being processed. The input source type
+   is determined by the value of the variable INPUT_SOURCE_ID.
+
+   If the input source is an in-memory buffer. Then the input buffer
+   is set to cover all the buffer, so no refilling will be required.
+   On the other hand, if the input source is an user input device,
+   input buffer will be refilled by the routine `tib_fill_routine'. */
+
+
+/* A value which determine what kind of source we are processing. The
+   values are: 0 (input user device, as keyboard or serial), -1 (a
+   in-memory buffer as a string being processed by evaluate). */
+BUILTIN_VARIABLE(input_source_id, 0)
+
+/* Address of the input buffer. */
+BUILTIN_VARIABLE(input_buffer, 0)
+
+/* Location in the input source. Useful for provide some debugging
+   information when an error occurs. */
 BUILTIN_VARIABLE(input_source_line, 1)
 BUILTIN_VARIABLE(input_source_column, 0)
+
+/* Offset of the parsing area in the input buffer. It is to say, the
+   offset to the data which were not processed yet. */
+BUILTIN_VARIABLE(input_buffer_in, 0)
+
+/* Size of the input buffer. */
+BUILTIN_VARIABLE(input_buffer_size, 0)
+
+/* Routine which is called when the input source is a user input
+   device and the input buffer is empty. */
+BUILTIN_VARIABLE(tib_fill_routine, 0)
+
 
 BUILTIN_WORD_NAME(_read_word_buffer, "read_word_buffer")
         movl $read_word_buffer, -4(%esi)
@@ -930,23 +960,48 @@ END_WORD(alias)
 
 BUILTIN_VARIABLE(current, 0)
 
-
-/* Subsystems support */
-
-BUILTIN_WORD_NAME(evaluate_buffer, "evaluate-buffer")
-        /* Set interpretation mode. */
-        pushl 0(%esi)
-        pushl 4(%esi)
+BUILTIN_WORD(evaluate)
+        /* Save input */
+        pushl input_buffer
+        pushl input_buffer_in
+        pushl input_buffer_size
+        pushl input_source_id
+        pushl input_source_line
+        pushl input_source_column
+        /* Change input source*/
+        movl $-1, input_source_id
+        movl 4(%esi), %eax
+        movl %eax, input_buffer
+        movl $0, input_buffer_in
+        movl 0(%esi), %eax
+        movl %eax, input_buffer_size
+        movl $1, input_source_line
+        movl $0, input_source_column
         addl $8, %esi
-        call loop_prelude
-        addl $8, %esp
-1:      ret
-END_WORD(evaluate_buffer)
+        /* Process */
+        call interpret
+        /* Restore input */
+        popl input_source_column
+        popl input_source_line
+        popl input_source_id
+        popl input_buffer_size
+        popl input_buffer_in
+        popl input_buffer
+        ret
+END_WORD(evaluate)
+
+/* Yield the control to the interpreter in order to process the input
+   buffer. This is intended to very low-level code, as we can wrap a
+   loop interation with exceptions handlers and so. */
+BUILTIN_WORD(interpret)
+        call loop
+        ret
+END_WORD(interpret)
 
 
 /* This file defines a word @NAME for each built-in Forth file, whose
    semantic is pushing the data of the file's location in memory
-   and so, `evaluate-buffer' can execute it. */
+   and so, `evaluate' can process it. */
 #include "BUILTIN-FILES.S"
 
 
@@ -961,26 +1016,17 @@ dictionary_end:
 
 .text
 
-/* Read a character from input_source. */
+/* Read a character from input_buffer.
+   If it is empty, then it will try to refill it before. */
 fgetchar:
-        movl input_source, %eax
-        test %eax, %eax
-        jnz fgetchar_from_buffer
-        movl input_routine, %eax
-        call *%eax
-        movl (%esi), %eax
-        addl $4, %esi
-        jmp fgetchar_lc
-fgetchar_from_buffer:
-        movl input_source, %edx
-        cmpl %edx, input_source_limit
-        jle fgetchar_eof
+        movl input_buffer_in, %edx
+        cmpl %edx, input_buffer_size
+        je fgetchar_last
+        cmpl %edx, input_buffer_size
+        jle fgetchar_eob
+        addl input_buffer, %edx
         movzbl (%edx), %eax
-        incl input_source
-        jmp fgetchar_lc
-fgetchar_eof:
-        xorl %eax, %eax
-        ret
+        incl input_buffer_in
 fgetchar_lc:
         cmp $10, %eax
         je 1f
@@ -991,6 +1037,26 @@ fgetchar_lc:
 1:      movl $0, input_source_column
         incl input_source_line
 2:      ret
+fgetchar_last:
+	incl input_buffer_in
+        movl $'\n', %eax
+        ret
+fgetchar_eob:
+        /* End-of-buffer. The input buffer is empty. It may be due to
+	   all memory buffer has been processed, or the user did not
+           type more data yet. INPUT_SOURCE_ID is used to know the
+           reason of that. */
+        movl input_source_id, %edx
+        cmpl $-1, %edx
+        je fgetchar_eof
+        /* The TIB is empty, so return a delimitier (space) and refill
+           the user input buffer for the next time. */
+        call *tib_fill_routine
+        movl $10, %eax
+        ret
+fgetchar_eof:
+        xorl %eax, %eax
+        ret
 
 /* Check if two given counted strings are equal. EAX y EDX point to the strings,
    the result is stored in the ZF flag. */
@@ -1379,37 +1445,22 @@ run_forth:
         movl $builtin_vocabulary, sorder_stack
         movl $builtin_vocabulary, current
         /* Load core.fs */
-        pushl $_binary_core_fs_end
-        pushl $_binary_core_fs_start
-        call loop_prelude
-        addl $8, %esp
-run_forth_main_loop:
-        pushl $0
-        pushl $0
-        call loop_prelude
-        addl $8, %esp
-        jmp run_forth_main_loop
-
+        movl $_binary_core_fs_start, -4(%esi)
+        movl $_binary_core_fs_size, -8(%esi)
+        subl $8, %esi
+        call evaluate
+        /* This point will not should be reached. */
+        cli
+        hlt
 
 /* Main loop. Read word and run the compiler or the interpreter,
    according to the STATE's value. */
-loop_prelude:
-        movl %esp, %ebp
-        pushl input_source
-        pushl input_source_limit
-        pushl input_source_line
-        pushl input_source_column
-        movl 4(%ebp), %eax
-        movl %eax, input_source
-        movl 8(%ebp), %eax
-        movl %eax, input_source_limit
-        movl $1, input_source_line
-        movl $0, input_source_column
 loop:
         call read_word
         test %eax, %eax
-        jz loop_restore_is_and_exit
-        pushl %eax
+        jnz 1f
+        ret
+1:      pushl %eax
         call find_word
         test %edx, %edx
         jnz loop_word
@@ -1420,7 +1471,7 @@ loop:
         jnz loop_number
         /* Throw an error */
         call not_found_word
-        jmp loop_restore_is_and_exit
+        ret
 loop_word:
         /* EDX = Word in the dictionary */
         popl %eax           /* String */
@@ -1442,12 +1493,6 @@ loop_number:
         test %edx, %edx
         jz interpreter_number
         jmp compile_number
-loop_restore_is_and_exit:
-        popl input_source_column
-        popl input_source_line
-        popl input_source_limit
-        popl input_source
-        ret
 
 compile_word:
         /* EDX = Entry in the dictionary */

@@ -311,12 +311,6 @@ variable defer-routine
 : j rsp 3 cells + @ ; compile-only
 : k rsp 5 cells + @ ; compile-only
 
-: quit
-    clearstack
-    0 state !
-    0 input_source ! ;
-
-
 : abs
     dup 0< if negate then ;
 
@@ -439,7 +433,7 @@ variable defer-routine
 : buffer>start ( addr -- start )
     @ ;
 
-: buffer>end ( addr -- end )
+: buffer>size ( addr -- size )
     cell + @ ;
 
 : buffer>loaded ( addr -- load-var )
@@ -492,8 +486,8 @@ variable defer-routine
     \ Load buffer
     dup mark-buffer-as-loaded
     dup buffer>start
-    swap buffer>end
-    evaluate-buffer
+    swap buffer>size
+    evaluate
     \ Restore search order stack
     r> current !
     restore-search-order
@@ -687,9 +681,9 @@ also forth definitions
 \ DEBUGGING. This is useful to run the QEMU on emacs, and use Eulex
 \ like anyother Forth implementation!
 
-: serial-loop
-    ." Initializing serial port interface..." cr
-    ['] read-byte input_routine ! ;
+\ : serial-loop
+\     ." Initializing serial port interface..." cr
+\     ['] read-byte input_routine ! ;
 
 \ serial-echo-on
 \ serial-loop

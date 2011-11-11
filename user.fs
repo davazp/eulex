@@ -18,7 +18,7 @@
 \ along with Eulex.  If not, see <http://www.gnu.org/licenses/>.
 
 require @kernel/timer.fs
-require @linedit.fs
+require @input.fs
 
 500 ms page
 ."      _____      _                                                            " cr
@@ -45,28 +45,13 @@ cr
     ." You should have received a copy of the GNU General Public License" cr
     ." along with this program. If not, see http://www.gnu.org/licenses/." cr ;
 
-create input video-width allot
 
-: read-line
-    input video-width accept input swap ;
+: user-interaction
+    query interpret ;
 
-: response
-    state @ 0<> if
-        ."  compiled" cr
-    else
-        ."  ok" cr
-    endif ;
-
-: interactive-loop
+: start-user-interaction
     begin
-        read-line space
-        evaluate
-        response
-    again ;
-
-: main-loop
-    begin
-        ['] interactive-loop %catch-without-unwind
+        ['] user-interaction %catch-without-unwind
         ?dup 0<> if
             ." ERROR: "
             case
@@ -84,6 +69,7 @@ create input video-width allot
     again ;
 
 require @eulexrc.fs
-main-loop
+
+START-USER-INTERACTION
 
 \ user.fs ends here
