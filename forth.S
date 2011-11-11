@@ -187,10 +187,20 @@ BUILTIN_VARIABLE(compile_only_err_routine, 0)
 
 /* Interpreter's input sources */
 
+/* The role of the following variables may vary according to the kind
+   of tye input source which is being processed. The input source type
+   is determined by the value of the variable INPUT_SOURCE_ID.
+
+   If the input source is an in-memory buffer. Then the input buffer
+   is set to cover all the buffer, so no refilling will be required.
+   On the other hand, if the input source is an user input device,
+   input buffer will be refilled by the routine `tib_fill_routine'. */
+
+
 /* A value which determine what kind of source we are processing. The
    values are: 0 (input user device, as keyboard or serial), -1 (a
    in-memory buffer as a string being processed by evaluate). */
-BUILTIN_VARIABLE(input_source_id, 0)
+BUILTIN_VARIABLE(input_source_id, -1)
 
 /* Address of the input buffer. */
 BUILTIN_VARIABLE(input_buffer, 0)
@@ -979,26 +989,28 @@ dictionary_end:
 
 .text
 
-/* Read a character from input_buffer. */
+/* Read a character from input_buffer.
+   If it is empty, then it will try to refill it before. */
 fgetchar:
-        movl input_buffer, %eax
-        addl input_buffer_in, %eax
-        /* TODO: source-id will be used here. */
-        test %eax, %eax
-        jnz fgetchar_from_buffer
-        movl input_routine, %eax
-        call *%eax
-        movl (%esi), %eax
-        addl $4, %esi
-        jmp fgetchar_lc
-fgetchar_from_buffer:
         movl input_buffer_in, %edx
         cmpl %edx, input_buffer_size
-        jle fgetchar_eof
+        jle fgetchar_eob
         addl input_buffer, %edx
         movzbl (%edx), %eax
         incl input_buffer_in
         jmp fgetchar_lc
+fgetchar_eob:
+        /* End-of-buffer. The input buffer is empty. It may be due to
+	   all memory buffer has been processed, or the user did not
+           type more data yet. INPUT_SOURCE_ID is used to known the
+           reason of that. */
+        movl input_source_id, %edx
+        cmpl $-1, %edx
+        je fgetchar_eof
+        /* Refilling */
+        movl tib_fill_routine, %eax
+        call *%eax
+        jmp fgetchar
 fgetchar_eof:
         xorl %eax, %eax
         ret
