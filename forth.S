@@ -210,7 +210,7 @@ BUILTIN_VARIABLE(tib_fill_routine, 0)
 BUILTIN_VARIABLE(input_routine, 0)
 BUILTIN_VARIABLE(input_source, 0)
 BUILTIN_VARIABLE(input_source_in, 0)
-BUILTIN_VARIABLE(input_source_limit, 0)
+BUILTIN_VARIABLE(input_source_size, 0)
 BUILTIN_VARIABLE(input_source_line, 1)
 BUILTIN_VARIABLE(input_source_column, 0)
 
@@ -992,10 +992,10 @@ fgetchar:
         addl $4, %esi
         jmp fgetchar_lc
 fgetchar_from_buffer:
-        movl input_source, %edx
-        addl input_source_in, %edx
-        cmpl %edx, input_source_limit
+        movl input_source_in, %edx
+        cmpl %edx, input_source_size
         jle fgetchar_eof
+        addl input_source, %edx
         movzbl (%edx), %eax
         incl input_source_in
         jmp fgetchar_lc
@@ -1418,14 +1418,14 @@ loop_prelude:
         movl %esp, %ebp
         pushl input_source
         pushl input_source_in
-        pushl input_source_limit
+        pushl input_source_size
         pushl input_source_line
         pushl input_source_column
         movl 4(%ebp), %eax
         movl %eax, input_source
         movl $0, input_source_in
-        addl 8(%ebp), %eax
-        movl %eax, input_source_limit
+        movl 8(%ebp), %eax
+        movl %eax, input_source_size
         movl $1, input_source_line
         movl $0, input_source_column
 loop:
@@ -1468,7 +1468,7 @@ loop_number:
 loop_restore_is_and_exit:
         popl input_source_column
         popl input_source_line
-        popl input_source_limit
+        popl input_source_size
         popl input_source_in
         popl input_source
         ret
