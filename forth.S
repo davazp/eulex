@@ -185,7 +185,28 @@ BUILTIN_VARIABLE(stack_overflow_err_routine, 0)
 BUILTIN_VARIABLE(unknown_word_err_routine, 0)
 BUILTIN_VARIABLE(compile_only_err_routine, 0)
 
-/* Interpreter's input source */
+/* Interpreter's input sources */
+
+/* A value which determine what kind of source we are processing. The
+   values are: 0 (input user device, as keyboard or serial), -1 (a
+   in-memory buffer as a string being processed by evaluate). */
+BUILTIN_VARIABLE(input_source_id, 0)
+
+/* Address of the input buffer. */
+BUILTIN_VARIABLE(input_buffer, 0)
+
+/* Offset of the parsing area in the input buffer. It is to say, the
+   offset to the data which were not processed yet. */
+BUILTIN_VARIABLE(input_buffer_in, 0)
+
+/* Size of the input buffer. */
+BUILTIN_VARIABLE(input_buffer_size, 0)
+
+/* Routine which is called when the input source is a user input
+   device and the input buffer is empty. */
+BUILTIN_VARIABLE(tib_fill_routine, 0)
+
+
 BUILTIN_VARIABLE(input_routine, 0)
 BUILTIN_VARIABLE(input_source, 0)
 BUILTIN_VARIABLE(input_source_limit, 0)
