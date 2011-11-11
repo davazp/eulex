@@ -200,7 +200,7 @@ BUILTIN_VARIABLE(compile_only_err_routine, 0)
 /* A value which determine what kind of source we are processing. The
    values are: 0 (input user device, as keyboard or serial), -1 (a
    in-memory buffer as a string being processed by evaluate). */
-BUILTIN_VARIABLE(input_source_id, -1)
+BUILTIN_VARIABLE(input_source_id, 0)
 
 /* Address of the input buffer. */
 BUILTIN_VARIABLE(input_buffer, 0)
@@ -965,9 +965,11 @@ BUILTIN_WORD(evaluate)
         pushl input_buffer
         pushl input_buffer_in
         pushl input_buffer_size
+        pushl input_source_id
         pushl input_source_line
         pushl input_source_column
         /* Change input source*/
+        movl $-1, input_source_id
         movl 4(%esi), %eax
         movl %eax, input_buffer
         movl $0, input_buffer_in
@@ -977,15 +979,24 @@ BUILTIN_WORD(evaluate)
         movl $0, input_source_column
         addl $8, %esi
         /* Process */
-        call loop
+        call interpret
         /* Restore input */
         popl input_source_column
         popl input_source_line
+        popl input_source_id
         popl input_buffer_size
         popl input_buffer_in
         popl input_buffer
         ret
 END_WORD(evaluate)
+
+/* Yield the control to the interpreter in order to process the input
+   buffer. This is intended to very low-level code, as we can wrap a
+   loop interation with exceptions handlers and so. */
+BUILTIN_WORD(interpret)
+        call loop
+        ret
+END_WORD(interpret)
 
 
 /* This file defines a word @NAME for each built-in Forth file, whose
@@ -1010,11 +1021,26 @@ dictionary_end:
 fgetchar:
         movl input_buffer_in, %edx
         cmpl %edx, input_buffer_size
+        je fgetchar_last
+        cmpl %edx, input_buffer_size
         jle fgetchar_eob
         addl input_buffer, %edx
         movzbl (%edx), %eax
         incl input_buffer_in
-        jmp fgetchar_lc
+fgetchar_lc:
+        cmp $10, %eax
+        je 1f
+        cmp $13, %eax
+        je 1f
+        incl input_source_column
+        jmp 2f
+1:      movl $0, input_source_column
+        incl input_source_line
+2:      ret
+fgetchar_last:
+	incl input_buffer_in
+        movl $'\n', %eax
+        ret
 fgetchar_eob:
         /* End-of-buffer. The input buffer is empty. It may be due to
 	   all memory buffer has been processed, or the user did not
@@ -1026,17 +1052,8 @@ fgetchar_eob:
         /* The TIB is empty, so return a delimitier (space) and refill
            the user input buffer for the next time. */
         call *tib_fill_routine
-        movl $'\n', %eax
-fgetchar_lc:
-        cmp $10, %eax
-        je 1f
-        cmp $13, %eax
-        je 1f
-        incl input_source_column
-        jmp 2f
-1:      movl $0, input_source_column
-        incl input_source_line
-2:      ret
+        movl $10, %eax
+        ret
 fgetchar_eof:
         xorl %eax, %eax
         ret

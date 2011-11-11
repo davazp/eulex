@@ -45,28 +45,31 @@ cr
     ." You should have received a copy of the GNU General Public License" cr
     ." along with this program. If not, see http://www.gnu.org/licenses/." cr ;
 
-\ : main-loop
-\     begin
-\         ['] interactive-loop %catch-without-unwind
-\         ?dup 0<> if
-\             ." ERROR: "
-\             case
-\                  -1 of ." Aborted" cr endof
-\                  -3 of ." Stack overflow" cr endof
-\                  -4 of ." Stack underflow" cr endof
-\                 -10 of ." Division by zero" cr endof
-\                 -13 of ." Unknown word" cr endof
-\                 -14 of ." Compile-only word" cr endof
-\                 ." Ocurred an unexpected error of code " dup . cr
-\             endcase
-\             backtrace
-\             %unwind-after-catch
-\         then
-\     again ;
+
+: user-interaction
+    query interpret ;
+
+: start-user-interaction
+    begin
+        ['] user-interaction %catch-without-unwind
+        ?dup 0<> if
+            ." ERROR: "
+            case
+                 -1 of ." Aborted" cr endof
+                 -3 of ." Stack overflow" cr endof
+                 -4 of ." Stack underflow" cr endof
+                -10 of ." Division by zero" cr endof
+                -13 of ." Unknown word" cr endof
+                -14 of ." Compile-only word" cr endof
+                ." Ocurred an unexpected error of code " dup . cr
+            endcase
+            backtrace
+            %unwind-after-catch
+        then
+    again ;
 
 require @eulexrc.fs
 
-\ Process user input
-QUERY
+START-USER-INTERACTION
 
 \ user.fs ends here
