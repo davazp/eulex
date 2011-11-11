@@ -195,6 +195,11 @@ BUILTIN_VARIABLE(input_source_id, 0)
 /* Address of the input buffer. */
 BUILTIN_VARIABLE(input_buffer, 0)
 
+/* Location in the input source. Useful for provide some debugging
+   information when an error occurs. */
+BUILTIN_VARIABLE(input_source_line, 1)
+BUILTIN_VARIABLE(input_source_column, 0)
+
 /* Offset of the parsing area in the input buffer. It is to say, the
    offset to the data which were not processed yet. */
 BUILTIN_VARIABLE(input_buffer_in, 0)
@@ -206,13 +211,8 @@ BUILTIN_VARIABLE(input_buffer_size, 0)
    device and the input buffer is empty. */
 BUILTIN_VARIABLE(tib_fill_routine, 0)
 
-
 BUILTIN_VARIABLE(input_routine, 0)
-BUILTIN_VARIABLE(input_source, 0)
-BUILTIN_VARIABLE(input_source_in, 0)
-BUILTIN_VARIABLE(input_source_size, 0)
-BUILTIN_VARIABLE(input_source_line, 1)
-BUILTIN_VARIABLE(input_source_column, 0)
+
 
 BUILTIN_WORD_NAME(_read_word_buffer, "read_word_buffer")
         movl $read_word_buffer, -4(%esi)
@@ -979,10 +979,10 @@ dictionary_end:
 
 .text
 
-/* Read a character from input_source. */
+/* Read a character from input_buffer. */
 fgetchar:
-        movl input_source, %eax
-        addl input_source_in, %eax
+        movl input_buffer, %eax
+        addl input_buffer_in, %eax
         /* TODO: source-id will be used here. */
         test %eax, %eax
         jnz fgetchar_from_buffer
@@ -992,12 +992,12 @@ fgetchar:
         addl $4, %esi
         jmp fgetchar_lc
 fgetchar_from_buffer:
-        movl input_source_in, %edx
-        cmpl %edx, input_source_size
+        movl input_buffer_in, %edx
+        cmpl %edx, input_buffer_size
         jle fgetchar_eof
-        addl input_source, %edx
+        addl input_buffer, %edx
         movzbl (%edx), %eax
-        incl input_source_in
+        incl input_buffer_in
         jmp fgetchar_lc
 fgetchar_eof:
         xorl %eax, %eax
@@ -1416,16 +1416,16 @@ run_forth_main_loop:
    according to the STATE's value. */
 loop_prelude:
         movl %esp, %ebp
-        pushl input_source
-        pushl input_source_in
-        pushl input_source_size
+        pushl input_buffer
+        pushl input_buffer_in
+        pushl input_buffer_size
         pushl input_source_line
         pushl input_source_column
         movl 4(%ebp), %eax
-        movl %eax, input_source
-        movl $0, input_source_in
+        movl %eax, input_buffer
+        movl $0, input_buffer_in
         movl 8(%ebp), %eax
-        movl %eax, input_source_size
+        movl %eax, input_buffer_size
         movl $1, input_source_line
         movl $0, input_source_column
 loop:
@@ -1468,9 +1468,9 @@ loop_number:
 loop_restore_is_and_exit:
         popl input_source_column
         popl input_source_line
-        popl input_source_size
-        popl input_source_in
-        popl input_source
+        popl input_buffer_size
+        popl input_buffer_in
+        popl input_buffer
         ret
 
 compile_word:
