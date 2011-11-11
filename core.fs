@@ -681,9 +681,9 @@ also forth definitions
 \ DEBUGGING. This is useful to run the QEMU on emacs, and use Eulex
 \ like anyother Forth implementation!
 
-: serial-loop
-    ." Initializing serial port interface..." cr
-    ['] read-byte input_routine ! ;
+\ : serial-loop
+\     ." Initializing serial port interface..." cr
+\     ['] read-byte input_routine ! ;
 
 \ serial-echo-on
 \ serial-loop

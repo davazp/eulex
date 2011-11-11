@@ -221,8 +221,6 @@ BUILTIN_VARIABLE(input_buffer_size, 0)
    device and the input buffer is empty. */
 BUILTIN_VARIABLE(tib_fill_routine, 0)
 
-BUILTIN_VARIABLE(input_routine, 0)
-
 
 BUILTIN_WORD_NAME(_read_word_buffer, "read_word_buffer")
         movl $read_word_buffer, -4(%esi)
