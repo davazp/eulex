@@ -963,12 +963,30 @@ END_WORD(alias)
 BUILTIN_VARIABLE(current, 0)
 
 BUILTIN_WORD(evaluate)
-        pushl 0(%esi)
-        pushl 4(%esi)
+        /* Save input */
+        pushl input_buffer
+        pushl input_buffer_in
+        pushl input_buffer_size
+        pushl input_source_line
+        pushl input_source_column
+        /* Change input source*/
+        movl 4(%esi), %eax
+        movl %eax, input_buffer
+        movl $0, input_buffer_in
+        movl 0(%esi), %eax
+        movl %eax, input_buffer_size
+        movl $1, input_source_line
+        movl $0, input_source_column
         addl $8, %esi
-        call loop_prelude
-        addl $8, %esp
-1:      ret
+        /* Process */
+        call loop
+        /* Restore input */
+        popl input_source_column
+        popl input_source_line
+        popl input_buffer_size
+        popl input_buffer_in
+        popl input_buffer
+        ret
 END_WORD(evaluate)
 
 
@@ -1412,39 +1430,22 @@ run_forth:
         movl $builtin_vocabulary, sorder_stack
         movl $builtin_vocabulary, current
         /* Load core.fs */
-        pushl $_binary_core_fs_end
-        pushl $_binary_core_fs_start
-        call loop_prelude
-        addl $8, %esp
-run_forth_main_loop:
-        pushl $0
-        pushl $0
-        call loop_prelude
-        addl $8, %esp
-        jmp run_forth_main_loop
-
+        movl $_binary_core_fs_start, -4(%esi)
+        movl $_binary_core_fs_size, -8(%esi)
+        subl $8, %esi
+        call evaluate
+        /* This point will not should be reached. */
+        cli
+        hlt
 
 /* Main loop. Read word and run the compiler or the interpreter,
    according to the STATE's value. */
-loop_prelude:
-        movl %esp, %ebp
-        pushl input_buffer
-        pushl input_buffer_in
-        pushl input_buffer_size
-        pushl input_source_line
-        pushl input_source_column
-        movl 4(%ebp), %eax
-        movl %eax, input_buffer
-        movl $0, input_buffer_in
-        movl 8(%ebp), %eax
-        movl %eax, input_buffer_size
-        movl $1, input_source_line
-        movl $0, input_source_column
 loop:
         call read_word
         test %eax, %eax
-        jz loop_restore_is_and_exit
-        pushl %eax
+        jnz 1f
+        ret
+1:      pushl %eax
         call find_word
         test %edx, %edx
         jnz loop_word
@@ -1455,7 +1456,7 @@ loop:
         jnz loop_number
         /* Throw an error */
         call not_found_word
-        jmp loop_restore_is_and_exit
+        ret
 loop_word:
         /* EDX = Word in the dictionary */
         popl %eax           /* String */
@@ -1477,13 +1478,6 @@ loop_number:
         test %edx, %edx
         jz interpreter_number
         jmp compile_number
-loop_restore_is_and_exit:
-        popl input_source_column
-        popl input_source_line
-        popl input_buffer_size
-        popl input_buffer_in
-        popl input_buffer
-        ret
 
 compile_word:
         /* EDX = Entry in the dictionary */
