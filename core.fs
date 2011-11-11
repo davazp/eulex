@@ -439,7 +439,7 @@ variable defer-routine
 : buffer>start ( addr -- start )
     @ ;
 
-: buffer>end ( addr -- end )
+: buffer>size ( addr -- size )
     cell + @ ;
 
 : buffer>loaded ( addr -- load-var )
@@ -492,8 +492,8 @@ variable defer-routine
     \ Load buffer
     dup mark-buffer-as-loaded
     dup buffer>start
-    swap buffer>end
-    evaluate-buffer
+    swap buffer>size
+    evaluate
     \ Restore search order stack
     r> current !
     restore-search-order

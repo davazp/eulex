@@ -951,23 +951,19 @@ END_WORD(alias)
 
 BUILTIN_VARIABLE(current, 0)
 
-
-/* Subsystems support */
-
-BUILTIN_WORD_NAME(evaluate_buffer, "evaluate-buffer")
-        /* Set interpretation mode. */
+BUILTIN_WORD(evaluate)
         pushl 0(%esi)
         pushl 4(%esi)
         addl $8, %esi
         call loop_prelude
         addl $8, %esp
 1:      ret
-END_WORD(evaluate_buffer)
+END_WORD(evaluate)
 
 
 /* This file defines a word @NAME for each built-in Forth file, whose
    semantic is pushing the data of the file's location in memory
-   and so, `evaluate-buffer' can execute it. */
+   and so, `evaluate' can process it. */
 #include "BUILTIN-FILES.S"
 
 
@@ -1422,7 +1418,7 @@ loop_prelude:
         pushl input_source_column
         movl 4(%ebp), %eax
         movl %eax, input_source
-        movl 8(%ebp), %eax
+        addl 8(%ebp), %eax
         movl %eax, input_source_limit
         movl $1, input_source_line
         movl $0, input_source_column

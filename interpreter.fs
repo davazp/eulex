@@ -21,9 +21,6 @@
 : decimal 10 base ! ;
 : hex     16 base ! ;
 
-: evaluate ( addr u -- )
-    over + evaluate-buffer ;
-
 \ Directivas
 
 Defer [if]      immediate
