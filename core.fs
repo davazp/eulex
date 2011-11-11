@@ -311,12 +311,6 @@ variable defer-routine
 : j rsp 3 cells + @ ; compile-only
 : k rsp 5 cells + @ ; compile-only
 
-: quit
-    clearstack
-    0 state !
-    0 input_source ! ;
-
-
 : abs
     dup 0< if negate then ;
 
