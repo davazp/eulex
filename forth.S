@@ -1020,18 +1020,15 @@ fgetchar:
 fgetchar_eob:
         /* End-of-buffer. The input buffer is empty. It may be due to
 	   all memory buffer has been processed, or the user did not
-           type more data yet. INPUT_SOURCE_ID is used to known the
+           type more data yet. INPUT_SOURCE_ID is used to know the
            reason of that. */
         movl input_source_id, %edx
         cmpl $-1, %edx
         je fgetchar_eof
-        /* Refilling */
-        movl tib_fill_routine, %eax
-        call *%eax
-        jmp fgetchar
-fgetchar_eof:
-        xorl %eax, %eax
-        ret
+        /* The TIB is empty, so return a delimitier (space) and refill
+           the user input buffer for the next time. */
+        call *tib_fill_routine
+        movl $'\n', %eax
 fgetchar_lc:
         cmp $10, %eax
         je 1f
@@ -1042,6 +1039,9 @@ fgetchar_lc:
 1:      movl $0, input_source_column
         incl input_source_line
 2:      ret
+fgetchar_eof:
+        xorl %eax, %eax
+        ret
 
 /* Check if two given counted strings are equal. EAX y EDX point to the strings,
    the result is stored in the ZF flag. */

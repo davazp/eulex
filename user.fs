@@ -18,7 +18,7 @@
 \ along with Eulex.  If not, see <http://www.gnu.org/licenses/>.
 
 require @kernel/timer.fs
-require @linedit.fs
+require @input.fs
 
 500 ms page
 ."      _____      _                                                            " cr
@@ -45,45 +45,28 @@ cr
     ." You should have received a copy of the GNU General Public License" cr
     ." along with this program. If not, see http://www.gnu.org/licenses/." cr ;
 
-create input video-width allot
-
-: read-line
-    input video-width accept input swap ;
-
-: response
-    state @ 0<> if
-        ."  compiled" cr
-    else
-        ."  ok" cr
-    endif ;
-
-: interactive-loop
-    begin
-        read-line space
-        evaluate
-        response
-    again ;
-
-: main-loop
-    begin
-        ['] interactive-loop %catch-without-unwind
-        ?dup 0<> if
-            ." ERROR: "
-            case
-                 -1 of ." Aborted" cr endof
-                 -3 of ." Stack overflow" cr endof
-                 -4 of ." Stack underflow" cr endof
-                -10 of ." Division by zero" cr endof
-                -13 of ." Unknown word" cr endof
-                -14 of ." Compile-only word" cr endof
-                ." Ocurred an unexpected error of code " dup . cr
-            endcase
-            backtrace
-            %unwind-after-catch
-        then
-    again ;
+\ : main-loop
+\     begin
+\         ['] interactive-loop %catch-without-unwind
+\         ?dup 0<> if
+\             ." ERROR: "
+\             case
+\                  -1 of ." Aborted" cr endof
+\                  -3 of ." Stack overflow" cr endof
+\                  -4 of ." Stack underflow" cr endof
+\                 -10 of ." Division by zero" cr endof
+\                 -13 of ." Unknown word" cr endof
+\                 -14 of ." Compile-only word" cr endof
+\                 ." Ocurred an unexpected error of code " dup . cr
+\             endcase
+\             backtrace
+\             %unwind-after-catch
+\         then
+\     again ;
 
 require @eulexrc.fs
-main-loop
+
+\ Process user input
+QUERY
 
 \ user.fs ends here
