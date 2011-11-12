@@ -31,6 +31,8 @@
 : constant create , does> @ ;
 : false 0 ;
 : true -1 ;
+: on true swap ! ;
+: off false swap ! ;
 
 : 0< 0 < ;
 : 0= 0 = ;
