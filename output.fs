@@ -111,6 +111,7 @@ variable .index
     drop
 ;
 
+: typewhite nip spaces ;
 
 : ."
     [compile] s"
