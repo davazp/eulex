@@ -124,6 +124,12 @@ variable finishp
     endif ;
 
 
+\ Autocompletion
+
+: le-complete-word
+;
+
+
 \ Internal words
 
 : remember-location
@@ -217,6 +223,10 @@ variable finishp
     over RET = if
         2drop
         le-return
+        exit
+    endif
+    over TAB = if
+        2drop le-complete-word
         exit
     endif
     over non-special-key? if
