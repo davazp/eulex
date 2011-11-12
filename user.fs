@@ -65,6 +65,8 @@ cr
             endcase
             backtrace
             %unwind-after-catch
+            state 0!
+            clearstack
         then
     again ;
 
