@@ -557,7 +557,7 @@ variable defer-routine
 
 
 : unfind-in-wordlist ( xt wordlist -- addr c )
-    @
+    wid>latest
     begin
         dup 0<> while
             2dup nt>xt = if
