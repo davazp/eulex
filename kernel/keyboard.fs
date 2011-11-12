@@ -17,7 +17,7 @@
 \ You should have received a copy of the GNU General Public License
 \ along with Eulex.  If not, see <http://www.gnu.org/licenses/>.
 
-require @kernel/interrupts.fs
+require @kernel/irq.fs
 
 $5e constant kbd-intrfc
 $60 constant kbd-port
