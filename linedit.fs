@@ -37,6 +37,8 @@ variable finishp
 
 : alert visible-bell if flash else beep endif ;
 
+: point gap-start @ ;
+
 : char-at ( n -- ) buffer @ + c@ ;
 : at-beginning? gap-start @ 0= ;
 : at-end? gap-end @ buffer-size @ = ;
@@ -51,6 +53,10 @@ variable finishp
 : before-nonspace? at-end? not next-char 32 <> and ;
 : after-nonspace?  at-beginning? not previous-char 32 <> and ;
 
+: at-end-word?
+    after-nonspace?
+    before-space? at-end? or
+    and ;
 
 \ Editing commands
 
@@ -117,11 +123,134 @@ variable finishp
     buffer-size @ gap-end ! ;
 
 : le-return
-    at-end? if
-        true finishp !
+    at-end? if finishp on else le-move-end-of-line endif ;
+
+
+\ Autocompletion
+
+\ First of all, we provide two useful twords, INITIALIZE-CORDER and
+\ NEXT-WORD, which the iteration across the avalaible words relies on.
+\ So, the completion code accesss to the words in a linear and easy
+\ way.  Then, implement autocompletion is as simple as record some
+\ screen settings and filter the words.
+
+\ This array contains a parallel search order.
+create corder-stack sorder_size cells allot
+variable corder-tos
+variable corder-nt
+
+\ Copy the search order stack to the completion order stack.
+: initialize-corder-nt
+    context @ wid>latest corder-nt ! ;
+: initialize-corder-tos
+    sorder_tos @ corder-tos ! ;
+: initialize-corder-stack
+    get-order 0 ?do
+        corder-stack i cells + !
+    loop
+;
+\ Push the address of the of the completion order.
+: ccontext ( -- wid )
+    corder-tos @ cells
+    corder-stack + ;
+
+: next-ccontext ( -- flag )
+    corder-tos @ 0 >= if
+        corder-tos 1-!
+        ccontext @ wid>latest corder-nt !
+        true
     else
-        le-move-end-of-line
-    endif ;
+        false
+    endif
+;
+
+\ INITIALIZE-CORDER inits the completion search.  It must be called
+\ before NEXT-WORD. After that, every call to NEXT-WORD will return
+\ the next word avalaible and so, until it returns 0, which indicates
+\ that there is not more accessible words.
+
+: initialize-corder ( -- )
+    initialize-corder-nt
+    initialize-corder-tos
+    initialize-corder-stack ;
+
+: next-word ( -- nt|0 )
+    corder-nt @ ?dup if
+        dup previous-word corder-nt !
+    else
+        next-ccontext if recurse else 0 endif
+    endif
+;
+
+
+\ PREFIX-ADDR and PREFIX-SIZE variables contain the address of the
+\ string to be completed and the size respectively.
+variable prefix-addr
+variable prefix-size
+\ Size of the extra size in a completion
+variable subfix-size
+\ It is TRUE if we are completing a word and it is not the first
+\ one. So, if other completion arises, it will share the same prefix.
+variable completing?
+
+: setup-prefix ( addr n -- )
+    prefix-size ! prefix-addr ! ;
+
+: prefix prefix-addr @ prefix-size @ ;
+
+: word-at-point ( -- addr n )
+    \ Note: we are assuming that the AT-END-WORD? is true.
+    le-backward-word
+    point buffer @ +
+    le-forward-word
+    point buffer @ +
+    over - ;
+
+: next-match ( -- addr n )
+    begin
+    next-word ?dup while
+        dup nt>name prefix string-prefix? if
+            nt>name exit
+        else
+            drop
+        endif
+    repeat
+    0
+;
+
+\ Delete the added characteres by the last completion.
+: delete-subfix
+    subfix-size @ 0 ?do le-delete-backward-char loop ;
+
+\ Skip the prefixed characters of a completion.
+: skip-prefix ( addr n -- addr+PREFIX-SIZE n-PREFIX-SIZE )
+    prefix-size @ - swap
+    prefix-size @ + swap ;
+
+: insert-string ( addr n -- )
+    0 ?do dup c@ le-insert 1+ loop ;
+
+: complete-word
+    delete-subfix
+    next-match ?dup if
+        skip-prefix dup subfix-size !
+        insert-string
+    else
+        completing? off
+    endif
+;
+
+: le-complete-word
+    at-end-word? if
+        completing? @ not if
+            initialize-corder
+            word-at-point setup-prefix
+            subfix-size 0!
+            completing? on
+        endif
+        complete-word
+    endif
+;
 
 
 \ Internal words
@@ -200,6 +329,12 @@ variable finishp
     endcase
 ;
 : command-dispatcher ( key modifiers -- )
+    over TAB = if
+        2drop le-complete-word
+        exit
+    else
+        completing? off
+    endif
     dup alt-mod = if
         drop
         alt-dispatcher

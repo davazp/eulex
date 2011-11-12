@@ -31,6 +31,8 @@
 : constant create , does> @ ;
 : false 0 ;
 : true -1 ;
+: on true swap ! ;
+: off false swap ! ;
 
 : 0< 0 < ;
 : 0= 0 = ;
@@ -369,6 +371,8 @@ variable defer-routine
 : forth-impl
     [ context @ ]L context ! ;
 
+: wid>latest ( wid -- nt ) @ ;
+
 : get-order ( -- widn .. wid1 n )
     sorder_stack
     sorder_tos @ 1+ 0 ?do
@@ -555,7 +559,7 @@ variable defer-routine
 
 
 : unfind-in-wordlist ( xt wordlist -- addr c )
-    @
+    wid>latest
     begin
         dup 0<> while
             2dup nt>xt = if
