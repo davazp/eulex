@@ -126,6 +126,61 @@ variable finishp
 
 \ Autocompletion
 
+\ First of all, we provide two useful twords, INITIALIZE-CORDER and
+\ NEXT-WORD, which the iteration across the avalaible words relies on.
+\ So, the completion code accesss to the words in a linear and easy
+\ way.  Then, implement autocompletion is as simple as record some
+\ screen settings and filter the words.
+
+\ This array contains a parallel search order.
+create corder-stack sorder_size cells allot
+variable corder-tos
+variable corder-nt
+
+\ Copy the search order stack to the completion order stack.
+: initialize-corder-nt
+    context @ wid>latest corder-nt ! ;
+: initialize-corder-tos
+    sorder_tos @ corder-tos ! ;
+: initialize-corder-stack
+    get-order 0 ?do
+        corder-stack i cells + !
+    loop
+;
+\ Push the address of the of the completion order.
+: ccontext ( -- wid )
+    corder-tos @ cells
+    corder-stack + ;
+
+: next-ccontext ( -- flag )
+    corder-tos @ 0 >= if
+        corder-tos 1-!
+        ccontext @ wid>latest corder-nt !
+        true
+    else
+        false
+    endif
+;
+
+\ INITIALIZE-CORDER inits the completion search.  It must be called
+\ before NEXT-WORD. After that, every call to NEXT-WORD will return
+\ the next word avalaible and so, until it returns 0, which indicates
+\ that there is not more accessible words.
+
+: initialize-corder ( -- )
+    initialize-corder-nt
+    initialize-corder-tos
+    initialize-corder-stack ;
+
+: next-word ( -- nt|0 )
+    corder-nt @ ?dup if
+        dup previous-word corder-nt !
+    else
+        next-ccontext if recurse else 0 endif
+    endif
+;
+
+
 : le-complete-word
 ;
 
