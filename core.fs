@@ -369,6 +369,8 @@ variable defer-routine
 : forth-impl
     [ context @ ]L context ! ;
 
+: wid>latest ( wid -- nt ) @ ;
+
 : get-order ( -- widn .. wid1 n )
     sorder_stack
     sorder_tos @ 1+ 0 ?do
