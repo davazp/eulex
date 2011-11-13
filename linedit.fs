@@ -228,7 +228,7 @@ variable completing?
     prefix-size @ + swap ;
 
 : insert-string ( addr n -- )
-    0 ?do dup c@ le-insert 1+ loop ;
+    0 ?do dup c@ le-insert 1+ loop drop ;
 
 : complete-word
     delete-subfix
