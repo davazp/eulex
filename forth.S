@@ -64,9 +64,8 @@ flush_gdt:
         movw %ax, %fs
         movw %ax, %gs
         movw %ax, %ss
-        /* TODO: Update CS segment too!
-           How can we do a far jump in GNU/Assembler? */
-        ret
+        ljmp $8, $1f
+1:      ret
 
 
 /* Registers with a meaning (almost) persistent across the code:
