@@ -39,7 +39,10 @@ require @kernel/interrupts.fs
     ." CS  = " dup isrinfo-cs  @ print-hex-number cr
     ." EFLAGS = " dup isrinfo-eflags @ print-hex-number cr
     ." SS = "     dup isrinfo-ss     @ print-hex-number cr
-    drop ;
+    drop
+    disable-interrupts
+    halt
+;
 
 
 : division-by-zero-exception
