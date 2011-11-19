@@ -1060,19 +1060,15 @@ fgetchar_eof:
 /* Check if two given counted strings are equal. EAX y EDX point to the strings,
    the result is stored in the ZF flag. */
 wordname_match:
-        pushl %ebx
-        movzbl (%eax), %ecx
-1:
-        movzbl (%eax, %ecx), %ebx
+        movb (%eax), %cl
+1:      movb (%eax, %ecx), %bl
         cmpb %bl, (%edx, %ecx)
         jne 2f
-        cmpb $0, %cl
+        test %cl, %cl
         je 2f
         decb %cl
         jmp 1b
-2:
-        pop %ebx
-        ret
+2:      ret
 
 /* Read a word from the input stream. Push the countd string in the EAX register.
    This string is `lowcased' automatically. The version `cread_word' is used by
@@ -1142,8 +1138,10 @@ read_word:
         ret
 
 
-/* Create a new entry in the vocabulary, EAX is a counted string, EDX is the address of
-   the native code. Return the address of the word in the EAX register. */
+/* Create a new entry in the dictionary, EAX is the counted string and EDX
+   is the native code address. This word is not interned in any vocabulary,
+   however. The word is not interned if it is empty, therefore it creates
+   an anonymous word. */
 create_uninterned_word:
         /* Address of the previous entry */
         movl current, %ebp
@@ -1170,54 +1168,44 @@ create_uninterned_word:
         movl %eax, latest_word
         ret
 
-/* Create a new entry in the dictionary, EAX is the counted string and EDX
-   is the native code address. This word is not interned in any vocabulary,
-   however. The word is not interned if it is empty, therefore it creates
-   an anonymous word. */
+/* Create a new entry in the vocabulary, EAX is a counted string, EDX is the address of
+   the native code. Return the address of the word in the EAX register. */
 create_word:
-        movl current, %ebp
         movb (%eax), %cl
         pushl %ecx
         call create_uninterned_word
         popl %ecx
         test %ecx, %ecx
         jz 1f
+        movl current, %ebp
         movl %eax, (%ebp)
 1:      ret
 
 
+/* Find the counted word in EAX, from the word in EDX.
+   Return the word in EDX or 0 if it is not found. */
 find_word_1:
+	test %edx, %edx
+        jz 1f
         call wordname_match
         je 1f
         movl -4(%edx), %edx
-        test %edx, %edx
-        jnz find_word_1
-        xorl %edx, %edx
+        jmp find_word_1
 1:      ret
 
-/* Find the counted word in EAX, from the word in EDX.
-   Return the word in EDX or 0 if it is not found. */
 find_word:
-        movl $sorder_stack, %ebx
         movl sorder_tos, %ecx
-        shll $2, %ecx
-        addl %ecx, %ebx
-        shrl $2, %ecx
-1:      movl (%ebx), %edx
+1:      movl sorder_stack(, %ecx, 4), %edx
         movl (%edx), %edx
-        pushl %ebx
         pushl %ecx
         call find_word_1
         popl %ecx
-        popl %ebx
         test %edx, %edx
         jnz 2f
-        subl $4, %ebx
         decl %ecx
-        cmp $-1, %ecx
+        cmpl $-1, %ecx
         jne 1b
-2:
-        ret
+2:      ret
 
 
 /* NUMERIC WORDS PARSING */
