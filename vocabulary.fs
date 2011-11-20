@@ -23,21 +23,18 @@ require @structures.fs
 : set-current current ! ;
 
 : previous
-    sorder_tos @ 1 >= if
-        -1 sorder_tos +!
-    then ;
+    sorder_tos @ 1 >= if sorder_tos 1-! then ;
 
 : definitions
-    context @
-    current ! ;
+    context @ current ! ;
 
 : wordlist ( -- wid)
     here  0 , ;
 
 : also
-    sorder_tos @ sorder_stack < if
+    sorder_tos @ sorder_size < if
         context @
-        1 sorder_tos +!
+        sorder_tos 1+!
         context !
         \ This is commented because we have not ." in this point.
         \ else
