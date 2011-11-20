@@ -113,6 +113,12 @@ create pad 1024 allot
 : parse-nt parse-cname find-cname ;
 : ' parse-nt nt>xt ;
 
+( Skip page breaks. They can be beautiful as section delimiters )
+:
+
+; immediate
+
+
 \ Defered words
 variable defer-routine
 ' noop defer-routine !
