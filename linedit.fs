@@ -25,9 +25,6 @@ require @kernel/keyboard.fs
 
 true value visible-bell
 
-variable screen-x
-variable screen-y
-
 variable buffer
 variable buffer-size
 variable gap-start
@@ -57,6 +54,31 @@ variable finishp
     after-nonspace?
     before-space? at-end? or
     and ;
+
+
+\ Internal words
+
+variable screen-x
+variable screen-y
+
+: remember-location
+    cursor-x @ screen-x !
+    cursor-y @ screen-y ! ;
+
+: restore-location
+    screen-x @ cursor-x !
+    screen-y @ cursor-y ! ;
+
+: setup-gap-buffer
+    dup buffer-size !
+    ( ) gap-end !
+    buffer !
+    gap-start 0! ;
+
+: clear-current-line
+    video-width screen-x @ ?do
+        screen-y @ i clear-char
+    loop ;
 
 \ Editing commands
 
@@ -124,6 +146,11 @@ variable finishp
 
 : le-return
     at-end? if finishp on else le-move-end-of-line endif ;
+
+: le-clear
+    0 0 at-xy
+    remember-location
+    page ;
 
 
 \ Autocompletion
@@ -253,27 +280,6 @@ variable completing?
 ;
 
 
-\ Internal words
-
-: remember-location
-    cursor-x @ screen-x !
-    cursor-y @ screen-y ! ;
-
-: restore-location
-    screen-x @ cursor-x !
-    screen-y @ cursor-y ! ;
-
-: setup-gap-buffer
-    dup buffer-size !
-    ( ) gap-end !
-    buffer !
-    gap-start 0! ;
-
-: clear-current-line
-    video-width screen-x @ ?do
-        screen-y @ i clear-char
-    loop ;
-
 \ Initialization and finalization
 
 : init ( buffer size -- )
@@ -326,6 +332,7 @@ variable completing?
         [char] b of le-backward-char           endof
         [char] d of le-delete-char             endof
         [char] k of le-kill-line               endof
+        [char] l of le-clear                   endof
     endcase
 ;
 : command-dispatcher ( key modifiers -- )
