@@ -32,8 +32,10 @@ $A1 constant pics-data
 : read-picm-data picm-data inputb ;
 : read-pics-data pics-data inputb ;
 
+: slave-irq? 8 >= ;
+
 : send-eoi ( irq -- )
-    8 >= if $20 send-pics then
+    slave-irq? if $20 send-pics then
     $20 send-picm ;
 
 
@@ -62,13 +64,16 @@ $01 constant ICW1-ICW4
 $10 constant ICW1-INIT
 $01 constant ICW4-8086
 
+: IRM1  read-picm-data ;
+: IRM1! send-picm-data ;
+: IRM2 read-pics-data ;
+: IRM2! send-picm-data ;
+
 : save-irq-masks
-    read-picm-data
-    read-pics-data ;
+    IRM1 IRM2 ;
 
 : restore-irq-masks
-    send-pics-data
-    send-picm-data ;
+    IRM2! IRM1! ;
 
 : remap-master-irq ( offset -- )
     >r
@@ -88,6 +93,26 @@ $01 constant ICW4-8086
     ICW4-8086 send-pics-data
     restore-irq-masks ;
 
+: bit 1 swap lshift ;
+
+: irq-mask ( irq -- )
+    dup slave-irq? if
+        8 - bit IRM2 or IRM2!
+    else
+        bit IRM1 or IRM1!
+    endif ;
+
+: irq-unmask ( irq -- )
+    dup slave-irq? if
+        8 - bit not IRM2 and IRM2!
+    else
+        bit not IRM1 and IRM1!
+    endif ;
+
+: irq-disable irq-mask ;
+: irq-enable  irq-unmask ;
+
+
 \ Remap IRQs
 IRQ0 REMAP-MASTER-IRQ
 IRQ8 REMAP-SLAVE-IRQ
@@ -102,10 +127,12 @@ IRQ8 REMAP-SLAVE-IRQ
     irq0 + latestxt isr-register ;
 
 : unhandled-irq
-    isrinfo-int-no @ irq0 - send-eoi
+    drop
 ;  0 IRQ   1 IRQ   2 IRQ   3 IRQ
    4 IRQ   5 IRQ   6 IRQ   7 IRQ
    8 IRQ   9 IRQ  10 IRQ  11 IRQ
   12 IRQ  13 IRQ  14 IRQ  15 IRQ
+
+0 IRQ-UNMASK
 
 \ irq.fs ends here
