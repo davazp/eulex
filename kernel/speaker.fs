@@ -40,8 +40,6 @@ require @kernel/timer.fs
 : beep 1000 10 play ;
 
 
-\ Poner esto en un vocabulario aparte
-
 vocabulary music
 also music definitions
 
