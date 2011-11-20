@@ -75,10 +75,12 @@ end-struct vocentry%
 : vocentry>name ( vc -- addr n )
     dup vocentry-name swap vocentry-size @ ;
 
+: create-vocabulary ( -- wid )
+    create here 0 , does> context ! ;
+
 : vocabulary
-    parse-name
-    2dup add-vocentry
-    nextname
-    create here set-last-vocentry-wid 0 , does> context ! ;
+    create-vocabulary
+    latest nt>name add-vocentry
+    set-last-vocentry-wid ;
 
 \ vocabulary.fs ends here
