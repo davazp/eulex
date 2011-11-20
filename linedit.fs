@@ -55,7 +55,6 @@ variable finishp
     before-space? at-end? or
     and ;
 
-
 \ Internal words
 
 variable screen-x
@@ -80,6 +79,7 @@ variable screen-y
         screen-y @ i clear-char
     loop ;
 
+
 \ Editing commands
 
 : le-insert ( ch -- )
@@ -279,7 +279,7 @@ variable completing?
     endif
 ;
 
-
+
 \ Initialization and finalization
 
 : init ( buffer size -- )
@@ -310,7 +310,6 @@ variable completing?
     render-pre-cursor
     update-hardware-cursor
     render-post-cursor ;
-
 
 \ Looping
 
