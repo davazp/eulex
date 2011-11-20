@@ -44,10 +44,14 @@ variable countdown
     then
 ; 0 IRQ
 
+: enable-timer  0 irq-enable ;
+: disable-timer 0 irq-disable ;
+
 : set-countdown countdown ! ;
 : wait-for-countdown begin countdown @ while halt repeat ;
 
 \ Wait for (rougly) N milliseconds.
-: ms ( n -- ) set-countdown wait-for-countdown ;
+: ms ( n -- )
+    set-countdown wait-for-countdown ;
 
 \ timer.fs ends here
