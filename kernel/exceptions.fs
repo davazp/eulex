@@ -45,7 +45,8 @@ require @kernel/interrupts.fs
 ;
 
 
-: division-by-zero-exception
+: division-by-zero-exception ( isrinfo-addr )
+    isrinfo-eflags @ eflags!
     -10 throw
 ; 0 ISR
 
