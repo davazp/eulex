@@ -672,11 +672,22 @@ BUILTIN_WORD_NAME(less_than, "<")
         cmpl %ebx, 4(%esi)
         jnl 1f
         not %eax
-1:
-        movl %eax, 4(%esi)
+1:      movl %eax, 4(%esi)
         addl $4, %esi
         ret
 END_WORD(less_than)
+
+
+BUILTIN_WORD_NAME(uless_than, "u<")
+        xorl %eax, %eax
+        movl (%esi), %ebx
+        cmpl %ebx, 4(%esi)
+        jnb 1f
+        not %eax
+1:      movl %eax, 4(%esi)
+        addl $4, %esi
+        ret
+END_WORD(uless_than)
 
 
 BUILTIN_WORD_NAME(equals, "=")
