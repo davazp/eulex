@@ -19,9 +19,6 @@
 
 \ Transcription of multiboot.h from FSF to Forth
 
-VOCABULARY MULTIBOOT
-ALSO MULTIBOOT DEFINITIONS
-
 $1BADB002 constant multiboot-header-magic
 $2BADB002 constant multiboot-bootloader-magic
 
