@@ -80,5 +80,23 @@ struct
     32bits field memory-map-type
 end-struct memory-map%
 
+multiboot_addr @ feature __MULTIBOOT__
+
+[ifdef] __MULTIBOOT__
+    multiboot_addr @ constant mb->
+    mb-> multiboot-info-flags @ constant flags
+    flags 1 bit? feature __MULTIBOOT_MEM__
+[endif]
+
+: kb 1024 * ;
+: mb 1024 kb * ;
+
+[ifdef] __MULTIBOOT_MEM__
+    mb-> multiboot-info-mem-upper @ kb constant mem-upper-size
+    mem-upper-size kb 1 MB + constant mem-upper-limit
+[else]
+    $ffffffff constant mem-upper-limit
+[endif]
+
 
 \ multiboot.fs ends here
