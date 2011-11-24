@@ -119,13 +119,6 @@ create pad 1024 allot
 ; immediate
 
 
-\ Defered words
-variable defer-routine
-' noop defer-routine !
-: DEFER create defer-routine @ , does> @ execute ;
-: IS parse-nt nt>pfa ! ;
-
-
 : compile,
     $e8 c, here cell + - ,       \ call ADDR
 ;
@@ -600,6 +593,23 @@ variable defer-routine
     2drop
     0 0
 ;
+
+
+\ Defered words
+variable defer-routine
+' noop defer-routine !
+: DEFER create defer-routine @ , does> @ execute ;
+: IS
+    parse-nt
+    if-compiling
+        postpone literal
+        postpone nt>pfa
+        postpone !
+    else
+        nt>pfa !
+    endif
+; immediate
+
 
 require @structures.fs
 
