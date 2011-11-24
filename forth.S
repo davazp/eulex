@@ -145,8 +145,8 @@ flush_gdt:
    environment. Finally, DEFAULT is the default value. */
 #define BUILTIN_VARIABLE_NAME(symbol, name, default)    \
         BUILTIN_WORD_NAME(symbol ## _variable , name)   \
-        movl $ symbol, -4(%esi);                        \
         subl $4, %esi;                                  \
+        movl $symbol, (%esi);                           \
         ret;                                            \
         .data;                                          \
         symbol:                                         \
@@ -222,8 +222,8 @@ BUILTIN_VARIABLE(tib_fill_routine, 0)
 
 
 BUILTIN_WORD_NAME(_read_word_buffer, "read_word_buffer")
-        movl $read_word_buffer, -4(%esi)
         subl $4, %esi
+        movl $read_word_buffer, (%esi)
         ret
 END_WORD(_read_word_buffer)
 
@@ -237,22 +237,22 @@ BUILTIN_VARIABLE(sorder_tos, 0)
 
 
 BUILTIN_WORD(sorder_size)
-        movl $SORDER_STACK_SIZE, -4(%esi)
         subl $4, %esi
+        movl $SORDER_STACK_SIZE, (%esi)
         ret
 END_WORD(sorder_size)
 
 
 BUILTIN_WORD_NAME(_sorder_stack, "sorder_stack")
-        movl $sorder_stack, -4(%esi)
         subl $4, %esi
+        movl $sorder_stack, (%esi)
         ret
 END_WORD(_sorder_stack)
 
 
 BUILTIN_WORD(dp)
-        movl %edi, -4(%esi)
         subl $4, %esi
+        movl %edi, (%esi)
         ret
 END_WORD(dp)
 
@@ -265,16 +265,17 @@ END_WORD(dp_store)
 
 
 BUILTIN_WORD_NAME(dp_base, "dp-base")
-        movl $dictionary_start, -4(%esi)
         subl $4, %esi
+        movl $dictionary_start, (%esi)
         ret
 END_WORD(dp_base)
 
 
 /* Push the value of the stack pointer _before_ of executing this word. */
 BUILTIN_WORD(sp)
-        movl %esi, -4(%esi)
+        movl %esi, %eax
         subl $4, %esi
+        movl %eax, (%esi)
         ret
 END_WORD(sp)
 
@@ -286,25 +287,24 @@ END_WORD(sp_store)
 
 
 BUILTIN_WORD_NAME(sp_base, "sp-base")
-        movl $stack, -4(%esi)
         subl $4, %esi
+        movl $stack, (%esi)
         ret
 END_WORD(sp_base)
 
 
 BUILTIN_WORD_NAME(sp_limit, "sp-limit")
-        movl $stack+STACK_SIZE, -4(%esi)
         subl $4, %esi
+        movl $stack+STACK_SIZE, (%esi)
         ret
 END_WORD(sp_limit)
 
 
 BUILTIN_WORD(rsp)
-        movl %esp, -4(%esi)
-        /* Don't take in account the increment of the
-           RSP pointer due to this word. */
-        addl $4,   -4(%esi)
         subl $4, %esi
+        movl %esp, (%esi)
+        /* Don't take in account the increment of the RSP pointer due to this word. */
+        addl $4, (%esi)
         ret
 END_WORD(rsp)
 
@@ -320,22 +320,22 @@ END_WORD(rsp_store)
 
 
 BUILTIN_WORD_NAME(rsp_base, "rsp-base")
-        movl $rstack, -4(%esi)
         subl $4, %esi
+        movl $rstack, (%esi)
         ret
 END_WORD(rsp_base)
 
 
 BUILTIN_WORD_NAME(rsp_limit, "rsp-limit")
-        movl $(rstack + RSTACK_SIZE), -4(%esi)
         subl $4, %esi
+        movl $(rstack + RSTACK_SIZE), (%esi)
         ret
 END_WORD(rsp_limit)
 
 
 BUILTIN_WORD_NAME(gdt_cs_selector, "gdt-cs-selector")
-        movl $GDT_CS_SELECTOR, -4(%esi)
         subl $4, %esi
+        movl $GDT_CS_SELECTOR, (%esi)
         ret
 END_WORD(gdt_cs_selector)
 
@@ -446,16 +446,14 @@ BUILTIN_WORD(lidt) /* addr limit -- */
 END_WORD(lidt)
 
 
-
-
 /* Save the IDT register into the stack. */
 BUILTIN_WORD(sidt) /* -- addr limit */
+        subl $8, %esi
         sidt idtr
         movl idtr+2, %eax
-        movl %eax, -4(%esi)
+        movl %eax, 4(%esi)
         movzwl idtr, %eax
-        movl %eax, -8(%esi)
-        subl $8, %esi
+        movl %eax, 0(%esi)
         ret
 END_WORD(sidt)
 
@@ -470,11 +468,11 @@ BUILTIN_WORD(cpuid)
         /* request -- %ecx %edx %ebx %eax  */
         movl (%esi), %eax
         cpuid
-        movl %ecx,   (%esi)
-        movl %edx, -4(%esi)
-        movl %ebx, -8(%esi)
-        movl %eax, -12(%esi)
         subl $12, %esi
+        movl %ecx, 12(%esi)
+        movl %edx,  8(%esi)
+        movl %ebx,  4(%esi)
+        movl %eax,  0(%esi)
         ret
 END_WORD(cpuid)
 
@@ -482,9 +480,9 @@ END_WORD(cpuid)
 BUILTIN_WORD(eflags)
         pushf
         movl (%esp), %eax
-        movl %eax, -4(%esi)
-        addl $4, %esp
         subl $4, %esi
+        movl %eax, (%esi)
+        addl $4, %esp
         ret
 END_WORD(eflags)
 
@@ -510,8 +508,8 @@ END_WORD(times)
 
 
 BUILTIN_WORD_NAME(plus, "+")
+        movl (%esi), %eax
         addl $4, %esi
-        movl -4(%esi), %eax
         addl %eax, (%esi)
         ret
 END_WORD(plus)
@@ -528,8 +526,8 @@ END_WORD(minus)
 BUILTIN_WORD_NAME(divide, "/")
         movl 4(%esi), %eax
         cdq
+        idivl (%esi)
 	addl $4, %esi
-        idivl -4(%esi)
         movl %eax, (%esi)
         ret
 END_WORD(divide)
@@ -597,18 +595,19 @@ BUILTIN_WORD_ENTRY(to_r, ">r", F_COMPILE_TIME)
         /* Skip the stored %eip. */
         movl (%esi), %eax
         addl $4, %esi
-        movl (%esp), %edx
-        movl %edx, -4(%esp)
-        movl %eax,   (%esp)
-        subl $4, %esp
+        movl %esp, %ebp
+	subl $4, %esp
+        movl (%ebp), %edx
+        movl %edx, -4(%ebp)
+        movl %eax,   (%ebp)
         ret
 END_WORD(to_r)
 
 
 BUILTIN_WORD_ENTRY(r_from, "r>", F_COMPILE_TIME)
-        movl 4(%esp), %eax
-        movl %eax, -4(%esi)
         subl $4, %esi
+        movl 4(%esp), %eax
+        movl %eax, (%esi)
         movl (%esp), %ebx
         movl %ebx, 4(%esp)
         addl $4, %esp
@@ -631,24 +630,25 @@ END_WORD(exit)
 
 
 BUILTIN_WORD_ENTRY(to_r_2, "2>r", F_COMPILE_TIME)
-        movl (%esp), %eax
-        movl %eax, -8(%esp)
-        movl 4(%esi), %eax
-        movl %eax, (%esp)
-        movl (%esi), %eax
-        movl %eax, -4(%esp)
+        movl %esp, %ebp
         subl $8, %esp
+        movl (%ebp), %eax
+        movl %eax, -8(%ebp)
+        movl 4(%esi), %eax
+        movl %eax, (%ebp)
+        movl (%esi), %eax
+        movl %eax, -4(%ebp)
         addl $8, %esi
         ret
 END_WORD(to_r_2)
 
 
 BUILTIN_WORD_ENTRY(r_from_2, "2r>", F_COMPILE_TIME)
-        movl 8(%esp), %eax
-        movl %eax, -4(%esi)
-        movl 4(%esp), %eax
-        movl %eax, -8(%esi)
         subl $8, %esi
+        movl 8(%esp), %eax
+        movl %eax,  4(%esi)
+        movl 4(%esp), %eax
+        movl %eax,  0(%esi)
         movl (%esp), %eax
         movl %eax, 8(%esp)
         addl $8, %esp
@@ -657,11 +657,11 @@ END_WORD(r_from_2)
 
 
 BUILTIN_WORD_ENTRY(r_fetch_2, "2r@", F_COMPILE_TIME)
-        movl 8(%esp), %eax
-        movl %eax, -4(%esi)
-        movl 4(%esp), %eax
-        movl %eax, -8(%esi)
         subl $8, %esi
+        movl 8(%esp), %eax
+        movl %eax,  4(%esi)
+        movl 4(%esp), %eax
+        movl %eax, (%esi)
         ret
 END_WORD(r_fetch_2)
 
@@ -696,8 +696,7 @@ BUILTIN_WORD_NAME(equals, "=")
         cmpl %ebx, 4(%esi)
         jne 1f
         not %eax
-1:
-        movl %eax, 4(%esi)
+1:      movl %eax, 4(%esi)
         addl $4, %esi
         ret
 END_WORD(equals)
@@ -709,8 +708,7 @@ BUILTIN_WORD_NAME(greater_than, ">")
         cmpl %ebx, 4(%esi)
         jng 1f
         not %eax
-1:
-        movl %eax, 4(%esi)
+1:      movl %eax, 4(%esi)
         addl $4, %esi
         ret
 END_WORD(greater_than)
@@ -736,8 +734,8 @@ END_WORD(nip)
 /* w - w w*/
 BUILTIN_WORD(dup)
         movl (%esi), %eax
-        movl %eax, -4(%esi)
         subl $4, %esi
+        movl %eax, (%esi)
         ret
 END_WORD(dup)
 
@@ -745,8 +743,8 @@ END_WORD(dup)
 /* w1 w2 - w1 w2 w1 */
 BUILTIN_WORD(over)
         movl 4(%esi), %eax
-        movl %eax, -4(%esi)
         subl $4, %esi
+        movl %eax, (%esi)
         ret
 END_WORD(over)
 
@@ -763,13 +761,12 @@ END_WORD(swap)
 
 /* w1 w2 w3 - w2 w3 w1 */
 BUILTIN_WORD(rot)
-        movl   (%esi), %eax
-        movl  4(%esi), %ebx
-        movl  8(%esi), %ecx
-
-        movl  %eax, 4(%esi)
-        movl  %ebx, 8(%esi)
-        movl  %ecx,  (%esi)
+        movl  (%esi), %eax
+        movl 4(%esi), %ebx
+        movl 8(%esi), %ecx
+        movl %eax, 4(%esi)
+        movl %ebx, 8(%esi)
+        movl %ecx,  (%esi)
         ret
 END_WORD(rot)
 
@@ -796,8 +793,8 @@ END_WORD(jump)
    The counted string will valid while no other words are read. */
 BUILTIN_WORD_NAME(parse_cname, "parse-cname")
         call read_word
-        movl %eax, -4(%esi)
         subl $4, %esi
+        movl %eax, (%esi)
         ret
 END_WORD(parse_cname)
 
@@ -835,8 +832,8 @@ BUILTIN_VARIABLE(base, 10)
 
 BUILTIN_WORD(char)
         call fgetchar
-        movl %eax, -4(%esi)
         subl $4, %esi
+        movl %eax, (%esi)
         ret
 END_WORD(char)
 
@@ -1450,9 +1447,9 @@ nomultiboot:
         movl $builtin_vocabulary, sorder_stack
         movl $builtin_vocabulary, current
         /* Load core.fs */
-        movl $_binary_core_fs_start, -4(%esi)
-        movl $_binary_core_fs_size, -8(%esi)
         subl $8, %esi
+        movl $_binary_core_fs_start, 4(%esi)
+        movl $_binary_core_fs_size,  0(%esi)
         call evaluate
         /* This point will not should be reached. */
         cli
@@ -1518,16 +1515,15 @@ compile_word:
 
 compile_number:
         /* EAX = Number */
-        /* movl $X, -4(%esi) = C7 46 FC X */
-        movb $0xC7,  (%edi)
-        movb $0x46, 1(%edi)
-        movb $0xFC, 2(%edi)
-        movl %eax,  3(%edi)
         /* subl $4, %esi = 83 EE 04 */
-        movb $0x83, 7(%edi)
-        movb $0xEE, 8(%edi)
-        movb $0x04, 9(%edi)
-        addl $10, %edi
+        movb $0x83, 0(%edi)
+        movb $0xEE, 1(%edi)
+        movb $0x04, 2(%edi)
+        /* movl $X, (%esi) = C7 06 X */
+        movb $0xC7, 3(%edi)
+        movb $0x06, 4(%edi)
+        movl %eax,  5(%edi)
+        addl $9, %edi
         jmp loop
 
 interpret_word:
@@ -1556,8 +1552,8 @@ interpret_word:
 
 interpreter_number:
         /* EAX = Number */
-        movl %eax, -4(%esi)
         subl $4, %esi
+        movl %eax, (%esi)
         jmp loop
 
 check_stack_consistency:
