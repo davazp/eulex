@@ -20,7 +20,7 @@
 require @kernel/timer.fs
 require @input.fs
 
-500 ms page
+page
 ."      _____      _                                                            " cr
 ."     | ____|   _| | _____  __                                                 " cr
 ."     |  _|| | | | |/ _ \ \/ /                                                 " cr
