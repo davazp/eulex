@@ -19,8 +19,6 @@
 
 \ Transcription of multiboot.h from FSF to Forth
 
-require @structures.fs
-
 VOCABULARY MULTIBOOT
 ALSO MULTIBOOT DEFINITIONS
 
@@ -85,6 +83,5 @@ struct
     32bits field memory-map-type
 end-struct memory-map%
 
-PREVIOUS DEFINITIONS
 
 \ multiboot.fs ends here

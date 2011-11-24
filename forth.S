@@ -1009,6 +1009,9 @@ BUILTIN_WORD(interpret)
 END_WORD(interpret)
 
 
+BUILTIN_VARIABLE(multiboot_addr, 0)
+
+
 /* This file defines a word @NAME for each built-in Forth file, whose
    semantic is pushing the data of the file's location in memory
    and so, `evaluate' can process it. */
@@ -1431,6 +1434,10 @@ number_override_base:
 
 .globl run_forth
 run_forth:
+        cmp $0x2BADB002, %eax
+        jne nomultiboot
+        movl %ebx, multiboot_addr
+nomultiboot:
         cli
         movl $(rstack+RSTACK_SIZE), %esp
         movl $(stack + STACK_SIZE), %esi
