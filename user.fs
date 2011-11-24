@@ -21,11 +21,7 @@ require @kernel/timer.fs
 require @input.fs
 
 page
-."      _____      _                                                            " cr
-."     | ____|   _| | _____  __                                                 " cr
-."     |  _|| | | | |/ _ \ \/ /                                                 " cr
-."     | |__| |_| | |  __/>  <                                                  " cr
-."     |_____\__,_|_|\___/_/\_\                                                 " cr
+." Welcome to Eulex!" cr
 cr
 ." Copyright (C) 2011 David Vazquez" cr
 ." This is free software; see the source for copying conditions.  There is NO"  cr
