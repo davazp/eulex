@@ -653,8 +653,8 @@ require @vocabulary.fs
 require @kernel/console.fs
 require @output.fs
 page ." Loading..." cr
-require @tools.fs
 require @kernel/multiboot.fs
+require @tools.fs
 require @kernel/interrupts.fs
 require @kernel/exceptions.fs
 require @kernel/irq.fs

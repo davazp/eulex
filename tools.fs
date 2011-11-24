@@ -75,8 +75,11 @@ variable count_words
 
 \ Backtrace!
 
+: upper@ ( addr -- x|0)
+    dup mem-upper-size u< if @ else drop 0 endif ;
+
 : retaddr>xt ( x -- )
-    dup cell - @ + ;
+    dup cell - upper@ + ;
 
 : backtrace-frame ( addr -- )
     retaddr>xt unfind dup 0<> if
