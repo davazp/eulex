@@ -41,9 +41,8 @@ require @kernel/interrupts.fs
     ." SS = "     dup isrinfo-ss     @ print-hex-number cr
     drop
     disable-interrupts
-    halt
-;
-
+    backtrace
+    halt ;
 
 : division-by-zero-exception ( isrinfo-addr )
     isrinfo-eflags @ eflags!
