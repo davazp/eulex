@@ -110,22 +110,29 @@ create pad 1024 allot
 : [ 0 state ! ; immediate
 : ] 1 state ! ;
 
-: parse-nt parse-cname find-cname ;
-: ' parse-nt nt>xt ;
+: parse-nt
+    parse-cname find-cname ;
+
+: nt>comp
+    dup immediate? swap nt>xt ;
+
+: comp'
+    parse-nt nt>comp ;
+
+: '
+    comp' nip ;
 
 ( Skip page breaks. They can be beautiful as section delimiters )
 :
 
 ; immediate
 
-
 : compile,
-    $e8 c, here cell + - ,       \ call ADDR
-;
-: [compile] ' compile, ; immediate compile-only
+    \ call ADDR
+    $e8 c, here cell + - , ;
 
-\ metametacompiler
-: postpone, ( xt -- )
+\ Metametacompiler
+: postpone-non-immediate, ( xt -- )
     \ Compile into dictionary the following code:
     $b8 c, ( ' ) ,            \ movl $[ADDR], %eax
     $c7 c, $07 c, $e8 ,       \ movl $0xe8, (%edi)
@@ -140,7 +147,7 @@ create pad 1024 allot
 \ Partial implementation of POSTPONE, it works for non-immediate words.
 \ [COMPILE] words for immedaite words, but we cannot use IF, therefore
 \ we cannot define POSTPONE properly yet.
-: postpone ' postpone, ; immediate
+: postpone ' postpone-non-immediate, ; immediate
 
 : push
     $83 c, $EE c, $04 c,              \ subl $4, %esi
@@ -229,15 +236,11 @@ create pad 1024 allot
 : ?dup
     dup 0<> if dup then ;
 
-\ Complete POSTPONE implementation
+: postpone,
+    swap if compile, else postpone-non-immediate, endif ;
+
 : postpone
-    parse-cname find-cname
-    dup immediate? if
-        nt>xt compile,
-    else
-        nt>xt postpone,
-    then
-; immediate
+    comp' postpone, ; immediate
 
 : ]L ] postpone literal ;
 
@@ -501,32 +504,26 @@ create pad 1024 allot
 
 \ A syntax sugar for require-buffer
 : require
-    parse-cname find-cname
-    ?dup if
-        nt>xt
-        if-compiling
-            postpone literal
-            postpone execute
-            postpone require-buffer
-        else
-            execute
-            require-buffer
-        endif
+    '
+    if-compiling
+        postpone literal
+        postpone execute
+        postpone require-buffer
+    else
+        execute
+        require-buffer
     endif
 ; immediate
 
 : include
-    parse-cname find-cname
-    ?dup if
-        nt>xt
-        if-compiling
-            postpone literal
-            postpone execute
-            postpone load-buffer
-        else
-            execute
-            require-buffer
-        endif
+    '
+    if-compiling
+        postpone literal
+        postpone execute
+        postpone load-buffer
+    else
+        execute
+        require-buffer
     endif
 ; immediate
 
@@ -535,24 +532,7 @@ create pad 1024 allot
 : recurse latestxt compile, ; immediate compile-only
 : recursive latestxt current @ ! ; immediate
 
-\ Values
-
-: VALUE ( n -- )
-    create , does> @ ;
-
-: TO ( n -- )
-    parse-cname
-    find-cname
-    nt>pfa
-    if-compiling
-       postpone literal
-       postpone !
-    else
-        !
-    endif
-; immediate
-
-\ Map from IRQs to interrupts number
+\ Enumerations. See kernel/irq.fs for usage.
 : enum dup constant 1+ ;
 : end-enum drop ;
 
@@ -594,32 +574,51 @@ create pad 1024 allot
     0 0
 ;
 
+require @structures.fs
+require @exceptions.fs
 
-\ Defered words
-variable defer-routine
-' noop defer-routine !
-: DEFER create defer-routine @ , does> @ execute ;
-: IS
-    parse-nt
+\ Complete the following definitions to support error handling.
+: nt'
+    parse-nt dup 0= if -13 throw then ;
+: comp'
+    nt' nt>comp ;
+: '
+    comp' nip ;
+: postpone
+    comp' postpone, ; immediate
+: [compile]
+    ' compile, ; immediate
+
+\ Parse a word from input buffer and store N in its PFA.
+: 'pfa! ( n -- )
+    nt' nt>pfa
     if-compiling
-        postpone literal
-        postpone nt>pfa
-        postpone !
+       postpone literal
+       postpone !
     else
-        nt>pfa !
+        !
     endif
 ; immediate
 
 
-require @structures.fs
+\ Values
 
-require @exceptions.fs
+: VALUE ( n -- )
+    create , does> @ ;
+
+: TO ( n -- )
+    postpone 'pfa!
+; immediate
+
+
+\ Defered words
+variable defer-routine
 ' abort defer-routine !
+: DEFER create defer-routine @ , does> @ execute ;
+: IS
+    postpone 'pfa!
+; immediate
 
-\ Complete ' (tick) definition
-: ' parse-nt ?dup if nt>xt else -13 throw then ;
-\ TODO: Use defering to avoid this redundant redefinition?
-: ['] ' postpone literal ; immediate compile-only
 
 require @interpreter.fs
 require @math.fs
@@ -700,12 +699,6 @@ require @kernel/cpuid.fs
     repeat
     drop 2drop 0
 ;
-
-vocabulary forth
-also forth-impl
-also serial
-also test
-also forth definitions
 
 ( run-tests )
 

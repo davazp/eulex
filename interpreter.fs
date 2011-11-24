@@ -27,13 +27,10 @@ Defer [if]      immediate
 Defer [else]    immediate
 Defer [then]    immediate
 
-
 ' [then] alias [endif]
 
 : read-word
-    parse-cname find-cname dup 0<> if
-        nt>xt
-    then ;
+    parse-nt dup 0<> if nt>xt then ;
 
 : lookup-else-or-then-1
     0 >r
@@ -82,8 +79,7 @@ Defer [then]    immediate
     again
 ; latestxt IS [ELSE]
 
-: noop ; latestxt IS [THEN]
-
+' noop IS [THEN]
 
 : [defined] parse-cname find-cname 0<> ; immediate
 : [ifdef]
@@ -96,6 +92,5 @@ Defer [then]    immediate
     not
     postpone [if]
 ; immediate
-
 
 \ interpreters.fs ends here

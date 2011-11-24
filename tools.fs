@@ -41,8 +41,9 @@
     repeat
     r>
     2drop ;
-:noname nt>name type space ;
-: words literal map-nt ;
+
+: id. nt>name type space ;
+: words ['] id. map-nt ;
 
 variable count_words
 
