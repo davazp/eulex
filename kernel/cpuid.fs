@@ -17,13 +17,6 @@
 \ You should have received a copy of the GNU General Public License
 \ along with Eulex.  If not, see <http://www.gnu.org/licenses/>.
 
-: feature ( flag -- )
-    parse-name rot if
-        nextname ['] noop alias
-    else
-        2drop
-    endif ;
-
 : toggle-bit-21 ( x -- y )
     [ 1 21 lshift ]L xor ;
 

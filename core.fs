@@ -638,6 +638,17 @@ create nextname-buffer 32 allot
 : noname 0 0 nextname ;
 : :noname noname : latestxt ;
 
+\ If flag is true, parse a name of word and create a alias for NOOP,
+\ otherwise the parsed word is discarded. It is used to define
+\ features in the environment as #define in C. You can use
+\ [ifdef]..[endif] to check the availability of features.
+: feature ( flag -- )
+    parse-name rot if
+        nextname ['] noop alias
+    else
+        2drop
+    endif ;
+
 require @vocabulary.fs
 require @kernel/console.fs
 require @output.fs
