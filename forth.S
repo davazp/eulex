@@ -96,7 +96,7 @@ flush_gdt:
                          +---+------------+
                          |      CFA       | <--- Code 32bit address where interpretation
                          +----------------+      semantic, it is to say, the code to be
-                         |                |      executed lives. Threfore, we compile a
+                         |                |      executed lives. Therefore, we compile a
                          |   Parameter    |      call to this word as a call to the CFA
                          |     field      |      address.
                          |                |
@@ -177,7 +177,7 @@ dictionary_start:
 */
 
 
-/************************************ NÚCLEO ************************************/
+/************************************ CORE ************************************/
 
 BUILTIN_VARIABLE(stack_underflow_err_routine, 0)
 BUILTIN_VARIABLE(stack_overflow_err_routine, 0)
