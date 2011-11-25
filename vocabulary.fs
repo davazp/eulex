@@ -126,13 +126,13 @@ root-wordlist set-last-vocentry-wid
 
 : only
     sorder_tos 0!
-    root-wordlist context ! ;
+    root-wordlist context !
+    also ;
 
 Root definitions
 ' set-order alias set-order
 ' forth-wordlist alias forth-wordlist
 ' forth alias forth
 previous definitions
-
 
 \ vocabulary.fs ends here
