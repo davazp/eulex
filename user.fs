@@ -46,6 +46,7 @@ cr
     query interpret ;
 
 : start-user-interaction
+    @eulexrc.fs require-buffer
     begin
         ['] user-interaction %catch-without-unwind
         ?dup 0<> if
@@ -65,8 +66,6 @@ cr
             clearstack
         then
     again ;
-
-require @eulexrc.fs
 
 START-USER-INTERACTION
 
