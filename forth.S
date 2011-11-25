@@ -79,15 +79,15 @@ flush_gdt:
 .lcomm stack, STACK_SIZE
 .lcomm rstack, RSTACK_SIZE
 
-/* Pointer to the last word which was defined in the built-in vocabulary. */
-.lcomm builtin_vocabulary, 4
+/* Pointer to the last word which was defined in the built-in wordlist. */
+.lcomm builtin_wordlist, 4
 
 .data
 
 /* Format of dictionary's entries
 
                                                  32-bit adreess of the previous entry
-                                                 in the vocabulary.
+                                                 in the wordlist.
                                                /
                          +----------------+ <--
                          |   0xffffffff   |
@@ -116,7 +116,7 @@ flush_gdt:
    should be enclosed between the BUILTIN_WORD_NAME and END_WORD macros. NAME
    is a symbol which could be used to call from assembler. STR is a string
    which stands for the name of the word in the Forth environment.
-   Primitive words will be avalaible as part of the built-in vocabulary. */
+   Primitive words will be avalaible as part of the built-in wordlist. */
 #define BUILTIN_WORD_NAME(name, str)            \
         BUILTIN_WORD_ENTRY(name, str, 0)
 
@@ -867,7 +867,7 @@ BUILTIN_WORD_ENTRY(semicolon, ";", F_IMMEDIATE | F_COMPILE_TIME)
         movb $0xC3, (%edi) /* RET */
         incl %edi
         movl $0, state
-	/* Add the new word to the vocabulary if its name is not empty.*/
+	/* Add the new word to the wordlist if its name is not empty.*/
         movl latest_word, %eax
         movb (%eax), %cl
         test %cl, %cl
@@ -916,7 +916,7 @@ END_WORD(create)
 
 BUILTIN_WORD_ENTRY(does, "does>", F_IMMEDIATE | F_COMPILE_TIME)
         /* Pearl of Forth, DOES>, compiles a code which will modify
-           the CFA of the last-defined word in the vocabulary. Thus,
+           the CFA of the last-defined word in the wordlist. Thus,
            the new behaviour of this will be push the PFA to the stack
            and jump to the code what precedes DOES>. */
         movb $0xe8, (%edi)              /* CALL does_runtime */
@@ -961,8 +961,8 @@ END_WORD(alias)
 
 /* Search order.
 
-   Every vocabulary has an associated location in the memory.
-   This stores the value of the last word in the vocabulary. The descriptor
+   Every wordlist has an associated location in the memory.
+   This stores the value of the last word in the wordlist. The descriptor
    of the dictionary is the address of that location. */
 
 BUILTIN_VARIABLE(current, 0)
@@ -1150,7 +1150,7 @@ read_word:
 
 
 /* Create a new entry in the dictionary, EAX is the counted string and EDX
-   is the native code address. This word is not interned in any vocabulary,
+   is the native code address. This word is not interned in any wordlist,
    however. The word is not interned if it is empty, therefore it creates
    an anonymous word. */
 create_uninterned_word:
@@ -1179,7 +1179,7 @@ create_uninterned_word:
         movl %eax, latest_word
         ret
 
-/* Create a new entry in the vocabulary, EAX is a counted string, EDX is the address of
+/* Create a new entry in the wordlist, EAX is a counted string, EDX is the address of
    the native code. Return the address of the word in the EAX register. */
 create_word:
         movb (%eax), %cl
@@ -1441,11 +1441,11 @@ nomultiboot:
         movl $_end, %edi
         /* Set up a flat model of memory */
         call flush_gdt
-        /* Initialize the built-in vocabulary */
+        /* Initialize the built-in wordlist */
         movl (dictionary_end-4), %eax
-        movl %eax, builtin_vocabulary
-        movl $builtin_vocabulary, sorder_stack
-        movl $builtin_vocabulary, current
+        movl %eax, builtin_wordlist
+        movl $builtin_wordlist, sorder_stack
+        movl $builtin_wordlist, current
         /* Load core.fs */
         subl $8, %esi
         movl $_binary_core_fs_start, 4(%esi)
