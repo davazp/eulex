@@ -94,8 +94,7 @@ also music definitions
 ' 4a#  alias -a#        ' 5a#  alias a#         ' 6a#  alias +a#
 ' 4b   alias -b         ' 5b   alias b          ' 6b   alias +b
 
-
-only forth-impl definitions
+PREVIOUS DEFINITIONS
 
 : <music also music ; immediate
 : music> previous   ; immediate

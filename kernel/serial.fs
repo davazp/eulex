@@ -18,8 +18,6 @@
 \ along with Eulex.  If not, see <http://www.gnu.org/licenses/>.
 
 vocabulary serial
-
-only forth-impl
 also serial definitions
 
 variable serial-echo
@@ -38,7 +36,6 @@ $00 com1 1 + outputb \ (hi byte)
 $03 com1 3 + outputb \ 8 bits, no parity, one stop bit
 $c7 com1 2 + outputb \ Enable FIFO, clear them, with 14-byte threshold
 $0b com1 4 + outputb \ IRQs enabled, RTS/DSR set
-
 
 : empty? com1 5 + inputb 32 and ;
 
@@ -63,6 +60,6 @@ $0b com1 4 + outputb \ IRQs enabled, RTS/DSR set
     then
 ;
 
-only forth-impl definitions
+previous definitions
 
 \ serial.fs ends here

@@ -74,6 +74,43 @@ variable count_words
     drop ;
 
 
+: unfind-in-wordlist ( xt wordlist -- addr c )
+    wid>latest
+    begin
+        dup 0<> while
+            2dup nt>xt = if
+                nip nt>name
+                exit
+            else
+                previous-word
+            then
+    repeat
+    2drop
+    0 0
+;
+
+\ Find the first avalaible word whose CFA is XT, pushing the name to
+\ the stack or two zeros if it is not found.
+: unfind ( xt -- addr u )
+    get-order dup 1+ roll
+    ( widn ... wid1 n xt )
+    begin
+        over 0<> while
+            swap 1- swap rot
+            over swap unfind-in-wordlist
+            dup 0= if
+                2drop
+            else
+                >r >r
+                drop 0 ?do drop loop
+                r> r>
+                exit
+            then
+    repeat
+    2drop
+    0 0
+;
+
 \ Backtrace!
 
 : upper@ ( addr -- x|0)
@@ -144,9 +181,12 @@ variable count_words
     get-order 0 ?do print-wid loop
     4 spaces current @ print-wid ;
 
+Root definitions
+' order alias order
+' words alias words
+previous definitions
 
 ( Disassembler. SEE )
 require @disassem.fs
-
 
 \ tools.fs ends here

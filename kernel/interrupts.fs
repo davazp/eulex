@@ -197,4 +197,7 @@ ALSO FORTH-IMPL DEFINITIONS
     else drop then
 ;
 
+PREVIOUS
+PREVIOUS
+
 \ interrupts.fs ends here

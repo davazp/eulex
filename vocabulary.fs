@@ -19,6 +19,40 @@
 
 require @structures.fs
 
+\ Low-level search-order manipulation
+
+: context
+    sorder_stack sorder_tos @ cells + ;
+
+: forth-impl
+    [ context @ ]L context ! ;
+
+: wid>latest ( wid -- nt ) @ ;
+
+: get-order ( -- widn .. wid1 n )
+    sorder_stack
+    sorder_tos @ 1+ 0 ?do
+        dup @ swap cell +
+    loop
+    drop
+    sorder_tos @ 1+
+;
+
+: set-order ( widn .. wid1 n -- )
+    dup 0= if
+        sorder_tos 0!
+        forth-impl
+        drop
+    else
+        dup 1- sorder_tos !
+        context swap
+        0 ?do
+            dup -rot ! cell -
+        loop
+        drop
+    then
+;
+
 : get-current current @ ;
 : set-current current ! ;
 
@@ -44,11 +78,6 @@ require @structures.fs
 
 : >order ( wid -- )
     also context ! ;
-
-: only
-    sorder_tos 0!
-    forth-impl ;
-
 
 \ In order to implement VOCS word, we need a kind of introspection for
 \ vocabularies. This is provided storing a single-linked list of the
@@ -82,5 +111,28 @@ end-struct vocentry%
     create-vocabulary
     latest nt>name add-vocentry
     set-last-vocentry-wid ;
+
+\ Define Forth and Root vocabularies
+
+wordlist constant forth-wordlist
+: Forth forth-wordlist context ! ;
+latest nt>name add-vocentry
+forth-wordlist set-last-vocentry-wid
+
+wordlist constant root-wordlist
+: Root root-wordlist >order ;
+latest nt>name add-vocentry
+root-wordlist set-last-vocentry-wid
+
+: only
+    sorder_tos 0!
+    root-wordlist context ! ;
+
+Root definitions
+' set-order alias set-order
+' forth-wordlist alias forth-wordlist
+' forth alias forth
+previous definitions
+
 
 \ vocabulary.fs ends here

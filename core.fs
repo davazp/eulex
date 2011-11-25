@@ -365,41 +365,6 @@ create pad 1024 allot
 ; immediate compile-only
 
 
-\ Low-level search-order manipulation
-
-: context
-    sorder_stack sorder_tos @ cells + ;
-
-: forth-impl
-    [ context @ ]L context ! ;
-
-: wid>latest ( wid -- nt ) @ ;
-
-: get-order ( -- widn .. wid1 n )
-    sorder_stack
-    sorder_tos @ 1+ 0 ?do
-        dup @ swap cell +
-    loop
-    drop
-    sorder_tos @ 1+
-;
-
-: set-order ( widn .. wid1 n -- )
-    dup 0= if
-        sorder_tos 0!
-        forth-impl
-        drop
-    else
-        dup 1- sorder_tos !
-        context swap
-        0 ?do
-            dup -rot ! cell -
-        loop
-        drop
-    then
-;
-
-
 : [char] char postpone literal ; immediate
 
 \ CASE's implementation imported from Gforth.
@@ -434,6 +399,7 @@ create pad 1024 allot
     0 ?do postpone then loop
 ; immediate
 
+
 \ Interprete a string
 
 : buffer>start ( addr -- start )
@@ -452,80 +418,15 @@ create pad 1024 allot
     buffer>loaded true swap ! ;
 @core.fs mark-buffer-as-loaded
 
-: save-search-order
-    0
-    postpone literal
-    postpone >r
-    postpone get-order
-    postpone begin
-    postpone dup
-    postpone 0<>
-    postpone while
-    postpone    1-
-    postpone    swap
-    postpone    >r
-    postpone repeat
-    postpone drop
-; immediate compile-only
-
-: restore-search-order
-    0
-    postpone literal
-    postpone begin
-    postpone    r@
-    postpone    0<>
-    postpone while
-    postpone    1+
-    postpone    r>
-    postpone    swap
-    postpone repeat
-    postpone set-order
-    postpone r>
-    postpone drop
-; immediate compile-only
-
 : load-buffer ( addr -- )
-    \ Save search order stack. We use a zero-cell as limiting. I
-    \ suppose we will not use a wordlist placed at 0 address.
-    save-search-order
-    current @ >r
-    \ Load buffer
     dup mark-buffer-as-loaded
     dup buffer>start
     swap buffer>size
-    evaluate
-    \ Restore search order stack
-    r> current !
-    restore-search-order
-;
+    evaluate ;
 
 : require-buffer ( addr -- )
     dup buffer-loaded? if drop else load-buffer then ;
 
-\ A syntax sugar for require-buffer
-: require
-    '
-    if-compiling
-        postpone literal
-        postpone execute
-        postpone require-buffer
-    else
-        execute
-        require-buffer
-    endif
-; immediate
-
-: include
-    '
-    if-compiling
-        postpone literal
-        postpone execute
-        postpone load-buffer
-    else
-        execute
-        require-buffer
-    endif
-; immediate
 
 \ Recursion
 
@@ -536,46 +437,8 @@ create pad 1024 allot
 : enum dup constant 1+ ;
 : end-enum drop ;
 
-
-: unfind-in-wordlist ( xt wordlist -- addr c )
-    wid>latest
-    begin
-        dup 0<> while
-            2dup nt>xt = if
-                nip nt>name
-                exit
-            else
-                previous-word
-            then
-    repeat
-    2drop
-    0 0
-;
-
-\ Find the first avalaible word whose CFA is XT, pushing the name to
-\ the stack or two zeros if it is not found.
-: unfind ( xt -- addr u )
-    get-order dup 1+ roll
-    ( widn ... wid1 n xt )
-    begin
-        over 0<> while
-            swap 1- swap rot
-            over swap unfind-in-wordlist
-            dup 0= if
-                2drop
-            else
-                >r >r
-                drop 0 ?do drop loop
-                r> r>
-                exit
-            then
-    repeat
-    2drop
-    0 0
-;
-
-require @structures.fs
-require @exceptions.fs
+@structures.fs require-buffer
+@exceptions.fs require-buffer
 
 \ Complete the following definitions to support error handling.
 : nt'
@@ -607,16 +470,39 @@ require @exceptions.fs
     create , does> @ ;
 
 : TO ( n -- )
-    postpone 'pfa!
-; immediate
+    postpone 'pfa! ; immediate
 
 
 \ Defered words
-variable defer-routine
-' abort defer-routine !
-: DEFER create defer-routine @ , does> @ execute ;
+: DEFER
+    create ['] abort , does> @ execute ;
 : IS
-    postpone 'pfa!
+    postpone 'pfa! ; immediate
+
+
+\ A syntax sugar for require-buffer
+: require
+    '
+    if-compiling
+        postpone literal
+        postpone execute
+        postpone require-buffer
+    else
+        execute
+        require-buffer
+    endif
+; immediate
+
+: include
+    '
+    if-compiling
+        postpone literal
+        postpone execute
+        postpone load-buffer
+    else
+        execute
+        require-buffer
+    endif
 ; immediate
 
 

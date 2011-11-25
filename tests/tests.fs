@@ -18,7 +18,7 @@
 \ along with Eulex.  If not, see <http://www.gnu.org/licenses/>.
 
 vocabulary test
-only forth-impl also test definitions
+also test definitions
 
 variable check_failed
 variable total_passed
@@ -86,6 +86,6 @@ variable total_failed
     report
     previous ;
 
-only forth-impl definitions
+previous definitions
 
 \ tests.fs ends here
