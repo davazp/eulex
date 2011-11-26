@@ -129,6 +129,10 @@ wordlist constant root-wordlist
 latest nt>name add-vocentry
 root-wordlist set-last-vocentry-wid
 
+: Eulex forth-impl ;
+latest nt>name add-vocentry
+context @ set-last-vocentry-wid
+
 : only
     sorder_tos 0!
     root-wordlist context !
@@ -137,6 +141,7 @@ root-wordlist set-last-vocentry-wid
 Root definitions
 ' set-order alias set-order
 ' forth-wordlist alias forth-wordlist
+' eulex alias eulex
 ' forth alias forth
 previous definitions
 

@@ -122,6 +122,8 @@ create pad 1024 allot
 : '
     comp' nip ;
 
+' noop alias )
+
 ( Skip page breaks. They can be beautiful as section delimiters )
 :
 
