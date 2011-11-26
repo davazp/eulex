@@ -343,6 +343,17 @@ create pad 1024 allot
 : 2tuck 2swap 2over ;
 : 2rot 5 roll 5 roll ;
 
+\ Like ALLOT but initialize memory to 0.
+: zallot ( n -- )
+    dup 0 < if
+        allot
+    else
+        here swap
+        dup allot
+        0 fill
+    endif ;
+
+
 : low-byte 255 and ;
 : high-byte 8 rshift low-byte ;
 
