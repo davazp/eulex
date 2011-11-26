@@ -51,6 +51,7 @@ cr
     begin
         ['] user-interaction %catch-without-unwind
         ?dup 0<> if
+            cr
             ." ERROR: "
             case
                  -1 of ." Aborted" cr endof

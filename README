@@ -16,7 +16,7 @@ History
 -------
 
   Originally, this project came up in 2009. A fellow and I started to
-write an operating system. we were looking for a low level and easy to
+write an operating system. We were looking for a low level and easy to
 implement language, which was fun and allowed to hack the language
 itself, in order to incorporate it to that system, which we named
 Eulex. I discovered Forth, and I figured out that it was a good
