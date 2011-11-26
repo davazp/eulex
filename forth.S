@@ -878,54 +878,75 @@ BUILTIN_WORD_ENTRY(semicolon, ";", F_IMMEDIATE | F_COMPILE_TIME)
 END_WORD(semicolon)
 
 
+/* Notes on CREATE...DOES> Implementation
+
+   Words which were defined with CREATE push their PFA to the
+stack. The PFA is the address where the word entry ends, so you can
+use CREATE to name locations in the dictionary, and hence, to
+implement variables and so. (See fig 1.)
+
+   The runtime action of the word defined with CREATE can be changed,
+however. DOES> replaces the RET in the `create'd word with a JUMP
+to the dictionary point, allowing to append semantic to the word
+(See fig 2.)
+
+          +-------------+ <--+             +-------------+ <-----+
+          |  push PFA   |    |             |  push PFA   |       |
+          |     RET     |    |             |  jmp DOES> o-----+  |
+          +-------------+    |             +-------------+    |  |
+          |  Previous   |    |             |  Previous   |    |  |
+          +-------------+    |             +-------------+    |  |
+  NT ---> | u NAME flag |    |     NT ---> | u NAME flag |    |  |
+          |    CFA  o--------+             |    CFA  o--------|--+
+  PFA --> +-------------+          PFA --> +-------------+    |
+          |             |                  |             |    |
+          |             |                  |             |    |
+          +-------------+          DOES>   +-------------+ <--+
+                                           |    ....     |
+                                           |             |
+                                           +-------------+
+
+              fig 1.                              fig 2.
+*/
+
 BUILTIN_WORD(create)
         call cread_word
-        movzbl (%eax), %edx
-        addl %edi, %edx
-        addl $26, %edx  /* Size of runtime-code plus word */
-        /* Emit code which will be ran at runtime */
-        movl %edi, %ebp
-        movb $0xC7,  (%edi)
-        movb $0x46, 1(%edi)
-        movb $0xFC, 2(%edi)
-        movl %edx,  3(%edi)
         /* subl $4, %esi = 83 EE 04 */
-        movb $0x83, 7(%edi)
-        movb $0xEE, 8(%edi)
-        movb $0x04, 9(%edi)
-        addl $10, %edi
-	/* Emit 5 NOP to DOES> be able to replace
-           them by a long jump later */
-        movb $0x90, 0(%edi) /* NOP */
-        movb $0x90, 1(%edi) /* NOP */
-        movb $0x90, 2(%edi) /* NOP */
-        movb $0x90, 3(%edi) /* NOP */
-        movb $0x90, 4(%edi) /* NOP */
-        addl $5, %edi
-        /* Compile a RET into dictionary. It will not be
-           reached if DOES> is called */
-        movb $0xC3,  (%edi) /* RET */
-        incl %edi
-        movl %ebp, %edx
+        movl %edi, %edx
+        movb $0x83, 0(%edi)
+        movb $0xEE, 1(%edi)
+        movb $0x04, 2(%edi)
+        /* movl $PFA, (%esi) */
+        movb $0xC7, 3(%edi)
+        movb $0x06, 4(%edi)
+        leal 5(%edi), %ebx
+        pushl %ebx
+        movl $0, 5(%edi)
+        /* ret */
+        movb $0xC3,  9(%edi)
+        movb $0x90, 10(%edi) /* nop */
+        movb $0x90, 11(%edi) /* nop */
+        movb $0x90, 12(%edi) /* nop */
+        movb $0x90, 13(%edi) /* nop */
+        addl $14, %edi
+        /* Create word */
         call create_word
-        /* movl $X, -4(%esi) = C7 46 FC X */
-        addl $16, %edx
+        popl %ebx
+        movl %edi, (%ebx)
         ret
 END_WORD(create)
 
 
 BUILTIN_WORD_ENTRY(does, "does>", F_IMMEDIATE | F_COMPILE_TIME)
-        /* Pearl of Forth, DOES>, compiles a code which will modify
-           the CFA of the last-defined word in the wordlist. Thus,
-           the new behaviour of this will be push the PFA to the stack
-           and jump to the code what precedes DOES>. */
-        movb $0xe8, (%edi)              /* CALL does_runtime */
+        /* call does_runtime */
+        movb $0xe8, (%edi)
         incl %edi
         movl $does_runtime, (%edi)
         subl %edi, (%edi)
         subl $4, (%edi)
         addl $4, %edi
-        movb $0xC3, (%edi)              /* RET */
+	/* ret */
+        movb $0xc3, (%edi)
         incl %edi
 	ret
 does_runtime:
@@ -934,10 +955,10 @@ does_runtime:
         movl (%esp), %eax
         incl %eax
         movl latest_word, %edx
-        subl $10, %edx
+        subl $9, %edx
         /* Patch the RET added by the CREATE instruction,
            turning it a long jump to the new code. */
-        movb $0xe8, (%edx)              /* CALL [%eax] */
+        movb $0xe9, (%edx)              /* jump [%eax] */
         incl %edx
         movl %eax, (%edx)
         subl %edx, (%edx)
