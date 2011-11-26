@@ -172,17 +172,14 @@ variable corder-nt
 : initialize-corder-tos
     sorder_tos @ corder-tos ! ;
 : initialize-corder-stack
-    get-order 0 ?do
-        corder-stack i cells + !
-    loop
-;
+    get-order 0 ?do corder-stack i cells + ! loop ;
+
 \ Push the address of the completion order.
 : ccontext ( -- wid )
-    corder-tos @ cells
-    corder-stack + ;
+    corder-tos @ cells corder-stack + ;
 
 : next-ccontext ( -- flag )
-    corder-tos @ 0 >= if
+    corder-tos @ 0 > if
         corder-tos 1-!
         ccontext @ wid>latest corder-nt !
         true
@@ -206,8 +203,7 @@ variable corder-nt
         dup previous-word corder-nt !
     else
         next-ccontext if recurse else 0 endif
-    endif
-;
+    endif ;
 
 
 \ PREFIX-ADDR and PREFIX-SIZE variables contain the address of the
@@ -235,14 +231,15 @@ variable completing?
 
 : next-match ( -- addr n )
     begin
-    next-word ?dup while
+    next-word dup while
+\        ." Trying: " dup id. cr
         dup nt>name prefix string-prefix? if
-            nt>name exit
+            nt>name
+            exit
         else
             drop
         endif
     repeat
-    0
 ;
 
 \ Delete the added characteres by the last completion.
