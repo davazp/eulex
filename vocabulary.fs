@@ -66,7 +66,7 @@ end-struct wid%
     context @ current ! ;
 
 : wordlist ( -- wid)
-    here 0 , 0 , ;
+    here wid% zallot ;
 
 : also
     sorder_tos @ sorder_size < if
