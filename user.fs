@@ -67,6 +67,32 @@ cr
         then
     again ;
 
+
+\ Export words to the Forth vocabulary
+
+: clone-word ( nt -- )
+    dup nt>name nextname
+    dup nt>xt alias
+    nt>flags @ latest nt>flags ! ;
+
+: }
+    set-current ;
+
+: FORTH{
+    get-current
+    forth-wordlist set-current
+    begin
+    NT'
+    dup [NT'] } <> while
+        clone-word
+    repeat
+    nt>xt execute ;
+
+FORTH{
++ - * /
+}
+
+
 START-USER-INTERACTION
 
 \ user.fs ends here
