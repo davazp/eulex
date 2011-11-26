@@ -21,8 +21,10 @@ require @structures.fs
 
 \ Low-level search-order manipulation
 
-: wid>latest ( wid -- nt ) @ ;
-: wid>method ( wid -- xt ) cell + @ ;
+struct
+    cell field wid>latest
+    cell field wid>method
+end-struct wid%
 
 : context
     sorder_stack sorder_tos @ cells + ;
