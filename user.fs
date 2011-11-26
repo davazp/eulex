@@ -46,6 +46,7 @@ cr
     query interpret ;
 
 : start-user-interaction
+    only forth definitions
     @eulexrc.fs require-buffer
     begin
         ['] user-interaction %catch-without-unwind
@@ -66,6 +67,50 @@ cr
             clearstack
         then
     again ;
+
+
+\ Export words to the Forth vocabulary
+
+: clone-word ( nt -- )
+    dup nt>name nextname
+    dup nt>xt alias
+    nt>flags @ latest nt>flags ! ;
+
+: }
+    set-current ;
+
+: FORTH{
+    get-current
+    forth-wordlist set-current
+    begin
+    NT'
+    dup [NT'] } <> while
+        clone-word
+    repeat
+    nt>xt execute ;
+
+FORTH{
+! ' ( ) * + +! +loop , - -rot -trailing . ." .s / /mod 0! 0< 0<> 0= 0>
+1+ 1- 2* 2+ 2- 2>r 2drop 2dup 2nip 2over 2r> 2r@ 2rot 2swap 2tuck :
+:noname ; < <= <> <count-spaces /string = > >= >in >order >r ? ?do
+?dup @ Forth Only Root [ ['] [char] [compile] [defined] [else] [if]
+[ifdef] [ifundef] [then] [endif] \ ] ]L abort abs accept again alias
+allot also and at-xy beep base begin blank c! c, c@ case catch cell
+cell+ cells char char+ chars clearstack cmove cmove> compare compile,
+compile-only constant context count cr create current dec. decimal
+defer definitions depth do does> drop dump dup edit-line else emit
+end-struct endcase endif endof eulex evaluate execute exit false field
+fill gcd get-current get-order here hex. hex i id. if immediate invert
+is j k key latest latestxt lcm leave literal loop lshift max min mod
+move ms negate nextname nip noname noop not oct. octal of off on or
+order over pad page parse-name pick postpone previous r> r@ reboot
+recurse recursive refill repeat restore-input roll rot rshift s" see
+set-current set-order sign source save-input source-id space spaces
+state stats string-prefix? string<> string= struct swap then throw tib
+to true tuck type typewhite u< unloop until value variable vocabulary
+vocs w!  w@ while wordlist words xor
+}
+
 
 START-USER-INTERACTION
 

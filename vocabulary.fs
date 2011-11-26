@@ -21,13 +21,18 @@ require @structures.fs
 
 \ Low-level search-order manipulation
 
+struct
+    cell field wid-latest
+    cell field wid-method
+end-struct wid%
+
+: wid>latest wid-latest @ ;
+
 : context
     sorder_stack sorder_tos @ cells + ;
 
 : forth-impl
     [ context @ ]L context ! ;
-
-: wid>latest ( wid -- nt ) @ ;
 
 : get-order ( -- widn .. wid1 n )
     sorder_stack
@@ -63,7 +68,7 @@ require @structures.fs
     context @ current ! ;
 
 : wordlist ( -- wid)
-    here  0 , ;
+    here wid% zallot ;
 
 : also
     sorder_tos @ sorder_size < if
@@ -105,7 +110,7 @@ end-struct vocentry%
     dup vocentry-name swap vocentry-size @ ;
 
 : create-vocabulary ( -- wid )
-    create here 0 , does> context ! ;
+    create wordlist does> context ! ;
 
 : vocabulary
     create-vocabulary
@@ -124,6 +129,10 @@ wordlist constant root-wordlist
 latest nt>name add-vocentry
 root-wordlist set-last-vocentry-wid
 
+: Eulex forth-impl ;
+latest nt>name add-vocentry
+context @ set-last-vocentry-wid
+
 : only
     sorder_tos 0!
     root-wordlist context !
@@ -132,6 +141,7 @@ root-wordlist set-last-vocentry-wid
 Root definitions
 ' set-order alias set-order
 ' forth-wordlist alias forth-wordlist
+' eulex alias eulex
 ' forth alias forth
 previous definitions
 

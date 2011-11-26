@@ -122,6 +122,8 @@ create pad 1024 allot
 : '
     comp' nip ;
 
+' noop alias )
+
 ( Skip page breaks. They can be beautiful as section delimiters )
 :
 
@@ -343,6 +345,17 @@ create pad 1024 allot
 : 2tuck 2swap 2over ;
 : 2rot 5 roll 5 roll ;
 
+\ Like ALLOT but initialize memory to 0.
+: zallot ( n -- )
+    dup 0 < if
+        allot
+    else
+        here swap
+        dup allot
+        0 fill
+    endif ;
+
+
 : low-byte 255 and ;
 : high-byte 8 rshift low-byte ;
 
@@ -447,6 +460,12 @@ create pad 1024 allot
     nt' nt>comp ;
 : '
     comp' nip ;
+: [nt']
+    nt' postpone literal ; immediate compile-only
+: [comp']
+    comp' postpone literal ; immediate compile-only
+: [']
+    ' postpone literal ; immediate compile-only
 : postpone
     comp' postpone, ; immediate
 : [compile]
@@ -573,18 +592,6 @@ require @kernel/cpuid.fs
 
 : 3dup 2 pick 2 pick 2 pick ;
 
-: find-name-in-wordlist ( addr n wid -- nt )
-    @
-    begin
-        dup 0<> while
-            3dup
-            nt>name string= if
-                nip nip exit
-            endif
-            previous-word
-    repeat
-    drop 2drop 0
-;
 
 ( run-tests )
 

@@ -176,7 +176,7 @@ variable corder-nt
         corder-stack i cells + !
     loop
 ;
-\ Push the address of the of the completion order.
+\ Push the address of the completion order.
 : ccontext ( -- wid )
     corder-tos @ cells
     corder-stack + ;
