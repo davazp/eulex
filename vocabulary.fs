@@ -22,9 +22,11 @@ require @structures.fs
 \ Low-level search-order manipulation
 
 struct
-    cell field wid>latest
-    cell field wid>method
+    cell field wid-latest
+    cell field wid-method
 end-struct wid%
+
+: wid>latest wid-latest @ ;
 
 : context
     sorder_stack sorder_tos @ cells + ;
