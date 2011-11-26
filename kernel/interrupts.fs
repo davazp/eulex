@@ -40,13 +40,10 @@ end-struct idt-entry%
 
 idt-entry% idt-n-entries * constant idt-size
 gdt-cs-selector constant selector
-create idt-table idt-size allot
+create idt-table idt-size zallot
 
 : low-word $FFFF and ;
 : high-word 16 rshift low-word ;
-
-: fill-idt-with-zeros
-    idt-table idt-size 0 fill ;
 
 : flush-idt
     idt-table idt-size 1- lidt ;
@@ -149,9 +146,7 @@ CREATE isr-stub
 
 : ;; $8e write-isr-to-idt ;
 
-
 DISABLE-INTERRUPTS
-FILL-IDT-WITH-ZEROS
 
 00 ISR-NOERRCODE ;; \ Division By Zero Exception
 01 ISR-NOERRCODE ;; \ Debug Exception
