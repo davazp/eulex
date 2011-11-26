@@ -1,0 +1,44 @@
+Eulex
+=====
+
+  Eulex is a straightforward Forth implementation for i386 machines.
+
+  It includes almost as much Forth as I know, as well as a barebone
+environment with the keyboard, terminal, timer and speaker support,
+necessary to provide some common Forth words. Indeed, it provides a
+convenient line editing emacs-like keybindings and completion.
+
+  As always, a lot of features are missing. If you want to have some
+fun, consider to write some of them!
+
+
+History
+-------
+
+  Originally, this project came up in 2009. A fellow and I started to
+write an operating system. we were looking for a low level and easy to
+implement language, which was fun and allowed to hack the language
+itself, in order to incorporate it to that system, which we named
+Eulex. I discovered Forth, and I figured out that it was a good
+choice, as we wanted to recreate an old system. I set about writing an
+implementation for the specification Forth79 in assembler, initially
+on GNU/Linux and using the C library since it was a convenient way to
+work, meanwhile my fellow implemented a simple C kernel for Eulex that
+would house Forth. This implementation was never incorporated,
+however.
+
+  Two years later, without other idea which in I could work, I took a
+primitive version of the C kernel of Eulex, and I used it as a thin
+compatibility layer to run the Forth implementation on the metal. Then,
+I made up my mind to write the whole system in Forth. So, Forth was
+ported to 32 bits and pieces of C code were rewritten in Forth.
+The C layer was an useful scaffolding, as it allowed not only to use
+modern tools for debugging, but build the system in the right order.
+Eventually, Forth replaced C and I could move the scaffolding away,
+removing the whole C code.  As outcome of that, I share this barebone
+Forth system with you, with the hope that someone will have so much
+fun as I have had.
+
+Happy Hacking
+
+DVP
