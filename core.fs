@@ -458,6 +458,12 @@ create pad 1024 allot
     nt' nt>comp ;
 : '
     comp' nip ;
+: [nt']
+    nt' postpone literal ; immediate compile-only
+: [comp']
+    comp' postpone literal ; immediate compile-only
+: [']
+    ' postpone literal ; immediate compile-only
 : postpone
     comp' postpone, ; immediate
 : [compile]
