@@ -488,10 +488,10 @@ END_WORD(eflags)
 
 
 BUILTIN_WORD_NAME(eflags_store, "eflags!")
-        movl (%esi), %eax
-        movl %eax, -4(%esp)
-        addl $4, %esi
         subl $4, %esp
+        movl (%esi), %eax
+        movl %eax, (%esp)
+        addl $4, %esi
         popf
         ret
 END_WORD(eflags_store)
@@ -617,8 +617,8 @@ END_WORD(r_from)
 
 BUILTIN_WORD_ENTRY(r_fetch, "r@", F_COMPILE_TIME)
         movl 4(%esp), %eax
-        movl %eax, -4(%esi)
         subl $4, %esi
+        movl %eax, (%esi)
         ret
 END_WORD(r_fetch)
 
