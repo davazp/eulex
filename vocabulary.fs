@@ -21,13 +21,14 @@ require @structures.fs
 
 \ Low-level search-order manipulation
 
+: wid>latest ( wid -- nt ) @ ;
+: wid>method ( wid -- xt ) cell + @ ;
+
 : context
     sorder_stack sorder_tos @ cells + ;
 
 : forth-impl
     [ context @ ]L context ! ;
-
-: wid>latest ( wid -- nt ) @ ;
 
 : get-order ( -- widn .. wid1 n )
     sorder_stack
@@ -63,7 +64,7 @@ require @structures.fs
     context @ current ! ;
 
 : wordlist ( -- wid)
-    here  0 , ;
+    here 0 , 0 , ;
 
 : also
     sorder_tos @ sorder_size < if
@@ -105,7 +106,7 @@ end-struct vocentry%
     dup vocentry-name swap vocentry-size @ ;
 
 : create-vocabulary ( -- wid )
-    create here 0 , does> context ! ;
+    create wordlist does> context ! ;
 
 : vocabulary
     create-vocabulary

@@ -80,7 +80,7 @@ flush_gdt:
 .lcomm rstack, RSTACK_SIZE
 
 /* Pointer to the last word which was defined in the built-in wordlist. */
-.lcomm builtin_wordlist, 4
+.lcomm builtin_wordlist, 8
 
 .data
 
@@ -961,9 +961,19 @@ END_WORD(alias)
 
 /* Search order.
 
-   Every wordlist has an associated location in the memory.
-   This stores the value of the last word in the wordlist. The descriptor
-   of the dictionary is the address of that location. */
+   The representation for a wordlist is the following:
+
+   WID -->  +--------------+
+            |    latest    | <-- NT of the last word defined in this wordlist
+            +--------------+
+            |    method    | <-- XT of a word which finding words in the wordlist
+            +--------------+     relies on. It takes a counted-string from the
+                                 data stack and push associated NT, or 0 if it is
+                                 not found. It could also be zero to indicate that
+                                 the default search method will be used.
+
+   The wordlist's identifier (WID) is a pointer to that structure.
+*/
 
 BUILTIN_VARIABLE(current, 0)
 
@@ -1192,24 +1202,37 @@ create_word:
         movl %eax, (%ebp)
 1:      ret
 
-
-/* Find the counted word in EAX, from the word in EDX.
-   Return the word in EDX or 0 if it is not found. */
-find_word_1:
-	test %edx, %edx
+/* Find the counted word in EAX in the wordlist in EDX using the
+   provide search method or the default if it is not specified. */
+find_word_in_wordlist:
+        movl 4(%edx), %ebx
+        test %ebx, %ebx
+        jnz find_word_in_wordlist
+        movl (%edx), %edx
+0:      test %edx, %edx
         jz 1f
         call wordname_match
         je 1f
         movl -4(%edx), %edx
-        jmp find_word_1
+        jmp 0b
 1:      ret
 
+find_word_in_wordlist_custom:
+        subl $8, %esi
+        movl %eax, (%esi)
+        movl %edx, 4(%esi)
+        call *%ebx
+        movl (%esi), %edx
+        addl $4, %esi
+        ret
+
+/* Find the counted word in EAX in the search order.
+   Return the NT in EDX or 0 if it is not found. */
 find_word:
         movl sorder_tos, %ecx
 1:      movl sorder_stack(, %ecx, 4), %edx
-        movl (%edx), %edx
         pushl %ecx
-        call find_word_1
+        call find_word_in_wordlist
         popl %ecx
         test %edx, %edx
         jnz 2f
@@ -1444,6 +1467,7 @@ nomultiboot:
         /* Initialize the built-in wordlist */
         movl (dictionary_end-4), %eax
         movl %eax, builtin_wordlist
+        movl $0, builtin_wordlist+4
         movl $builtin_wordlist, sorder_stack
         movl $builtin_wordlist, current
         /* Load core.fs */

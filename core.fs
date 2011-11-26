@@ -573,18 +573,6 @@ require @kernel/cpuid.fs
 
 : 3dup 2 pick 2 pick 2 pick ;
 
-: find-name-in-wordlist ( addr n wid -- nt )
-    @
-    begin
-        dup 0<> while
-            3dup
-            nt>name string= if
-                nip nip exit
-            endif
-            previous-word
-    repeat
-    drop 2drop 0
-;
 
 ( run-tests )
 
