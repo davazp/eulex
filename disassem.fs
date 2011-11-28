@@ -75,7 +75,11 @@ create distable 256 cells allot
 INIT-DISTABLE
 
 $0f defdisam ( 0f 85 )
-   ." JNZ " 2+ dup disassemble-rel-name cell +
+   1+ dup c@ case
+       $85 of ." JNZ " 1+ dup disassemble-rel-name cell + endof
+       $84 of ." JZ "  1+ dup disassemble-rel-name cell + endof
+       nip
+   endcase
 ;dis
 
 $29 defdisam ( 29 f8 )
