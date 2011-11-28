@@ -162,14 +162,17 @@ create pad 1024 allot
 
 : literal, ( n -- )
     push , ;
+
+: rel>abs here cell + - ;
+
 : compile, ( xt -- )
-    rcall here cell + - , ;
+    rcall rel>abs , ;
 : branch-to ( addr -- )
-    branch here cell + - , ;
+    branch rel>abs , ;
 : 0branch-to ( addr -- )
-    0branch here cell + - , ;
+    0branch rel>abs , ;
 : ?branch-to ( addr -- )
-    ?branch here cell + - , ;
+    ?branch rel>abs , ;
 
 : ['] ' literal, ; immediate compile-only
 
