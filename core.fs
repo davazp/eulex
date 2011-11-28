@@ -129,34 +129,54 @@ create pad 1024 allot
 
 ; immediate
 
-: compile,
-    \ call ADDR
-    $e8 c, here cell + - , ;
-
-\ Metametacompiler
-: postpone-non-immediate, ( xt -- )
-    \ Compile into dictionary the following code:
-    $b8 c, ( ' ) ,            \ movl $[ADDR], %eax
-    $c7 c, $07 c, $e8 ,       \ movl $0xe8, (%edi)
-    $47 c,                    \ incl %edi
-    $29 c, $f8 c,             \ subl %edi, %eax
-    $83 c, $e8 c, $04 c,      \ subl $4, %eax
-    $89 c, $07 c,             \ movl %eax, (%edi)
-    $83 c, $c7 c, $04 c,      \ addl $4, %edi
-    \ which, when is executed, compiles a CALL ADDR.
-;
-
-\ Partial implementation of POSTPONE, it works for non-immediate words.
-\ [COMPILE] words for immedaite words, but we cannot use IF, therefore
-\ we cannot define POSTPONE properly yet.
-: postpone ' postpone-non-immediate, ; immediate
+
+\ Code generation
 
 : push
     $83 c, $EE c, $04 c,              \ subl $4, %esi
     $c7 c, $06 c,  ( ... )            \ mov $..., (%esi)
 ; compile-only
 
-: literal push , ; immediate compile-only
+: rcall
+    $e8 c,                            \ call
+; compile-only
+
+: branch
+    $e9 c,                            \ jmp
+; compile-only
+
+: ?branch
+    $8b c, $06 c,                     \ movl (%esi), %eax
+    $83 c, $c6 c, $04 c,              \ addl $4, %esi
+    $85 c, $c0 c,                     \ test %eax, %eax
+    $0f c, $85 c,                     \ jnz [ELSE]
+; compile-only
+
+
+: literal, ( n -- )
+    push , ;
+: compile, ( xt -- )
+    rcall here cell + - , ;
+: branch-to ( addr -- )
+    branch here cell + - , ;
+: ?branch-to ( addr -- )
+    ?branch here cell + - , ;
+
+: ['] ' literal, ; immediate compile-only
+
+: literal
+    literal, ; immediate compile-only
+
+\ Partial implementation of POSTPONE, it works for non-immediate words.
+\ [COMPILE] words for immedaite words, but we cannot use IF, therefore
+\ we cannot define POSTPONE properly yet.
+: postpone-non-immediate, ( xt -- )
+    literal, ['] compile, compile, ;
+: postpone '
+    postpone-non-immediate, ; immediate
+
+
+\ Forward references
 
 : forward-literal ( -- addr )
     push here 0 , ;
@@ -164,29 +184,16 @@ create pad 1024 allot
 : patch-forward-literal ( addr n -- )
     swap ! ;
 
-: branch
-    $e9 c,               \ jmp
-; compile-only
+: forward-branch
+    branch here 0 , ;
 
-: ?branch
-    $8b c, $06 c,         \ movl (%esi), %eax
-    $83 c, $c6 c, $04 c,  \ addl $4, %esi
-    $85 c, $c0 c,         \ test %eax, %eax
-    $0f c, $85 c,         \ jnz [ELSE]
-; compile-only
-
-: branch-to ( addr -- )
-    branch here cell + - , ;
-
-: ?branch-to ( addr -- )
-    ?branch here cell + - , ;
-
-: forward-branch   branch here 0 , ;
-
-: forward-?branch ?branch here 0 , ;
+: forward-?branch
+    ?branch here 0 , ;
 
 : patch-forward-branch ( jmp-addr target -- )
     over cell + - swap ! ;
+
+
 
 \ BEGIN-UNTIL
 \ BEGIN-WHILE-REPEAT
@@ -372,11 +379,6 @@ create pad 1024 allot
     postpone @
     postpone if
 ; immediate
-
-: [']
-    ' postpone literal
-; immediate compile-only
-
 
 : [char] char postpone literal ; immediate
 
