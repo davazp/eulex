@@ -58,7 +58,7 @@ variable read-string-index
     read-string-buffer
     0
     begin
-        char
+        parse-char
     dup [char] " <> while
         rs, 1+
     repeat

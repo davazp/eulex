@@ -27,8 +27,6 @@
 : allot dp + dp! ;
 : , here cell allot ! ;
 : c, here 1 allot c! ;
-: variable create 0 , ;
-: constant create , does> @ ;
 : false 0 ;
 : true -1 ;
 : on true swap ! ;
@@ -76,8 +74,6 @@
 : clearstack sp-limit sp! ;
 : depth sp-limit sp - cell / 1- ;
 
-create pad 1024 allot
-
 \ Dictionary's entries (name token -- NT )
 
 \ Get the NT of the last-defined word.
@@ -101,7 +97,8 @@ create pad 1024 allot
     latest nt>xt ;
 : immediate? ( word -- flag )
     nt>flags c@ 1 and ;
-
+: cfa! ( xt -- )
+    latest nt>cfa ! ;
 : immediate
     latest nt>flags 1 swap or! ;
 : compile-only
@@ -122,71 +119,160 @@ create pad 1024 allot
 : '
     comp' nip ;
 
-' noop alias )
+: ) ; immediate
 
 ( Skip page breaks. They can be beautiful as section delimiters )
 :
 
 ; immediate
 
-: compile,
-    \ call ADDR
-    $e8 c, here cell + - , ;
-
-\ Metametacompiler
-: postpone-non-immediate, ( xt -- )
-    \ Compile into dictionary the following code:
-    $b8 c, ( ' ) ,            \ movl $[ADDR], %eax
-    $c7 c, $07 c, $e8 ,       \ movl $0xe8, (%edi)
-    $47 c,                    \ incl %edi
-    $29 c, $f8 c,             \ subl %edi, %eax
-    $83 c, $e8 c, $04 c,      \ subl $4, %eax
-    $89 c, $07 c,             \ movl %eax, (%edi)
-    $83 c, $c7 c, $04 c,      \ addl $4, %edi
-    \ which, when is executed, compiles a CALL ADDR.
-;
-
-\ Partial implementation of POSTPONE, it works for non-immediate words.
-\ [COMPILE] words for immedaite words, but we cannot use IF, therefore
-\ we cannot define POSTPONE properly yet.
-: postpone ' postpone-non-immediate, ; immediate
+
+\ Code generation
 
 : push
     $83 c, $EE c, $04 c,              \ subl $4, %esi
     $c7 c, $06 c,  ( ... )            \ mov $..., (%esi)
 ; compile-only
 
-: literal push , ; immediate compile-only
-
-: forward-literal ( -- addr )
-    push here 0 , ;
-
-: patch-forward-literal ( addr n -- )
-    swap ! ;
+: rcall
+    $e8 c,                            \ call
+; compile-only
 
 : branch
-    $e9 c,               \ jmp
+    $e9 c,                            \ jmp
+; compile-only
+
+: 0branch
+    $8b c, $06 c,                     \ movl (%esi), %eax
+    $83 c, $c6 c, $04 c,              \ addl $4, %esi
+    $85 c, $c0 c,                     \ test %eax, %eax
+    $0f c, $84 c,                     \ jz [ELSE]
 ; compile-only
 
 : ?branch
-    $8b c, $06 c,         \ movl (%esi), %eax
-    $83 c, $c6 c, $04 c,  \ addl $4, %esi
-    $85 c, $c0 c,         \ test %eax, %eax
-    $0f c, $85 c,         \ jnz [ELSE]
+    $8b c, $06 c,                     \ movl (%esi), %eax
+    $83 c, $c6 c, $04 c,              \ addl $4, %esi
+    $85 c, $c0 c,                     \ test %eax, %eax
+    $0f c, $85 c,                     \ jnz [ELSE]
 ; compile-only
 
+: return
+    $c3 c,                            \ ret
+; compile-only
+
+: nop
+    $90 c,                            \ nop
+; compile-only
+
+
+: literal, ( n -- )
+    push , ;
+
+: rel>abs here cell + - ;
+
+: compile, ( xt -- )
+    rcall rel>abs , ;
 : branch-to ( addr -- )
-    branch here cell + - , ;
-
+    branch rel>abs , ;
+: 0branch-to ( addr -- )
+    0branch rel>abs , ;
 : ?branch-to ( addr -- )
-    ?branch here cell + - , ;
+    ?branch rel>abs , ;
 
-: forward-branch   branch here 0 , ;
+: ['] ' literal, ; immediate compile-only
 
-: forward-?branch ?branch here 0 , ;
+: literal
+    literal, ; immediate compile-only
 
+\ Partial implementation of POSTPONE, it works for non-immediate words.
+\ [COMPILE] words for immedaite words, but we cannot use IF, therefore
+\ we cannot define POSTPONE properly yet.
+: postpone-non-immediate, ( xt -- )
+    literal, ['] compile, compile, ;
+: postpone '
+    postpone-non-immediate, ; immediate
+
+
+\ Forward references
+
+: forward-literal ( -- addr )
+    push here 0 , ;
+: patch-forward-literal ( addr n -- )
+    swap ! ;
+
+: forward-branch
+    branch here 0 , ;
+: forward-0branch
+    0branch here 0 , ;
+: forward-?branch
+    ?branch here 0 , ;
 : patch-forward-branch ( jmp-addr target -- )
     over cell + - swap ! ;
+
+
+\ CREATE...DOES> implementation
+\
+\   Words which were defined with CREATE push their PFA to the
+\ stack. The PFA is the address where the word entry ends, so you can
+\ use CREATE to name locations in the dictionary, and hence, to
+\ implement variables and so. (See fig 1.)
+\
+\   The runtime action of the word defined with CREATE can be changed,
+\ however. DOES> replaces the RET in the `create'd word with a JUMP
+\ to the dictionary point, allowing to append semantic to the word
+\ (See fig 2.)
+\
+\          +-------------+ <--+             +-------------+ <-----+
+\          |  push PFA   |    |             |  push PFA   |       |
+\          |     RET     |    |             |  jmp DOES> o-----+  |
+\          +-------------+    |             +-------------+    |  |
+\          |  Previous   |    |             |  Previous   |    |  |
+\          +-------------+    |             +-------------+    |  |
+\  NT ---> | u NAME flag |    |     NT ---> | u NAME flag |    |  |
+\          |    CFA  o--------+             |    CFA  o--------|--+
+\  PFA --> +-------------+          PFA --> +-------------+    |
+\          |             |                  |             |    |
+\          |             |                  |             |    |
+\          +-------------+          DOES>   +-------------+ <--+
+\                                           |    ....     |
+\                                           |             |
+\                                           +-------------+
+\
+\              fig 1.                              fig 2.
+\
+
+: create-prologe ( -- forward-literal xt )
+    here forward-literal swap
+    return
+    nop
+    nop
+    nop
+    nop ;
+
+: >ret
+    latest cell - 5 - ;
+
+: create
+    create-prologe
+    header reveal cfa!
+    here patch-forward-literal ;
+
+: does>runtime
+    dp >ret dp!
+    rsp @ 1+ branch-to
+    dp! ;
+
+: does>
+    ['] does>runtime compile, return
+; immediate compile-only
+
+
+\ ALIAS
+: alias header reveal cfa! ;
+
+\ VARIABLE & CONSTANT
+: variable create 0 , ;
+: constant create , does> @ ;
 
 \ BEGIN-UNTIL
 \ BEGIN-WHILE-REPEAT
@@ -197,13 +283,11 @@ create pad 1024 allot
 ; immediate compile-only
 
 : until ( begin-addr -- )
-    postpone not
-    ?branch-to
+    0branch-to
 ; immediate compile-only
 
 : while ( begin-addr -- begin-addr while-addr )
-    postpone not
-    forward-?branch
+    forward-0branch
 ; immediate compile-only
 
 : repeat ( begin-addr while-addr -- )
@@ -221,8 +305,7 @@ create pad 1024 allot
 \ IF-ELSE-THEN
 
 : if ( -- if-forward-jmp )
-    postpone not
-    forward-?branch
+    forward-0branch
 ; immediate compile-only
 
 : else ( if-forward-jmp -- else-for)
@@ -233,6 +316,7 @@ create pad 1024 allot
 : then
     here patch-forward-branch
 ; immediate compile-only
+
 ' then alias endif immediate compile-only
 
 : ?dup
@@ -355,6 +439,7 @@ create pad 1024 allot
         0 fill
     endif ;
 
+create pad 1024 allot
 
 : low-byte 255 and ;
 : high-byte 8 rshift low-byte ;
@@ -372,13 +457,6 @@ create pad 1024 allot
     postpone @
     postpone if
 ; immediate
-
-: [']
-    ' postpone literal
-; immediate compile-only
-
-
-: [char] char postpone literal ; immediate
 
 \ CASE's implementation imported from Gforth.
 \
@@ -413,6 +491,22 @@ create pad 1024 allot
 ; immediate
 
 
+: char
+    begin
+        parse-char case
+            09 of endof
+            10 of endof
+            13 of endof
+            32 of endof
+            exit
+        endcase
+    again ;
+
+: [char]
+    char postpone literal ; immediate
+
+
+
 \ Interprete a string
 
 : buffer>start ( addr -- start )
@@ -444,7 +538,7 @@ create pad 1024 allot
 \ Recursion
 
 : recurse latestxt compile, ; immediate compile-only
-: recursive latestxt current @ ! ; immediate
+' reveal alias recursive immediate
 
 \ Enumerations. See kernel/irq.fs for usage.
 : enum dup constant 1+ ;
