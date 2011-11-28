@@ -145,6 +145,13 @@ create pad 1024 allot
     $e9 c,                            \ jmp
 ; compile-only
 
+: 0branch
+    $8b c, $06 c,                     \ movl (%esi), %eax
+    $83 c, $c6 c, $04 c,              \ addl $4, %esi
+    $85 c, $c0 c,                     \ test %eax, %eax
+    $0f c, $84 c,                     \ jz [ELSE]
+; compile-only
+
 : ?branch
     $8b c, $06 c,                     \ movl (%esi), %eax
     $83 c, $c6 c, $04 c,              \ addl $4, %esi
@@ -159,6 +166,8 @@ create pad 1024 allot
     rcall here cell + - , ;
 : branch-to ( addr -- )
     branch here cell + - , ;
+: 0branch-to ( addr -- )
+    0branch here cell + - , ;
 : ?branch-to ( addr -- )
     ?branch here cell + - , ;
 
@@ -180,16 +189,15 @@ create pad 1024 allot
 
 : forward-literal ( -- addr )
     push here 0 , ;
-
 : patch-forward-literal ( addr n -- )
     swap ! ;
 
 : forward-branch
     branch here 0 , ;
-
+: forward-0branch
+    0branch here 0 , ;
 : forward-?branch
     ?branch here 0 , ;
-
 : patch-forward-branch ( jmp-addr target -- )
     over cell + - swap ! ;
 
@@ -204,13 +212,11 @@ create pad 1024 allot
 ; immediate compile-only
 
 : until ( begin-addr -- )
-    postpone not
-    ?branch-to
+    0branch-to
 ; immediate compile-only
 
 : while ( begin-addr -- begin-addr while-addr )
-    postpone not
-    forward-?branch
+    forward-0branch
 ; immediate compile-only
 
 : repeat ( begin-addr while-addr -- )
@@ -228,8 +234,7 @@ create pad 1024 allot
 \ IF-ELSE-THEN
 
 : if ( -- if-forward-jmp )
-    postpone not
-    forward-?branch
+    forward-0branch
 ; immediate compile-only
 
 : else ( if-forward-jmp -- else-for)
@@ -240,6 +245,7 @@ create pad 1024 allot
 : then
     here patch-forward-branch
 ; immediate compile-only
+
 ' then alias endif immediate compile-only
 
 : ?dup
