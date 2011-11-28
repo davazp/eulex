@@ -267,8 +267,10 @@
 ; immediate compile-only
 
 
+\ ALIAS
+: alias header reveal cfa! ;
 
-\   VARIABLE & CONSTANT
+\ VARIABLE & CONSTANT
 : variable create 0 , ;
 : constant create , does> @ ;
 
@@ -522,7 +524,7 @@ create pad 1024 allot
 \ Recursion
 
 : recurse latestxt compile, ; immediate compile-only
-: recursive latestxt current @ ! ; immediate
+' reveal alias recursive immediate
 
 \ Enumerations. See kernel/irq.fs for usage.
 : enum dup constant 1+ ;
