@@ -1431,7 +1431,7 @@ loop:
         test %edx, %edx
         jnz loop_number
         /* Throw an error */
-        call not_found_word
+        call *unknown_word_err_routine
         ret
 loop_word:
         /* EDX = Word in the dictionary */
@@ -1497,7 +1497,7 @@ interpret_word:
         movzbl (%edx), %eax     /* flags */
         test $F_COMPILE_TIME, %eax
         jz 1f
-        call compile_only_word
+        call *compile_only_err_routine
         jmp loop
 
 1:      incl %edx
@@ -1517,27 +1517,12 @@ interpreter_number:
 
 check_stack_consistency:
         cmpl $(stack+STACK_SIZE), %esi
-        jg stack_underflow
-        cmpl $(stack), %esi
-        jl stack_overflow
-        ret
-
-stack_underflow:
-        movl stack_underflow_err_routine, %eax
-        call *%eax
-        ret
-stack_overflow:
-        movl stack_overflow_err_routine, %eax
-        call *%eax
-        ret
-not_found_word:
-        movl unknown_word_err_routine, %eax
-        call *%eax
-        ret
-compile_only_word:
-        movl compile_only_err_routine, %eax
-        call *%eax
-        ret
+        jle 1f
+        call *stack_underflow_err_routine
+1:      cmpl $(stack), %esi
+        jge 2f
+        call *stack_overflow_err_routine
+2:      ret
 
 /*
 Local variables:
