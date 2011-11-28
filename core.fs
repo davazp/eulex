@@ -662,6 +662,7 @@ create nextname-buffer 32 allot
         2drop
     endif ;
 
+require @memory.fs
 require @vocabulary.fs
 require @kernel/console.fs
 require @output.fs

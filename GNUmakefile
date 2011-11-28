@@ -37,6 +37,7 @@ FORTH_SRC= \
 	kernel/serial.fs \
 	linedit.fs \
         input.fs \
+        memory.fs \
 	user.fs \
 	eulexrc.fs
 
