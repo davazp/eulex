@@ -850,6 +850,25 @@ BUILTIN_VARIABLE(compiling_nextname, 0)
 BUILTIN_VARIABLE(latest_word, 0)
 
 
+BUILTIN_WORD(header)
+        call cread_word
+        movl $1f, %edx
+        call create_uninterned_word
+1:      ret
+END_WORD(header)
+
+
+BUILTIN_WORD(reveal)
+        movl latest_word, %eax
+        movb (%eax), %cl
+        test %cl, %cl
+        jz 1f
+        movl current, %ebp
+        movl %eax, (%ebp)
+1:      ret
+END_WORD(reveal)
+
+
 BUILTIN_WORD_NAME(colon, ":")
         movl $-1, state
         call cread_word
@@ -857,7 +876,7 @@ BUILTIN_WORD_NAME(colon, ":")
         movl %ecx, %edx
         addl %edi, %edx
         addl $10, %edx
-        call create_word
+        call create_uninterned_word
 1:      ret
 END_WORD(colon)
 
@@ -867,105 +886,9 @@ BUILTIN_WORD_ENTRY(semicolon, ";", F_IMMEDIATE | F_COMPILE_TIME)
         movb $0xC3, (%edi) /* RET */
         incl %edi
         movl $0, state
-	/* Add the new word to the wordlist if its name is not empty.*/
-        movl latest_word, %eax
-        movb (%eax), %cl
-        test %cl, %cl
-        jz 1f
-        movl current, %ebp
-        movl %eax, (%ebp)
-1:      ret
+        call reveal
+        ret
 END_WORD(semicolon)
-
-
-/* Notes on CREATE...DOES> Implementation
-
-   Words which were defined with CREATE push their PFA to the
-stack. The PFA is the address where the word entry ends, so you can
-use CREATE to name locations in the dictionary, and hence, to
-implement variables and so. (See fig 1.)
-
-   The runtime action of the word defined with CREATE can be changed,
-however. DOES> replaces the RET in the `create'd word with a JUMP
-to the dictionary point, allowing to append semantic to the word
-(See fig 2.)
-
-          +-------------+ <--+             +-------------+ <-----+
-          |  push PFA   |    |             |  push PFA   |       |
-          |     RET     |    |             |  jmp DOES> o-----+  |
-          +-------------+    |             +-------------+    |  |
-          |  Previous   |    |             |  Previous   |    |  |
-          +-------------+    |             +-------------+    |  |
-  NT ---> | u NAME flag |    |     NT ---> | u NAME flag |    |  |
-          |    CFA  o--------+             |    CFA  o--------|--+
-  PFA --> +-------------+          PFA --> +-------------+    |
-          |             |                  |             |    |
-          |             |                  |             |    |
-          +-------------+          DOES>   +-------------+ <--+
-                                           |    ....     |
-                                           |             |
-                                           +-------------+
-
-              fig 1.                              fig 2.
-*/
-
-BUILTIN_WORD(create)
-        call cread_word
-        /* subl $4, %esi = 83 EE 04 */
-        movl %edi, %edx
-        movb $0x83, 0(%edi)
-        movb $0xEE, 1(%edi)
-        movb $0x04, 2(%edi)
-        /* movl $PFA, (%esi) */
-        movb $0xC7, 3(%edi)
-        movb $0x06, 4(%edi)
-        leal 5(%edi), %ebx
-        pushl %ebx
-        movl $0, 5(%edi)
-        /* ret */
-        movb $0xC3,  9(%edi)
-        movb $0x90, 10(%edi) /* nop */
-        movb $0x90, 11(%edi) /* nop */
-        movb $0x90, 12(%edi) /* nop */
-        movb $0x90, 13(%edi) /* nop */
-        addl $14, %edi
-        /* Create word */
-        call create_word
-        popl %ebx
-        movl %edi, (%ebx)
-        ret
-END_WORD(create)
-
-
-BUILTIN_WORD_ENTRY(does, "does>", F_IMMEDIATE | F_COMPILE_TIME)
-        /* call does_runtime */
-        movb $0xe8, (%edi)
-        incl %edi
-        movl $does_runtime, (%edi)
-        subl %edi, (%edi)
-        subl $4, (%edi)
-        addl $4, %edi
-	/* ret */
-        movb $0xc3, (%edi)
-        incl %edi
-	ret
-does_runtime:
-        /* The stored %eip points to our RET. After the RET, there
-           are the prologue and the the code itself. */
-        movl (%esp), %eax
-        incl %eax
-        movl latest_word, %edx
-        subl $9, %edx
-        /* Patch the RET added by the CREATE instruction,
-           turning it a long jump to the new code. */
-        movb $0xe9, (%edx)              /* jump [%eax] */
-        incl %edx
-        movl %eax, (%edx)
-        subl %edx, (%edx)
-        subl $4, (%edx)
-        addl $4, %edx
-        ret
-END_WORD(does)
 
 
 BUILTIN_VARIABLE(state, 0)

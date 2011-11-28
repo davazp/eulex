@@ -27,8 +27,6 @@
 : allot dp + dp! ;
 : , here cell allot ! ;
 : c, here 1 allot c! ;
-: variable create 0 , ;
-: constant create , does> @ ;
 : false 0 ;
 : true -1 ;
 : on true swap ! ;
@@ -76,8 +74,6 @@
 : clearstack sp-limit sp! ;
 : depth sp-limit sp - cell / 1- ;
 
-create pad 1024 allot
-
 \ Dictionary's entries (name token -- NT )
 
 \ Get the NT of the last-defined word.
@@ -101,7 +97,8 @@ create pad 1024 allot
     latest nt>xt ;
 : immediate? ( word -- flag )
     nt>flags c@ 1 and ;
-
+: cfa! ( xt -- )
+    latest nt>cfa ! ;
 : immediate
     latest nt>flags 1 swap or! ;
 : compile-only
@@ -122,7 +119,7 @@ create pad 1024 allot
 : '
     comp' nip ;
 
-' noop alias )
+: ) ; immediate
 
 ( Skip page breaks. They can be beautiful as section delimiters )
 :
@@ -157,6 +154,14 @@ create pad 1024 allot
     $83 c, $c6 c, $04 c,              \ addl $4, %esi
     $85 c, $c0 c,                     \ test %eax, %eax
     $0f c, $85 c,                     \ jnz [ELSE]
+; compile-only
+
+: return
+    $c3 c,                            \ ret
+; compile-only
+
+: nop
+    $90 c,                            \ nop
 ; compile-only
 
 
@@ -205,6 +210,67 @@ create pad 1024 allot
     over cell + - swap ! ;
 
 
+\ CREATE...DOES> implementation
+\
+\   Words which were defined with CREATE push their PFA to the
+\ stack. The PFA is the address where the word entry ends, so you can
+\ use CREATE to name locations in the dictionary, and hence, to
+\ implement variables and so. (See fig 1.)
+\
+\   The runtime action of the word defined with CREATE can be changed,
+\ however. DOES> replaces the RET in the `create'd word with a JUMP
+\ to the dictionary point, allowing to append semantic to the word
+\ (See fig 2.)
+\
+\          +-------------+ <--+             +-------------+ <-----+
+\          |  push PFA   |    |             |  push PFA   |       |
+\          |     RET     |    |             |  jmp DOES> o-----+  |
+\          +-------------+    |             +-------------+    |  |
+\          |  Previous   |    |             |  Previous   |    |  |
+\          +-------------+    |             +-------------+    |  |
+\  NT ---> | u NAME flag |    |     NT ---> | u NAME flag |    |  |
+\          |    CFA  o--------+             |    CFA  o--------|--+
+\  PFA --> +-------------+          PFA --> +-------------+    |
+\          |             |                  |             |    |
+\          |             |                  |             |    |
+\          +-------------+          DOES>   +-------------+ <--+
+\                                           |    ....     |
+\                                           |             |
+\                                           +-------------+
+\
+\              fig 1.                              fig 2.
+\
+
+: create-prologe ( -- forward-literal xt )
+    here forward-literal swap
+    return
+    nop
+    nop
+    nop
+    nop ;
+
+: >ret
+    latest cell - 5 - ;
+
+: create
+    create-prologe
+    header reveal cfa!
+    here patch-forward-literal ;
+
+: does>runtime
+    dp >ret dp!
+    rsp @ 1+ branch-to
+    dp! ;
+
+: does>
+    ['] does>runtime compile, return
+; immediate compile-only
+
+
+
+\   VARIABLE & CONSTANT
+: variable create 0 , ;
+: constant create , does> @ ;
 
 \ BEGIN-UNTIL
 \ BEGIN-WHILE-REPEAT
@@ -371,6 +437,7 @@ create pad 1024 allot
         0 fill
     endif ;
 
+create pad 1024 allot
 
 : low-byte 255 and ;
 : high-byte 8 rshift low-byte ;
