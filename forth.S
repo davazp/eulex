@@ -894,15 +894,6 @@ END_WORD(semicolon)
 BUILTIN_VARIABLE(state, 0)
 
 
-BUILTIN_WORD(alias)
-        call cread_word
-        movl (%esi), %edx
-        addl $4, %esi
-        call create_word
-        ret
-END_WORD(alias)
-
-
 /* Search order.
 
    The representation for a wordlist is the following:
