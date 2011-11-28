@@ -126,4 +126,6 @@ variable cursor-y
 : flash
     invert-screen 50 ms invert-screen ;
 
+PAGE
+
 \ console.fs ends here

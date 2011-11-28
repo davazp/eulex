@@ -17,6 +17,7 @@
 \ You should have received a copy of the GNU General Public License
 \ along with Eulex.  If not, see <http://www.gnu.org/licenses/>.
 
+require @kernel/console.fs
 
 : cr 10 emit ;
 : space 32 emit ;
@@ -120,6 +121,14 @@ variable .index
     else
         type
     then
+; immediate
+
+: .(
+    begin
+    parse-char dup [char] ) <> while
+        emit
+    repeat
+    drop
 ; immediate
 
 

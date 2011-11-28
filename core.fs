@@ -660,7 +660,7 @@ create nextname-buffer 32 allot
 require @vocabulary.fs
 require @kernel/console.fs
 require @output.fs
-page ." Loading..." cr
+.( Loading...) CR
 require @kernel/multiboot.fs
 require @tools.fs
 require @kernel/interrupts.fs
@@ -671,7 +671,6 @@ require @kernel/keyboard.fs
 require @kernel/serial.fs
 require @kernel/speaker.fs
 require @tests/tests.fs
-
 require @kernel/cpuid.fs
 
 
