@@ -458,8 +458,6 @@ create pad 1024 allot
     postpone if
 ; immediate
 
-: [char] char postpone literal ; immediate
-
 \ CASE's implementation imported from Gforth.
 \
 \ Usage
@@ -491,6 +489,22 @@ create pad 1024 allot
     postpone drop
     0 ?do postpone then loop
 ; immediate
+
+
+: char
+    begin
+        parse-char case
+            09 of endof
+            10 of endof
+            13 of endof
+            32 of endof
+            exit
+        endcase
+    again ;
+
+: [char]
+    char postpone literal ; immediate
+
 
 
 \ Interprete a string

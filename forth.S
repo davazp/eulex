@@ -830,12 +830,12 @@ END_WORD(backslash)
 BUILTIN_VARIABLE(base, 10)
 
 
-BUILTIN_WORD(char)
+BUILTIN_WORD_NAME(parse_char, "parse-char")
         call fgetchar
         subl $4, %esi
         movl %eax, (%esi)
         ret
-END_WORD(char)
+END_WORD(parse_char)
 
 
 /********************************** COMPILER **********************************/

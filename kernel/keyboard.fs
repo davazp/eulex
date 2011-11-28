@@ -237,6 +237,6 @@ $4 constant alt-mod
         ekey*
     $80 over <= while
         drop
-    repeat ;
+repeat ;
 
 \ keyboard.fs ends here
