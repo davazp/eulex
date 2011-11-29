@@ -71,6 +71,11 @@
 
 : /mod 2dup / >r mod r> ;
 
+: aligned ( c-addr -- a-addr )
+    %11 + %11 invert and ;
+
+: align dp aligned dp! ;
+
 : clearstack sp-limit sp! ;
 : depth sp-limit sp - cell / 1- ;
 

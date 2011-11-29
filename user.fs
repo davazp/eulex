@@ -96,16 +96,16 @@ FORTH{
 2swap 2tuck : :noname ; < <= <> <count-spaces = > >= >in >order >r ?
 ?do ?dup @ Forth Only Root [ ['] [char] [compile] [defined] [else]
 [endif] [if] [ifdef] [ifundef] [then] \ ] ]L abort abs accept again
-alias allot also and at-xy base beep begin blank c! c, c@ case catch
-cell cell+ cells char char+ chars clearstack cmove cmove> compare
-compile, compile-only constant context count cr create current
-dec. decimal defer definitions depth do does> drop dump dup edit-line
-else emit end-struct endcase endif endof eulex evaluate execute exit
-false field fill gcd get-current get-order here hex hex. i id. if
-immediate invert is j k key latest latestxt lcm leave literal loop
-lshift max min mod move ms negate nextname nip noname noop not
-oct. octal of off on or order over pad page parse-name pick postpone
-previous query r> r@ reboot recurse recursive refill repeat
+alias align aligned allot also and at-xy base beep begin blank c! c,
+c@ case catch cell cell+ cells char char+ chars clearstack cmove
+cmove> compare compile, compile-only constant context count cr create
+current dec. decimal defer definitions depth do does> drop dump dup
+edit-line else emit end-struct endcase endif endof eulex evaluate
+execute exit false field fill gcd get-current get-order here hex
+hex. i id. if immediate invert is j k key latest latestxt lcm leave
+literal loop lshift max min mod move ms negate nextname nip noname
+noop not oct. octal of off on or order over pad page parse-name pick
+postpone previous query r> r@ reboot recurse recursive refill repeat
 restore-input roll room rot rshift s" save-input see set-current
 set-order sign source source-id space spaces state string-prefix?
 string<> string= struct swap then throw tib to true tuck type
