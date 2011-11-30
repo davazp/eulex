@@ -17,6 +17,16 @@
 \ You should have received a copy of the GNU General Public License
 \ along with Eulex.  If not, see <http://www.gnu.org/licenses/>.
 
+require @structures.fs
+require @kernel/multiboot.fs
+
+dp-limit aligned  constant heap-start
+mem-upper-limit   constant heap-end
+
+heap-start heap-end -   constant heap-size
+
+\ Public words
+
 : allocate ( u -- a-addr flag )
 ;
 
