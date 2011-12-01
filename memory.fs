@@ -132,9 +132,9 @@ heap-end chunk% - constant sentinel-chunk-end
     chunk>size swap chunk-alloc% + 2* u>= ;
 
 : split-chunk ( n chunk -- )
-    dup chunk>size >r
+    dup chunk>end >r
     tuck adjust-chunk-size
-    chunk>end dup r> + create-chunk drop ;
+    chunk>end r> create-chunk drop ;
 
 : reserve-chunk ( n chunk -- )
     2dup too-large-chunk? if tuck split-chunk else nip endif
