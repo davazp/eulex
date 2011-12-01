@@ -690,6 +690,18 @@ BUILTIN_WORD_NAME(uless_than, "u<")
 END_WORD(uless_than)
 
 
+BUILTIN_WORD_NAME(ugreater_than, "u>")
+        xorl %eax, %eax
+        movl (%esi), %ebx
+        cmpl %ebx, 4(%esi)
+        jna 1f
+        not %eax
+1:      movl %eax, 4(%esi)
+        addl $4, %esi
+        ret
+END_WORD(ugreater_than)
+
+
 BUILTIN_WORD_NAME(equals, "=")
         xorl %eax, %eax
         movl (%esi), %ebx
