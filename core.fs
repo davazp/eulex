@@ -46,6 +46,8 @@
 : <= > not ;
 : >= < not ;
 : <> = not ;
+: u>= u< not ;
+: u<= u> not ;
 : 0<> 0 <> ;
 : 0! 0 swap ! ;
 : +! dup @ rot + swap ! ;
@@ -336,8 +338,8 @@
 
 : ]L ] postpone literal ;
 
-\ DO-UNTIL
-\ DO-WHILE-REPEAT
+
+\ [?]DO-[+]LOOP
 
 : do ( -- null-forward-branch do-addr )
     postpone 2>r
