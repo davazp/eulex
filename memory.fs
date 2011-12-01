@@ -45,7 +45,7 @@ end-struct chunk%
 : chunk>size ( chunk -- u )
     chunk-size @ ;
 : addr>chunk ( addr -- chunk )
-    cell - ;
+    chunk-alloc% - ;
 
 : chunk>end ( chunk -- )
     dup chunk>addr swap chunk>size + ;
@@ -115,7 +115,7 @@ heap-end chunk% - constant sentinel-chunk-end
     chunk-neighbours link-chunks ;
 
 : chunk-header ( start end -- chunk )
-    over - cell - swap tuck chunk-size ! ;
+    over - chunk-alloc% - swap tuck chunk-size ! ;
 
 : create-chunk ( start end -- )
     chunk-header
@@ -129,15 +129,16 @@ heap-end chunk% - constant sentinel-chunk-end
     tuck chunk>size + swap adjust-chunk-size ;
 
 : too-large-chunk? ( n chunk -- flag )
-    chunk>size 2 / u<= ;
+    chunk>size swap chunk-alloc% + 2* u>= ;
 
 : split-chunk ( n chunk -- )
     dup chunk>size >r
     tuck adjust-chunk-size
     chunk>end dup r> + create-chunk drop ;
 
-: split-chunk-optionally ( n chunk -- )
-    2dup too-large-chunk? if split-chunk else 2drop endif ;
+: reserve-chunk ( n chunk -- )
+    2dup too-large-chunk? if tuck split-chunk else nip endif
+    delete-chunk ;
 
 : adjoint-chunks? ( chunk1 chunk2 -- flag )
     swap chunk>end = ;
@@ -183,9 +184,7 @@ heap-end chunk% - constant sentinel-chunk-end
     dup null-chunk? if
         2drop 0 -1
     else
-        tuck split-chunk-optionally
-        dup delete-chunk
-        chunk>addr 0
+        tuck reserve-chunk chunk>addr 0
     endif ;
 
 : free ( a-addr -- error )
