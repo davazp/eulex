@@ -42,32 +42,35 @@ cr
     ." along with this program. If not, see http://www.gnu.org/licenses/." cr ;
 
 
-: user-interaction
-    query interpret ;
+: catch-errors ( xt -- )
+    %catch-without-unwind ?dup 0<> if
+        CR ." ERROR: "
+        case
+            -1 of ." Aborted" cr endof
+            -3 of ." Stack overflow" cr endof
+            -4 of ." Stack underflow" cr endof
+            -10 of ." Division by zero" cr endof
+            -13 of ." Unknown word" cr endof
+            -14 of ." Compile-only word" cr endof
+            ." Ocurred an unexpected error of code " dup . cr
+        endcase
+        backtrace
+        state 0!
+        clearstack
+    then
+    %unwind-after-catch ;
+
+:noname @eulexrc.fs require-buffer ;
+: load-eulexrc catch-errors ;
+
+: user-interaction query interpret ;
+: user-interaction-loop
+    begin ['] user-interaction catch-errors again ;
 
 : start-user-interaction
     only forth definitions
-    @eulexrc.fs require-buffer
-    begin
-        ['] user-interaction %catch-without-unwind
-        ?dup 0<> if
-            cr
-            ." ERROR: "
-            case
-                 -1 of ." Aborted" cr endof
-                 -3 of ." Stack overflow" cr endof
-                 -4 of ." Stack underflow" cr endof
-                -10 of ." Division by zero" cr endof
-                -13 of ." Unknown word" cr endof
-                -14 of ." Compile-only word" cr endof
-                ." Ocurred an unexpected error of code " dup . cr
-            endcase
-            backtrace
-            %unwind-after-catch
-            state 0!
-            clearstack
-        then
-    again ;
+    load-eulexrc
+    user-interaction-loop ;
 
 
 \ Export words to the Forth vocabulary
