@@ -39,12 +39,7 @@
     0 ?do 1cmove 1-- loop 2drop ;
 
 : move ( c-from c-to u )
-    >r 2dup < if
-        r> cmove>
-    else
-        r> cmove
-    then
-;
+    >r 2dup < if r> cmove> else r> cmove then ;
 
 create read-string-buffer 256 allot
 variable read-string-index

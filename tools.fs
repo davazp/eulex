@@ -189,4 +189,19 @@ previous definitions
 ( Disassembler. SEE )
 require @disassem.fs
 
+
+\ Dynamic memory management debugging
+
+: .chunk ( chunk -- )
+    ." Base: " dup chunk>addr print-hex-number 5 SPACES
+    ." Size: "     chunk>size print-hex-number CR ;
+
+: meminfo
+    CR first-chunk
+    begin dup null-chunk? not while
+        dup .chunk
+        next-chunk
+    repeat
+    drop ;
+
 \ tools.fs ends here

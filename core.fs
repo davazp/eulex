@@ -17,6 +17,7 @@
 \ You should have received a copy of the GNU General Public License
 \ along with Eulex.  If not, see <http://www.gnu.org/licenses/>.
 
+: dp-limit 4193404 dp-base + ;
 : noop ;
 : chars ;
 : char+ 1 chars + ;
@@ -45,6 +46,8 @@
 : <= > not ;
 : >= < not ;
 : <> = not ;
+: u>= u< not ;
+: u<= u> not ;
 : 0<> 0 <> ;
 : 0! 0 swap ! ;
 : +! dup @ rot + swap ! ;
@@ -335,8 +338,8 @@
 
 : ]L ] postpone literal ;
 
-\ DO-UNTIL
-\ DO-WHILE-REPEAT
+
+\ [?]DO-[+]LOOP
 
 : do ( -- null-forward-branch do-addr )
     postpone 2>r
@@ -510,7 +513,9 @@ create pad 1024 allot
 : [char]
     char postpone literal ; immediate
 
-
+\ Push the amount of free memory in the dictionary.
+: unused
+    dp-base dp - ;
 
 \ Interprete a string
 
@@ -667,6 +672,7 @@ require @kernel/console.fs
 require @output.fs
 .( Loading...) CR
 require @kernel/multiboot.fs
+require @memory.fs
 require @tools.fs
 require @kernel/interrupts.fs
 require @kernel/exceptions.fs
