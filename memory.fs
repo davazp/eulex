@@ -20,6 +20,7 @@
 \ You should have received a copy of the GNU General Public License
 \ along with Eulex.  If not, see <http://www.gnu.org/licenses/>.
 
+require @string.fs
 require @structures.fs
 require @kernel/multiboot.fs
 
@@ -55,10 +56,22 @@ end-struct chunk%
 heap-start        constant sentinel-chunk-begin
 heap-end chunk% - constant sentinel-chunk-end
 
+: align-chunk-size ( u -- u )
+    dup cell negate u<= if
+        aligned
+    else
+        drop $ffffffff
+    then ;
+
+: validate-chunk-size ( u -- u )
+    align-chunk-size dup chunk% u<= if
+        drop chunk%
+    endif ;
 
 \ Note that all the following words work for available/free
 \ chunks. So, when you read `chunk' in the code, you should think
-\ about free chunk.
+\ about free chunk.  However, some operations can be used on chunks of
+\ allocated memory.
 
 : next-chunk ( chunk -- next-chunk )
     chunk-next @ ;
@@ -84,10 +97,10 @@ heap-end chunk% - constant sentinel-chunk-end
 : link-chunks ( chunk1 chunk2 -- )
     2dup swap chunk-next ! chunk-previous ! ;
 
-: enough-large-chunk? ( n chunk -- flag )
+: enough-large-chunk? ( u chunk -- flag )
     chunk>size u<= ;
 
-: find-enough-chunk ( n -- chunk )
+: find-enough-chunk ( u -- chunk )
     first-chunk
     begin dup null-chunk? not while
         2dup enough-large-chunk? if nip exit endif
@@ -122,23 +135,28 @@ heap-end chunk% - constant sentinel-chunk-end
     dup find-preceding-chunk
     swap tuck insert-chunk ;
 
-: adjust-chunk-size ( n chunk -- )
+: adjust-chunk-size ( u chunk -- )
     chunk-size ! ;
 
-: expand-chunk ( n chunk -- )
+: expand-chunk ( u chunk -- )
     tuck chunk>size + swap adjust-chunk-size ;
 
 : too-large-chunk? ( n chunk -- flag )
-    chunk>size swap chunk-alloc% + 2* u>= ;
+    chunk>size swap chunk% + 2* u>= ;
 
-: split-chunk ( n chunk -- )
+\ Split a chunk in two ones. Remarkly, this word works for both
+\ allocated chunks as for avalaible chunks.
+: split-chunk ( u chunk -- new-chunk )
     dup chunk>end >r
     tuck adjust-chunk-size
-    chunk>end r> create-chunk drop ;
+    chunk>end r> create-chunk ;
 
-: reserve-chunk ( n chunk -- )
-    2dup too-large-chunk? if tuck split-chunk else nip endif
+: reserve-chunk ( u chunk -- )
+    2dup too-large-chunk? if tuck split-chunk drop else nip endif
     delete-chunk ;
+
+
+\ Coalescing
 
 : adjoint-chunks? ( chunk1 chunk2 -- flag )
     swap chunk>end = ;
@@ -177,9 +195,8 @@ heap-end chunk% - constant sentinel-chunk-end
 ( )
 ( ----------------- )
 
-\ Public words
-
 : allocate ( u -- a-addr error )
+    validate-chunk-size
     dup find-enough-chunk
     dup null-chunk? if
         2drop 0 -1
@@ -190,7 +207,34 @@ heap-end chunk% - constant sentinel-chunk-end
 : free ( a-addr -- error )
     addr>chunk dup chunk>end create-chunk try-coalesce drop 0 ;
 
+
+: reallocate-memory ( addr1 addr2 u -- error )
+    \ Copy u bytes from ADDR1 to ADDR2 and free ADDR1.
+    rot dup >r -rot move r> free ;
+
+: resize-with-reallocation ( addr u -- addr error )
+    dup allocate ?dup if
+        2>r 2drop 2r>
+    else
+        dup >r swap reallocate-memory r> swap
+    endif ;
+
+: resize-without-reallocation ( addr u -- addr error )
+    swap addr>chunk
+    2dup too-large-chunk? if
+        tuck split-chunk try-coalesce drop
+    else
+        nip
+    endif
+    chunk>addr 0 ;
+
 : resize ( a-addr u -- a-addr error )
-;
+    validate-chunk-size
+    over addr>chunk chunk>size over u< if
+        resize-with-reallocation
+    else
+        resize-without-reallocation
+    endif ;
+
 
 \ memory.fs ends here
