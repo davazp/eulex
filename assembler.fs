@@ -67,17 +67,82 @@ latestxt execute
 \ Increase the operand number by 1.
 : op 1 current-operand +! ;
 
-
-\ Size of operands. The array OPERAND-SIZE keeps the size in bits of
-\ each operand (immediate, register or memory reference).
+\ Size and type of operands. The arrays OPERAND-SIZE and OPERAND-TYPE
+\ keep the size (in bits, 0=unknown size) and the type of each
+\ operand (immediate, register or memory reference).
 create operand-size max-operands cells allot
-: reset-opsize
-    operand-size max-operands cells 0 fill ;
+create operand-type max-operands cells allot
+
+1 constant OPREG
+2 constant OPIMM
+3 constant OPMEM
+
+: reset-operands
+    operand-size max-operands cells 0 fill
+    operand-type max-operands cells 0 fill ;
 latestxt execute
-: opsize ( u -- size )
-    1- cells operand-size + @ ;
+
+: opsize-index ( u -- addr )
+    1- cells operand-size + ;
+: optype-index ( u -- addr )
+    1- cells operand-type + ;
+
 : opsize! ( size -- )
-    op# 1- cells operand-size + ! ;
+    op# opsize-index ! ;
+
+: optype! ( type -- )
+    op# optype-index ! ;
+
+: opsize ( u -- size )
+    opsize-index @ ;
+
+: optype ( u -- type )
+    optype-index @ ;
+
+\ Mark the type of the current operand to memory, register or
+\ immediate respectively.
+: mem OPMEM optype! ;
+: reg OPREG optype! ;
+: imm OPIMM optype! ;
+
+\ Mark the size of the current operand to N bits.
+: bits ( n -- ) opsize! ;
+
+
+\ General purpose registers
+
+: reg8  create , does> @  8 bits reg ;
+: reg16 create , does> @ 16 bits reg ;
+: reg32 create , does> @ 32 bits reg ;
+
+0 reg32 %eax     0 reg16 %ax     0 reg8 %al
+1 reg32 %ecx     1 reg16 %cx     1 reg8 %cl
+2 reg32 %edx     2 reg16 %dx     2 reg8 %dl
+3 reg32 %ebx     3 reg16 %bx     3 reg8 %bl
+4 reg32 %esp     4 reg16 %sp     4 reg8 %ah
+5 reg32 %ebp     5 reg16 %bp     5 reg8 %ch
+6 reg32 %esi     6 reg16 %si     6 reg8 %dh
+7 reg32 %edi     7 reg16 %di     7 reg8 %bh
+
+\ Immediate values
+: # imm ;
+
+\ Memory references
+
+\ The more general memory reference mode is
+\     base + index*scale + displacement
+\ where BASE and INDEX are 32bits registers, SCALE is 1, 2 or 4, and
+\ DISPLACEMENT is an immediate offset.
+
+variable base
+variable index
+variable scale
+variable displacement
+
+: B base ! ;
+: I index ! ;
+: S scale ! ;
+: D displacement ! ;
 
 
 SET-CURRENT
