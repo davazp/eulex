@@ -133,7 +133,11 @@ latestxt execute
 \     base + index*scale + displacement
 \ where BASE and INDEX are 32bits registers, SCALE is 1, 2 or 4, and
 \ DISPLACEMENT is an immediate offset.
-
+\
+\ The following variables contain each one of the parts in the general
+\ addressing mode. A value of -1 where a register is expected means
+\ that it is omitted. Note that is it not the ModR/M either thea SIB
+\ bytes. They are encoded later from this variables, however.
 variable base
 variable index
 variable scale
@@ -142,7 +146,43 @@ variable displacement
 : B base ! ;
 : I index ! ;
 : S scale ! ;
+
 : D displacement ! ;
+
+: 1* 1 S ;
+: 2* 2 S ;
+: 4* 4 S ;
+
+: reset-addressing-mode
+    -1 B        \ no base
+    -1 I        \ no index
+    1 S         \ 1 scale
+    0 D         \ 0 displacement
+;
+
+\ Error checking words
+
+\ Check that the number of arguments is correct, or signal an
+\ exception to interrupt the program.
+: operands ( u -- )
+    op# <> abort" Bad number of operands." ;
+
+: target-immediate?
+    2 optype OPIMM = abort" Immediate operand as target in an instruction." ;
+
+\ Instructions
+
+\ Reset the state before each instruction.
+: reset-state
+    reset-op reset-operands reset-addressing-mode ;
+
+\ Reset the state and check for some common errors.
+: x86-instruction
+    reset-state
+    target-immediate? ;
+
+: movl 2 operands x86-instruction
+    2drop ;
 
 
 SET-CURRENT
