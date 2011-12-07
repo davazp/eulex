@@ -39,19 +39,25 @@ FA single-instruction cli
 FB single-instruction sti
 DECIMAL
 
-4 constant OPREG8
-5 constant OPREG16
-6 constant OPREG32
-7 constant OPSREG
+01 constant OPREG8
+02 constant OPREG16
+04 constant OPREG32
+08 constant OPSREG
+16 constant OPIMM
+32 constant OPMEM
 
-8 constant OPIMM
-16 constant OPMEM
+\ Masks
+OPREG8 OPREG16 or OPREG32 or constant OPGREG
+OPGREG OPSREG  or constant OPREG
 
-: reg? over 4 and 0<> ;
+\ These words check for the type of the operand in the data
+\ stack. They do _NOT_ consuming the operand, however.
+: reg? over OPREG and 0<> ;
 : reg32? over OPREG32 = ;
 : reg16? over OPREG16 = ;
 : reg8? over OPREG8 = ;
 : sreg? over OPSREG = ;
+: greg? over OPGREG and 0<> ;
 : mem? over OPMEM = ;
 : imm? over OPIMM = ;
 
@@ -91,8 +97,6 @@ variable index
 variable scale
 variable displacement
 
-: * OPMEM 0 ;
-
 : check-reg32
     reg32? invert abort" Addressing mode must use 32bits registers." ;
 
@@ -100,6 +104,8 @@ variable displacement
 : I check-reg32 nip index ! ;
 : S scale ! ;
 : D displacement ! ;
+
+: PTR D OPMEM 0 ;
 
 : 1* 1 S ;
 : 2* 2 S ;
@@ -114,7 +120,6 @@ variable displacement
 : [%ebp] %ebp B * ;       : +[%ebp] D [%ebp] ;          : >%ebp %ebp I ;
 : [%esi] %esi B * ;       : +[%esi] D [%esi] ;          : >%esi %esi I ;
 : [%edi] %edi B * ;       : +[%edi] D [%edi] ;          : >%edi %edi I ;
-
 
 
 SET-CURRENT
