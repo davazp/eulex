@@ -121,6 +121,46 @@ variable displacement
 : [%esi] %esi B * ;       : +[%esi] D [%esi] ;          : >%esi %esi I ;
 : [%edi] %edi B * ;       : +[%edi] D [%edi] ;          : >%edi %edi I ;
 
+\ Instructions
+
+variable inst#op
+variable instsize
+
+: operands ( u -- )
+    inst#op ! ;
+
+: 32bits 32 instsize ! ;
+: 16bits 16 instsize ! ;
+:  8bits  8 instsize ! ;
+
+\ Operands pattern maching
+variable dispatchp
+
+: 1-op-match ( op mask -- op flag )
+    2 pick and 0<> ;
+
+: 2-op-match ( op1 op2 mask1 mask2 -- op1 op2 flag )
+    3 pick and 0<> swap
+    5 pick and 0<> and ;
+
+: (dispatch) ( ... matcher xt -- )
+    >r execute r> swap if dispatchp on execute else drop then ;
+
+: 1-dispatch ['] 1-op-match swap (dispatch) ;
+: 2-dispatch ['] 2-op-match swap (dispatch) ;
+
+: dispatcher
+    dispatchp off ;
+
+: dispatch
+    dispatchp @ invert if
+        inst#op @ 1 = if 1-dispatch else 2-dispatch endif
+    endif ;
+
+: end-dispatcher
+    inst#op @ 2 = if 2drop endif 2drop
+    dispatchp @ abort" Operand pattern did not match." ;
+
 
 SET-CURRENT
 ( PREVIOUS )
