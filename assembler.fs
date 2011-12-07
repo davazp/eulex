@@ -21,19 +21,6 @@ vocabulary Assembler
 get-current
 also Assembler definitions
 
-\ IA-32 Instruction format
-\
-\     +--------+--------+--------+-------+--------------+------------+
-\     | Prefix | Opcode | ModR/M |  SIB  | Displacement |  Immediate |
-\     +--------+--------+--------+-------+--------------+------------+
-\                           /         \
-\                          /           \
-\     7    6 5          3 2    0    7      6 5     3 2     0
-\     +-----+------------+-----+    +-------+-------+------+
-\     | Mod | Reg/Opcode | R/M |    | Scale | Index | Base |
-\     +-----+------------+-----+    +-------+-------+------+
-\
-
 \ Display the hexadecimal values temporarily
 : emit-byte hex. ;
 : emit-word hex. ;
@@ -52,80 +39,41 @@ FA single-instruction cli
 FB single-instruction sti
 DECIMAL
 
-\ Operand number
+4 constant OPREG8
+5 constant OPREG16
+6 constant OPREG32
+7 constant OPSREG
 
-2 constant max-operands
-variable current-operand
+8 constant OPIMM
+16 constant OPMEM
 
-\ Get the current operand number.
-: op# current-operand @ ;
+: reg? over 4 and 0<> ;
+: reg32? over OPREG32 = ;
+: reg16? over OPREG16 = ;
+: reg8? over OPREG8 = ;
+: sreg? over OPSREG = ;
+: mem? over OPMEM = ;
+: imm? over OPIMM = ;
 
-\ Initialize the operand number to 1.
-: reset-op 1 current-operand ! ;
-latestxt execute
+\ Registers
 
-\ Increase the operand number by 1.
-: op 1 current-operand +! ;
+: reg8  create , does> @  OPREG8 swap ;
+: reg16 create , does> @ OPREG16 swap ;
+: reg32 create , does> @ OPREG32 swap ;
+: sreg  create , does> @  OPREGS swap ;
 
-\ Size and type of operands. The arrays OPERAND-SIZE and OPERAND-TYPE
-\ keep the size (in bits, 0=unknown size) and the type of each
-\ operand (immediate, register or memory reference).
-create operand-size max-operands cells allot
-create operand-type max-operands cells allot
-
-1 constant OPREG
-2 constant OPIMM
-3 constant OPMEM
-
-: reset-operands
-    operand-size max-operands cells 0 fill
-    operand-type max-operands cells 0 fill ;
-latestxt execute
-
-: opsize-index ( u -- addr )
-    1- cells operand-size + ;
-: optype-index ( u -- addr )
-    1- cells operand-type + ;
-
-: opsize! ( size -- )
-    op# opsize-index ! ;
-
-: optype! ( type -- )
-    op# optype-index ! ;
-
-: opsize ( u -- size )
-    opsize-index @ ;
-
-: optype ( u -- type )
-    optype-index @ ;
-
-\ Mark the type of the current operand to memory, register or
-\ immediate respectively.
-: mem OPMEM optype! ;
-: reg OPREG optype! ;
-: imm OPIMM optype! ;
-
-\ Mark the size of the current operand to N bits.
-: bits ( n -- ) opsize! ;
-
-
-\ General purpose registers
-
-: reg8  create , does> @  8 bits reg ;
-: reg16 create , does> @ 16 bits reg ;
-: reg32 create , does> @ 32 bits reg ;
-
-0 reg32 %eax     0 reg16 %ax     0 reg8 %al
-1 reg32 %ecx     1 reg16 %cx     1 reg8 %cl
-2 reg32 %edx     2 reg16 %dx     2 reg8 %dl
-3 reg32 %ebx     3 reg16 %bx     3 reg8 %bl
-4 reg32 %esp     4 reg16 %sp     4 reg8 %ah
-5 reg32 %ebp     5 reg16 %bp     5 reg8 %ch
+0 reg32 %eax     0 reg16 %ax     0 reg8 %al     0 sreg %es
+1 reg32 %ecx     1 reg16 %cx     1 reg8 %cl     1 sreg %cs
+2 reg32 %edx     2 reg16 %dx     2 reg8 %dl     2 sreg %ss
+3 reg32 %ebx     3 reg16 %bx     3 reg8 %bl     3 sreg %ds
+4 reg32 %esp     4 reg16 %sp     4 reg8 %ah     4 sreg %fs
+5 reg32 %ebp     5 reg16 %bp     5 reg8 %ch     5 sreg %gs
 6 reg32 %esi     6 reg16 %si     6 reg8 %dh
 7 reg32 %edi     7 reg16 %di     7 reg8 %bh
 
 \ Immediate values
-: # imm ;
+: # OPIMM ;
+
 
 \ Memory references
 
@@ -143,46 +91,30 @@ variable index
 variable scale
 variable displacement
 
-: B base ! ;
-: I index ! ;
-: S scale ! ;
+: * OPMEM 0 ;
 
+: check-reg32
+    reg32? invert abort" Addressing mode must use 32bits registers." ;
+
+: B check-reg32 nip base ! ;
+: I check-reg32 nip index ! ;
+: S scale ! ;
 : D displacement ! ;
 
 : 1* 1 S ;
 : 2* 2 S ;
 : 4* 4 S ;
 
-: reset-addressing-mode
-    -1 B        \ no base
-    -1 I        \ no index
-    1 S         \ 1 scale
-    0 D         \ 0 displacement
-;
+\ BASE                      BASE + DISP                   INDEX
+: [%eax] %eax B * ;       : +[%eax] D [%eax] ;          : >%eax %eax I ;
+: [%ecx] %ecx B * ;       : +[%ecx] D [%ecx] ;          : >%ecx %ecx I ;
+: [%edx] %edx B * ;       : +[%edx] D [%edx] ;          : >%edx %edx I ;
+: [%ebx] %ebx B * ;       : +[%ebx] D [%ebx] ;          : >%ebx %ebx I ;
+: [%esp] %esp B * ;       : +[%esp] D [%esp] ;          : >%esp %esp I ;
+: [%ebp] %ebp B * ;       : +[%ebp] D [%ebp] ;          : >%ebp %ebp I ;
+: [%esi] %esi B * ;       : +[%esi] D [%esi] ;          : >%esi %esi I ;
+: [%edi] %edi B * ;       : +[%edi] D [%edi] ;          : >%edi %edi I ;
 
-\ Error checking words
-
-\ Check that the number of arguments is correct, or signal an
-\ exception to interrupt the program.
-: operands ( u -- )
-    op# <> abort" Bad number of operands." ;
-
-: target-immediate?
-    2 optype OPIMM = abort" Immediate operand as target in an instruction." ;
-
-\ Instructions
-
-\ Reset the state before each instruction.
-: reset-state
-    reset-op reset-operands reset-addressing-mode ;
-
-\ Reset the state and check for some common errors.
-: x86-instruction
-    reset-state
-    target-immediate? ;
-
-: movl 2 operands x86-instruction
-    2drop ;
 
 
 SET-CURRENT
