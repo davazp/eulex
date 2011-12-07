@@ -21,6 +21,8 @@ vocabulary Assembler
 get-current
 also Assembler definitions
 
+: ` postpone postpone ; immediate
+
 \ Display the hexadecimal values temporarily
 : emit-byte hex. ;
 : emit-word hex. ;
@@ -39,34 +41,32 @@ FA single-instruction cli
 FB single-instruction sti
 DECIMAL
 
-01 constant OPREG8
-02 constant OPREG16
-04 constant OPREG32
-08 constant OPSREG
-16 constant OPIMM
-32 constant OPMEM
+01 constant OP-REG8
+02 constant OP-REG16
+04 constant OP-REG32
+08 constant OP-SREG
+16 constant OP-IMM
+32 constant OP-MEM
 
 \ Masks
-OPREG8 OPREG16 or OPREG32 or constant OPGREG
-OPGREG OPSREG  or constant OPREG
+OP-REG8 OP-REG16 or OP-REG32 or constant OP-REG
 
 \ These words check for the type of the operand in the data
 \ stack. They do _NOT_ consuming the operand, however.
-: reg? over OPREG and 0<> ;
-: reg32? over OPREG32 = ;
-: reg16? over OPREG16 = ;
-: reg8? over OPREG8 = ;
-: sreg? over OPSREG = ;
-: greg? over OPGREG and 0<> ;
-: mem? over OPMEM = ;
-: imm? over OPIMM = ;
+: reg? over OP-REG and 0<> ;
+: reg32? over OP-REG32 = ;
+: reg16? over OP-REG16 = ;
+: reg8? over OP-REG8 = ;
+: sreg? over OP-SREG = ;
+: mem? over OP-MEM = ;
+: imm? over OP-IMM = ;
 
 \ Registers
 
-: reg8  create , does> @  OPREG8 swap ;
-: reg16 create , does> @ OPREG16 swap ;
-: reg32 create , does> @ OPREG32 swap ;
-: sreg  create , does> @  OPREGS swap ;
+: reg8  create , does> @  OP-REG8 swap ;
+: reg16 create , does> @ OP-REG16 swap ;
+: reg32 create , does> @ OP-REG32 swap ;
+: sreg  create , does> @  OP-SREG swap ;
 
 0 reg32 %eax     0 reg16 %ax     0 reg8 %al     0 sreg %es
 1 reg32 %ecx     1 reg16 %cx     1 reg8 %cl     1 sreg %cs
@@ -78,7 +78,7 @@ OPGREG OPSREG  or constant OPREG
 7 reg32 %edi     7 reg16 %di     7 reg8 %bh
 
 \ Immediate values
-: # OPIMM ;
+: # OP-IMM ;
 
 
 \ Memory references
@@ -105,36 +105,36 @@ variable displacement
 : S scale ! ;
 : D displacement ! ;
 
-: PTR D OPMEM 0 ;
+: #MEM OP-MEM 0 ;
+: PTR D #MEM ;
 
 : 1* 1 S ;
 : 2* 2 S ;
 : 4* 4 S ;
 
 \ BASE                      BASE + DISP                   INDEX
-: [%eax] %eax B * ;       : +[%eax] D [%eax] ;          : >%eax %eax I ;
-: [%ecx] %ecx B * ;       : +[%ecx] D [%ecx] ;          : >%ecx %ecx I ;
-: [%edx] %edx B * ;       : +[%edx] D [%edx] ;          : >%edx %edx I ;
-: [%ebx] %ebx B * ;       : +[%ebx] D [%ebx] ;          : >%ebx %ebx I ;
-: [%esp] %esp B * ;       : +[%esp] D [%esp] ;          : >%esp %esp I ;
-: [%ebp] %ebp B * ;       : +[%ebp] D [%ebp] ;          : >%ebp %ebp I ;
-: [%esi] %esi B * ;       : +[%esi] D [%esi] ;          : >%esi %esi I ;
-: [%edi] %edi B * ;       : +[%edi] D [%edi] ;          : >%edi %edi I ;
+: [%eax] %eax B #MEM ;       : +[%eax] D [%eax] ;          : >%eax %eax I ;
+: [%ecx] %ecx B #MEM ;       : +[%ecx] D [%ecx] ;          : >%ecx %ecx I ;
+: [%edx] %edx B #MEM ;       : +[%edx] D [%edx] ;          : >%edx %edx I ;
+: [%ebx] %ebx B #MEM ;       : +[%ebx] D [%ebx] ;          : >%ebx %ebx I ;
+: [%esp] %esp B #MEM ;       : +[%esp] D [%esp] ;          : >%esp %esp I ;
+: [%ebp] %ebp B #MEM ;       : +[%ebp] D [%ebp] ;          : >%ebp %ebp I ;
+: [%esi] %esi B #MEM ;       : +[%esi] D [%esi] ;          : >%esi %esi I ;
+: [%edi] %edi B #MEM ;       : +[%edi] D [%edi] ;          : >%edi %edi I ;
 
 \ Instructions
 
 variable inst#op
 variable instsize
 
-: operands ( u -- )
-    inst#op ! ;
+: operands inst#op ! ;
+' operans alias operand
 
 : 32bits 32 instsize ! ;
 : 16bits 16 instsize ! ;
 :  8bits  8 instsize ! ;
 
 \ Operands pattern maching
-variable dispatchp
 
 : 1-op-match ( op mask -- op flag )
     2 pick and 0<> ;
@@ -143,23 +143,58 @@ variable dispatchp
     3 pick and 0<> swap
     5 pick and 0<> and ;
 
-: (dispatch) ( ... matcher xt -- )
-    >r execute r> swap if dispatchp on execute else drop then ;
+: op-match ( ops .. masks ... -- ops .. flag )
+    inst#op @ 1 = if 1-op-match else 2-op-match then ;
 
-: 1-dispatch ['] 1-op-match swap (dispatch) ;
-: 2-dispatch ['] 2-op-match swap (dispatch) ;
+' OP-REG16 alias reg16
+' OP-REG32 alias reg32
+' OP-SREG  alias sreg
+' OP-IMM   alias imm
+' OP-MEM   alias mem
+' OP-REG   alias reg
 
-: dispatcher
-    dispatchp off ;
+: (no-dispatch)
+    true abort" The instruction does not support that operands." ;
 
-: dispatch
-    dispatchp @ invert if
-        inst#op @ 1 = if 1-dispatch else 2-dispatch endif
-    endif ;
+0 constant begin-dispatch immediate
 
-: end-dispatcher
-    inst#op @ 2 = if 2drop endif 2drop
-    dispatchp @ abort" Operand pattern did not match." ;
+: dispatch:
+    1+ >r
+    ` op-match ` if
+    r>
+; immediate compile-only
+
+: ::
+    >r ` else r>
+; immediate compile-only
+
+: end-dispatch
+    ` (no-dispatch)
+    0 ?do ` then loop
+; immediate compile-only
+
+
+\ MOV
+
+: mov-reg->reg
+    2drop 2drop ;
+: mov-mem->reg
+    2drop 2drop ;
+: mov-reg->mem
+    2drop 2drop ;
+: mov-imm->reg
+    2drop 2drop ;
+: mov-imm->mem
+    2drop 2drop ;
+
+: mov 2 operands
+    begin-dispatch
+    reg reg dispatch: mov-reg->reg ::
+    mem reg dispatch: mov-mem->reg ::
+    reg mem dispatch: mov-reg->mem ::
+    imm reg dispatch: mov-imm->reg ::
+    imm mem dispatch: mov-imm->mem ::
+    end-dispatch ;
 
 
 SET-CURRENT
