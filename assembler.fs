@@ -48,9 +48,6 @@ DECIMAL
 16 constant OP-IMM
 32 constant OP-MEM
 
-\ Masks
-OP-REG8 OP-REG16 or OP-REG32 or constant OP-REG
-
 \ These words check for the type of the operand in the data
 \ stack. They do _NOT_ consuming the operand, however.
 : reg? over OP-REG and 0<> ;
@@ -98,7 +95,7 @@ variable scale
 variable displacement
 
 : check-reg32
-    reg32? invert abort" Addressing mode must use 32bits registers." ;
+    over OP-REG32 and abort" Addressing mode must use 32bits registers." ;
 
 : B check-reg32 nip base ! ;
 : I check-reg32 nip index ! ;
@@ -146,12 +143,20 @@ variable instsize
 : op-match ( ops .. masks ... -- ops .. flag )
     inst#op @ 1 = if 1-op-match else 2-op-match then ;
 
+\ Patterns for the dispatcher
+' OP-REG8  alias reg8
 ' OP-REG16 alias reg16
 ' OP-REG32 alias reg32
 ' OP-SREG  alias sreg
 ' OP-IMM   alias imm
 ' OP-MEM   alias mem
 ' OP-REG   alias reg
+\ Multicase patterns
+-1 constant any
+reg8 reg16 or reg32 or constant reg
+reg8  mem or constant r/m8
+reg16 mem or constant r/m16
+reg32 mem or constant r/m32
 
 : (no-dispatch)
     true abort" The instruction does not support that operands." ;
