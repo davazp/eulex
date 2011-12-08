@@ -102,9 +102,10 @@ variable displacement
 : #MEM OP-MEM 0 ;
 : PTR D #MEM ;
 
-: 1* 1 S ;
-: 2* 2 S ;
-: 4* 4 S ;
+: 1* 0 S ;
+: 2* 1 S ;
+: 4* 2 S ;
+: 8* 3 S ;
 
 \ BASE                      BASE + DISP                   INDEX
 : [%eax] %eax B #MEM ;       : +[%eax] D [%eax] ;          : >%eax %eax I ;
