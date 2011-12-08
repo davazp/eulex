@@ -200,4 +200,10 @@ variable instsize
 SET-CURRENT
 ( PREVIOUS )
 
+
+\ Local Variables:
+\ forth-local-words: ((("begin-dispatch" "end-dispatch" "dispatch:" "::")
+\                      compile-only (font-lock-keyword-face . 2)))
+\ End:
+
 \ assembler.fs ends here
