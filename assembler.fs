@@ -41,22 +41,15 @@ FA single-instruction cli
 FB single-instruction sti
 DECIMAL
 
-01 constant OP-REG8
-02 constant OP-REG16
-04 constant OP-REG32
-08 constant OP-SREG
-16 constant OP-IMM
-32 constant OP-MEM
-
-\ These words check for the type of the operand in the data
-\ stack. They do _NOT_ consuming the operand, however.
-: reg? over OP-REG and 0<> ;
-: reg32? over OP-REG32 = ;
-: reg16? over OP-REG16 = ;
-: reg8? over OP-REG8 = ;
-: sreg? over OP-SREG = ;
-: mem? over OP-MEM = ;
-: imm? over OP-IMM = ;
+1 constant OP-AL
+2 constant OP-AX
+4 constant OP-EAX
+8 constant OP-REG8
+16 constant OP-REG16
+32 constant OP-REG32
+64 constant OP-SREG
+128 constant OP-IMM
+256 constant OP-MEM
 
 \ Registers
 
@@ -65,7 +58,11 @@ DECIMAL
 : reg32 create , does> @ OP-REG32 swap ;
 : sreg  create , does> @  OP-SREG swap ;
 
-0 reg32 %eax     0 reg16 %ax     0 reg8 %al     0 sreg %es
+: %al  OP-AL OP-REG8 or 0 ;
+: %ax  OP-AX OP-REG16 or 0 ;
+: %eax OP-EAX OP-REG32 or 0 ;
+
+( 0 reg32 %eax   0 reg16 %ax     0 reg8 %al )   0 sreg %es
 1 reg32 %ecx     1 reg16 %cx     1 reg8 %cl     1 sreg %cs
 2 reg32 %edx     2 reg16 %dx     2 reg8 %dl     2 sreg %ss
 3 reg32 %ebx     3 reg16 %bx     3 reg8 %bl     3 sreg %ds
@@ -144,15 +141,18 @@ variable instsize
     inst#op @ 1 = if 1-op-match else 2-op-match then ;
 
 \ Patterns for the dispatcher
+' OP-AL    alias al
+' OP-AX    alias ax
+' OP-EAX   alias eax
 ' OP-REG8  alias reg8
 ' OP-REG16 alias reg16
 ' OP-REG32 alias reg32
 ' OP-SREG  alias sreg
 ' OP-IMM   alias imm
 ' OP-MEM   alias mem
-' OP-REG   alias reg
 \ Multicase patterns
 -1 constant any
+al ax or eax or constant acc
 reg8 reg16 or reg32 or constant reg
 reg8  mem or constant r/m8
 reg16 mem or constant r/m16
@@ -194,6 +194,8 @@ reg32 mem or constant r/m32
 
 : mov 2 operands
     begin-dispatch
+    mem acc dispatch: ::
+    acc mem dispatch: ::
     reg reg dispatch: mov-reg->reg ::
     mem reg dispatch: mov-mem->reg ::
     reg mem dispatch: mov-reg->mem ::
