@@ -128,7 +128,7 @@ variable inst#op
 variable instsize
 
 : operands inst#op ! ;
-' operans alias operand
+' operands alias operand
 
 : 32bits 32 instsize ! ;
 : 16bits 16 instsize ! ;
