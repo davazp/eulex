@@ -288,7 +288,7 @@ variable disp/imm-size
 
 : flush-instruction
     \ Prefixes
-    inst-size-override? if $66 byte endif
+    inst-size-override? @ if $66 byte endif
     \ Opcode, modr/m and sib
     inst-opcode @ inst-opcode-size @ flush-value
     inst-modr/m @ inst-modr/m-size @ flush-value
@@ -328,7 +328,6 @@ variable disp/imm-size
     nip ;
 
 
-
 \ Check that the size of both operands is the same or signal an error.
 : same-size
     begin-dispatch
@@ -350,6 +349,7 @@ variable disp/imm-size
     r/m reg dispatch: ::
     reg r/m dispatch: ::
     end-dispatch
+    flush-instruction
     asmfd close-file throw ;
 
 
