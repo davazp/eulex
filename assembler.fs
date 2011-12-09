@@ -187,7 +187,7 @@ reg32 mem32 or constant r/m32
 reg mem or constant r/m
 
 : (no-dispatch)
-    true abort" The instruction does not support that operands." ;
+    true abort" The instruction does not support these operands." ;
 
 0 constant begin-dispatch immediate
 
@@ -413,7 +413,7 @@ latestxt execute
      r/m8  r/m8 dispatch: ::
     r/m16 r/m16 dispatch: ::
     r/m32 r/m32 dispatch: ::
-    true abort" The size of the operands must match." ::
+    true abort" The size of the operands must match."
     end-dispatch ;
 
 : mov-imm-reg
@@ -433,15 +433,27 @@ latestxt execute
     imm mem32 dispatch: 1 |opcode 2DROP imm32! DROP ::
     end-dispatch ;
 
+: mov-reg-mem
+    size-override?
+    encode-mref
+    begin-dispatch
+    any r/m8  dispatch: 0 |opcode ::
+    any r/m16 dispatch: 1 |opcode ::
+    any r/m32 dispatch: 1 |opcode ::
+    end-dispatch
+    begin-dispatch
+    reg r/m dispatch: 2DROP ::
+    r/m reg dispatch: 2NIP 2 |opcode ::
+    end-dispatch
+    op/reg! DROP ;
+
+
 : mov 2 operands same-size
     s" forth.core" w/o bin create-file throw to asmfd
     begin-dispatch
     imm reg dispatch: $B0 |opcode mov-imm-reg ::
     imm mem dispatch: $C6 |opcode mov-imm-mem ::
-    mem acc dispatch: ::
-    acc mem dispatch: ::
-    r/m reg dispatch: ::
-    reg r/m dispatch: ::
+    r/m r/m dispatch: $88 |opcode mov-reg-mem ::
     end-dispatch
     flush-instruction
     asmfd close-file throw ;
