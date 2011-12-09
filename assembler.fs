@@ -106,7 +106,7 @@ variable displacement
 : reset-addressing-mode
     -1 base !
     -1 index !
-    0 scale !
+    1 scale !
     0 displacement ! ;
 
 : check-reg32
@@ -124,10 +124,10 @@ variable displacement
 : #PTR32 D OP-MEM32 0 ;
 ' #PTR32 alias #PTR
 
-: 1* 0 S ;
-: 2* 1 S ;
-: 4* 2 S ;
-: 8* 3 S ;
+: 1* 1 S ;
+: 2* 2 S ;
+: 4* 4 S ;
+: 8* 8 S ;
 
 \ BASE                               BASE + DISP                   INDEX
 : [%eax] %eax B OP-MEM32 0 ;       : +[%eax] D [%eax] ;          : >%eax %eax I ;
@@ -220,16 +220,16 @@ variable inst-modr/m
 variable inst-modr/m-size
 variable inst-sib
 variable inst-sib-size
-variable inst-displacement
-variable inst-displacement-size
-variable inst-immediate
-variable inst-immediate-size
+variable inst-disp
+variable inst-disp-size
+variable inst-imm
+variable inst-imm-size
 
 \ Initialize the assembler state for a new instruction. It must be
 \ called in the beginning of each instruction.
 
 : 0! 0 swap ! ;
-: instruction
+: reset-instruction
     reset-addressing-mode
     inst-size-override? off
     inst-opcode 0!
@@ -238,10 +238,11 @@ variable inst-immediate-size
     inst-modr/m-size 0!
     inst-sib 0!
     inst-sib-size 0!
-    inst-displacement 0!
-    inst-displacement-size 0!
-    inst-immediate 0!
-    inst-immediate-size 0! ;
+    inst-disp 0!
+    inst-disp-size 0!
+    inst-imm 0!
+    inst-imm-size 0! ;
+latestxt execute
 
 \ Words to fill instruction's data
 
@@ -252,30 +253,41 @@ variable inst-immediate-size
 : |opcode ( u -- )
     inst-opcode @ or inst-opcode ! ;
 
-\ Set some bits and mark as present the ModR/M byte.
-: |modr/m ( u -- )
-    1 inst-modr/m-size !
-    inst-modr/m @ or inst-modr/m ! ;
+: clear-bits ( mask value -- value* )
+    swap invert and ;
 
-\ Set some bits and mark as present the SIB byte.
-: |sib ( u -- )
-    1 inst-sib-size !
-    inst-sib @ or inst-sib ! ;
+: set-bits! ( x mask addr -- )
+    dup >r @ over swap clear-bits -rot and or r> ! ;
 
-variable disp/imm-size
-: 32bits 4 disp/imm-size ! ;
-: 16bits 2 disp/imm-size ! ;
-:  8bits 1 disp/imm-size ! ;
+: set-modr/m-bits!
+    inst-modr/m set-bits!
+    1 inst-modr/m-size ! ;
+
+: set-sib-bits!
+    inst-sib set-bits!
+    1 inst-sib-size ! ;
+
+: mod!    6 lshift %11000000 set-modr/m-bits! ;
+: op/reg! 3 lshift %00111000 set-modr/m-bits! ;
+: r/m!             %00000111 set-modr/m-bits! ;
+
+: s! 6 lshift %11000000 set-sib-bits! ;
+: i! 3 lshift %00111000 set-sib-bits! ;
+: b!          %00000111 set-sib-bits! ;
 
 \ Set the displacement field.
-: displacement!
-    disp/imm-size @ inst-displacement-size !
-    inst-displacement ! ;
+: disp! inst-disp ! ;
+: disp-size! inst-disp-size ! ;
+: disp8! disp! 1 disp-size! ;
+: disp16! disp! 2 disp-size! ;
+: disp32! disp! 4 disp-size! ;
 
 \ Set the immediate field.
-: immediate!
-    disp/imm-size @ inst-immediate-size !
-    inst-immediate ! ;
+: imm! inst-imm ! ;
+: imm-size! inst-imm-size ! ;
+: imm8! imm! 1 imm-size! ;
+: imm16! imm! 2 imm-size! ;
+: imm32! imm! 4 imm-size! ;
 
 : flush-value ( x size -- )
     case
@@ -294,10 +306,9 @@ variable disp/imm-size
     inst-modr/m @ inst-modr/m-size @ flush-value
     inst-sib    @ inst-sib-size    @ flush-value
     \ Displacement and immediate
-    inst-displacement @ inst-displacement-size @ flush-value
-    inst-immediate    @ inst-immediate-size    @ flush-value ;
-
-
+    inst-disp @ inst-disp-size @ flush-value
+    inst-imm  @ inst-imm-size  @ flush-value
+    reset-instruction ;
 
 \ Set size-override prefix if some of the operands is a r/m16.
 : size-override?
@@ -307,15 +318,6 @@ variable disp/imm-size
     exit
     end-dispatch ;
 
-: inst-imm-reg
-    size-override?
-    begin-dispatch
-    imm reg8  dispatch: |opcode $0 |opcode DROP  8bits immediate! DROP ::
-    imm reg16 dispatch: |opcode $8 |opcode DROP 16bits immediate! DROP ::
-    imm reg32 dispatch: |opcode $8 |opcode DROP 32bits immediate! DROP ::
-    end-dispatch ;
-
-
 : <=x<= ( n1 n2 n3 -- n1<=n2<=n3 )
     over -rot <= >r <= r> and ;
 
@@ -324,10 +326,84 @@ variable disp/imm-size
     ?dup 0= if
         0
     else
-        -128 over 127 <=x<= if 1 else 2 then
+        -128 swap 127 <=x<= if 1 else 2 then
     endif ;
 
+: scale>s ( scale -- s )
+    case
+        1 of 0 endof
+        2 of 1 endof
+        4 of 2 endof
+        8 of 3 endof
+        true s" Bad scale value."
+    endcase ;
 
+
+\ Memory reference encoding
+
+: null-displacement?
+    displacement @ 0= ;
+
+\ Encode the displacement in the displacement field and the mod field
+\ of the modr/m byte. It is a general encoding which may be necessary
+\ to modify for special rules.
+: encode-displacement
+    displacement @ dup disp>mod dup mod!
+    case
+        0 of 0 disp-size! drop    endof
+        1 of 1 disp-size! disp8!  endof
+        2 of 4 disp-size! disp32! endof
+    endcase ;
+
+\ Encode memory references where there is not an index register. It
+\ covers memory references of the form BASE + DISP, where BASE and
+\ DISP are optional.
+: encode-non-indexed-mref
+    scale @ 1 <> abort" Scaled memory reference without index."
+    base @ -1 = if
+        5 r/m! displacement @ disp32!   \ only displacement
+    else
+        encode-displacement
+        \ Special case: the ModR/M byte cannot encode [%EBP] as it is
+        \ used to encode `only displacement' memory references, so we
+        \ force a 8bits zero displacement.
+        %ebp nip base @ = null-displacement? and if 1 mod! 0 disp8! endif
+        \ Encode the base register in the ModR/M byte. If it is %esp,
+        \ it requires to include the SIB byte.
+        base @ r/m!
+        \ NOTE: 4 means no index in SIB.
+        %esp nip base @ = if base @ B! 4 I! endif
+    endif ;
+
+\ Encode memory references with an index register. It is encoded to
+\ the SIB byte generally.
+: encode-indexed-mref
+    base @ -1 = if
+        \ Special case: INDEX*SCALE + DISP. If SCALE is 1, we can
+        \ encode the memory reference as a non-indexed. Otherwise, we
+        \ have to force disp to 32bits.
+        scale @ 1 = if
+            index @ base ! -1 index ! encode-non-indexed-mref
+        else
+            0 mod! 4 r/m!
+            scale @ scale>s s! index @ I! 5 B!
+            displacement @ disp32!
+        endif
+    else
+        \ More general addressing mode. We write R/M to 4 to specify a
+        \ SIB byte, and write scale, index and base to it.
+        encode-displacement 4 r/m!
+        scale @ scale>s s! index @ i! base @ b!
+    endif ;
+
+\ Encode a general memory reference from the variables BASE, INDEX,
+\ SCALE and DISPLACEMENT to the current instruction.
+: encode-mref
+    index @ -1 = if
+        encode-non-indexed-mref
+    else
+        encode-indexed-mref
+    endif ;
 
 
 \ Check that the size of both operands is the same or signal an error.
@@ -337,15 +413,31 @@ variable disp/imm-size
      r/m8  r/m8 dispatch: ::
     r/m16 r/m16 dispatch: ::
     r/m32 r/m32 dispatch: ::
-      any   any dispatch: true
-    abort" The size of the operands must match." ::
+    true abort" The size of the operands must match." ::
     end-dispatch ;
 
-: mov 2 operands same-size instruction
+: mov-imm-reg
+    size-override?
+    begin-dispatch
+    imm reg8  dispatch: |opcode $0 |opcode DROP  imm8! DROP ::
+    imm reg16 dispatch: |opcode $8 |opcode DROP imm16! DROP ::
+    imm reg32 dispatch: |opcode $8 |opcode DROP imm32! DROP ::
+    end-dispatch ;
+
+: mov-imm-mem
+    size-override?
+    encode-mref
+    begin-dispatch
+    imm mem8  dispatch: 0 |opcode 2DROP imm8!  DROP ::
+    imm mem16 dispatch: 1 |opcode 2DROP imm16! DROP ::
+    imm mem32 dispatch: 1 |opcode 2DROP imm32! DROP ::
+    end-dispatch ;
+
+: mov 2 operands same-size
     s" forth.core" w/o bin create-file throw to asmfd
     begin-dispatch
-    imm reg dispatch: $B0 |opcode inst-imm-reg ::
-    imm r/m dispatch: ::
+    imm reg dispatch: $B0 |opcode mov-imm-reg ::
+    imm mem dispatch: $C6 |opcode mov-imm-mem ::
     mem acc dispatch: ::
     acc mem dispatch: ::
     r/m reg dispatch: ::
