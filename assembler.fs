@@ -21,15 +21,25 @@ vocabulary Assembler
 get-current
 also Assembler definitions
 
-: ` postpone postpone ; immediate
+DECIMAL
 
-\ Display the hexadecimal values temporarily
-: emit-byte hex. ;
-: emit-word hex. ;
+\ Assembler output
+
+0 value asmfd
+
+\ Emit the low byte of a word without pop it
+: lb dup 255 and asmfd emit-file throw asmfd flush-file throw ;
+\ Shift 8 bits to the right
+: 8>> 8 rshift ;
+
+: byte lb drop ;                       (  8 bits )
+: word lb 8>> lb drop ;                ( 16 bits )
+: dword lb 8>> lb 8>> lb 8>> lb drop ; ( 32 bits )
+
 
 \ Instructions with no operands
 : single-instruction ( opcode -- )
-    create c, does> c@ emit-byte ;
+    create c, does> c@ byte ;
 
 HEX
 60 single-instruction pusha
@@ -49,7 +59,9 @@ DECIMAL
 32 constant OP-REG32
 64 constant OP-SREG
 128 constant OP-IMM
-256 constant OP-MEM
+256 constant OP-MEM8
+512 constant OP-MEM16
+1024 constant OP-MEM32
 
 \ Registers
 
@@ -91,43 +103,54 @@ variable index
 variable scale
 variable displacement
 
-: check-reg32
-    over OP-REG32 and abort" Addressing mode must use 32bits registers." ;
+: reset-addressing-mode
+    -1 base !
+    -1 index !
+    0 scale !
+    0 displacement ! ;
 
-: B check-reg32 nip base ! ;
-: I check-reg32 nip index ! ;
+: check-reg32
+    over OP-REG32 and 0=
+    abort" Addressing mode must use 32bits registers." ;
+
+: B check-reg32 base ! DROP ;
+: I check-reg32 index ! DROP ;
 : S scale ! ;
 : D displacement ! ;
 
-: #MEM OP-MEM 0 ;
-: PTR D #MEM ;
+\ For addressing modes without base
+: #PTR8 D OP-MEM8 0 ;
+: #PTR16 D OP-MEM16 0 ;
+: #PTR32 D OP-MEM32 0 ;
+' #PTR32 alias #PTR
 
 : 1* 0 S ;
 : 2* 1 S ;
 : 4* 2 S ;
 : 8* 3 S ;
 
-\ BASE                      BASE + DISP                   INDEX
-: [%eax] %eax B #MEM ;       : +[%eax] D [%eax] ;          : >%eax %eax I ;
-: [%ecx] %ecx B #MEM ;       : +[%ecx] D [%ecx] ;          : >%ecx %ecx I ;
-: [%edx] %edx B #MEM ;       : +[%edx] D [%edx] ;          : >%edx %edx I ;
-: [%ebx] %ebx B #MEM ;       : +[%ebx] D [%ebx] ;          : >%ebx %ebx I ;
-: [%esp] %esp B #MEM ;       : +[%esp] D [%esp] ;          : >%esp %esp I ;
-: [%ebp] %ebp B #MEM ;       : +[%ebp] D [%ebp] ;          : >%ebp %ebp I ;
-: [%esi] %esi B #MEM ;       : +[%esi] D [%esi] ;          : >%esi %esi I ;
-: [%edi] %edi B #MEM ;       : +[%edi] D [%edi] ;          : >%edi %edi I ;
+\ BASE                               BASE + DISP                   INDEX
+: [%eax] %eax B OP-MEM32 0 ;       : +[%eax] D [%eax] ;          : >%eax %eax I ;
+: [%ecx] %ecx B OP-MEM32 0 ;       : +[%ecx] D [%ecx] ;          : >%ecx %ecx I ;
+: [%edx] %edx B OP-MEM32 0 ;       : +[%edx] D [%edx] ;          : >%edx %edx I ;
+: [%ebx] %ebx B OP-MEM32 0 ;       : +[%ebx] D [%ebx] ;          : >%ebx %ebx I ;
+: [%esp] %esp B OP-MEM32 0 ;       : +[%esp] D [%esp] ;          ( %esp is not a valid index )
+: [%ebp] %ebp B OP-MEM32 0 ;       : +[%ebp] D [%ebp] ;          : >%ebp %ebp I ;
+: [%esi] %esi B OP-MEM32 0 ;       : +[%esi] D [%esi] ;          : >%esi %esi I ;
+: [%edi] %edi B OP-MEM32 0 ;       : +[%edi] D [%edi] ;          : >%edi %edi I ;
 
-\ Instructions
+\ Override size of the memory reference
+: PTR8 NIP OP-MEM8 SWAP ;
+: PTR16 NIP OP-MEM16 SWAP ;
+: PTR32 NIP OP-MEM32 SWAP ; \ Default
+
+
+\ PATTERN-MACHING
 
 variable inst#op
-variable instsize
 
 : operands inst#op ! ;
 ' operands alias operand
-
-: 32bits 32 instsize ! ;
-: 16bits 16 instsize ! ;
-:  8bits  8 instsize ! ;
 
 \ Operands pattern maching
 
@@ -150,19 +173,25 @@ variable instsize
 ' OP-REG32 alias reg32
 ' OP-SREG  alias sreg
 ' OP-IMM   alias imm
-' OP-MEM   alias mem
+' OP-MEM8  alias mem8
+' OP-MEM16 alias mem16
+' OP-MEM32 alias mem32
 \ Multicase patterns
 -1 constant any
 al ax or eax or constant acc
 reg8 reg16 or reg32 or constant reg
-reg8  mem or constant r/m8
-reg16 mem or constant r/m16
-reg32 mem or constant r/m32
+mem8 mem16 or mem32 or constant mem
+reg8 mem8 or constant r/m8
+reg16 mem16 or constant r/m16
+reg32 mem32 or constant r/m32
+reg mem or constant r/m
 
 : (no-dispatch)
     true abort" The instruction does not support that operands." ;
 
 0 constant begin-dispatch immediate
+
+: ` postpone postpone ; immediate
 
 : dispatch:
     1+ >r
@@ -180,29 +209,148 @@ reg32 mem or constant r/m32
 ; immediate compile-only
 
 
-\ MOV
+\ INSTRUCTION ENCODING
 
-: mov-reg->reg
-    2drop 2drop ;
-: mov-mem->reg
-    2drop 2drop ;
-: mov-reg->mem
-    2drop 2drop ;
-: mov-imm->reg
-    2drop 2drop ;
-: mov-imm->mem
-    2drop 2drop ;
+\ Parts of the instruction and the size in bytes of them in the
+\ current instruction. A size of zero means this part is not present.
+variable inst-size-override?
+variable inst-opcode
+variable inst-opcode-size
+variable inst-modr/m
+variable inst-modr/m-size
+variable inst-sib
+variable inst-sib-size
+variable inst-displacement
+variable inst-displacement-size
+variable inst-immediate
+variable inst-immediate-size
 
-: mov 2 operands
+\ Initialize the assembler state for a new instruction. It must be
+\ called in the beginning of each instruction.
+
+: 0! 0 swap ! ;
+: instruction
+    reset-addressing-mode
+    inst-size-override? off
+    inst-opcode 0!
+    1 inst-opcode-size !
+    inst-modr/m 0!
+    inst-modr/m-size 0!
+    inst-sib 0!
+    inst-sib-size 0!
+    inst-displacement 0!
+    inst-displacement-size 0!
+    inst-immediate 0!
+    inst-immediate-size 0! ;
+
+\ Words to fill instruction's data
+
+\ Set the size-override prefix.
+: size-override inst-size-override? on ;
+
+\ Set some bits in the opcode field.
+: |opcode ( u -- )
+    inst-opcode @ or inst-opcode ! ;
+
+\ Set some bits and mark as present the ModR/M byte.
+: |modr/m ( u -- )
+    1 inst-modr/m-size !
+    inst-modr/m @ or inst-modr/m ! ;
+
+\ Set some bits and mark as present the SIB byte.
+: |sib ( u -- )
+    1 inst-sib-size !
+    inst-sib @ or inst-sib ! ;
+
+variable disp/imm-size
+: 32bits 4 disp/imm-size ! ;
+: 16bits 2 disp/imm-size ! ;
+:  8bits 1 disp/imm-size ! ;
+
+\ Set the displacement field.
+: displacement!
+    disp/imm-size @ inst-displacement-size !
+    inst-displacement ! ;
+
+\ Set the immediate field.
+: immediate!
+    disp/imm-size @ inst-immediate-size !
+    inst-immediate ! ;
+
+: flush-value ( x size -- )
+    case
+        0 of drop  endof
+        1 of byte  endof
+        2 of word  endof
+        4 of dword endof
+        true abort" Invalid number of bytes."
+    endcase ;
+
+: flush-instruction
+    \ Prefixes
+    inst-size-override? if $66 byte endif
+    \ Opcode, modr/m and sib
+    inst-opcode @ inst-opcode-size @ flush-value
+    inst-modr/m @ inst-modr/m-size @ flush-value
+    inst-sib    @ inst-sib-size    @ flush-value
+    \ Displacement and immediate
+    inst-displacement @ inst-displacement-size @ flush-value
+    inst-immediate    @ inst-immediate-size    @ flush-value ;
+
+
+
+\ Set size-override prefix if some of the operands is a r/m16.
+: size-override?
     begin-dispatch
+    any r/m16 dispatch: size-override ::
+    r/m16 any dispatch: size-override ::
+    exit
+    end-dispatch ;
+
+: inst-imm-reg
+    size-override?
+    begin-dispatch
+    imm reg8  dispatch: |opcode $0 |opcode DROP  8bits immediate! DROP ::
+    imm reg16 dispatch: |opcode $8 |opcode DROP 16bits immediate! DROP ::
+    imm reg32 dispatch: |opcode $8 |opcode DROP 32bits immediate! DROP ::
+    end-dispatch ;
+
+
+
+: <=x<= ( n1 n2 n3 -- n1<=n2<=n3 )
+    over -rot <= >r <= r> and ;
+
+\ Return the Mod value for a given displacement.
+: disp>mod ( n -- 0|1|2 )
+    dup 0= if 0 else
+        -128 over 127 <=x<= if 1 else 2 then
+    endif
+    nip ;
+
+
+
+\ Check that the size of both operands is the same or signal an error.
+: same-size
+    begin-dispatch
+      imm   any dispatch: ::
+     r/m8  r/m8 dispatch: ::
+    r/m16 r/m16 dispatch: ::
+    r/m32 r/m32 dispatch: ::
+      any   any dispatch: true
+    abort" The size of the operands must match." ::
+    end-dispatch ;
+
+: mov 2 operands same-size instruction
+    s" forth.core" w/o bin create-file throw to asmfd
+    begin-dispatch
+    imm reg dispatch: $B0 |opcode inst-imm-reg ::
+    imm r/m dispatch: ::
     mem acc dispatch: ::
     acc mem dispatch: ::
-    reg reg dispatch: mov-reg->reg ::
-    mem reg dispatch: mov-mem->reg ::
-    reg mem dispatch: mov-reg->mem ::
-    imm reg dispatch: mov-imm->reg ::
-    imm mem dispatch: mov-imm->mem ::
-    end-dispatch ;
+    r/m reg dispatch: ::
+    reg r/m dispatch: ::
+    end-dispatch
+    asmfd close-file throw ;
 
 
 SET-CURRENT
