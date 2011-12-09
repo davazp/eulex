@@ -316,16 +316,18 @@ variable disp/imm-size
     end-dispatch ;
 
 
-
 : <=x<= ( n1 n2 n3 -- n1<=n2<=n3 )
     over -rot <= >r <= r> and ;
 
-\ Return the Mod value for a given displacement.
+\ return the mod value for a given displacement.
 : disp>mod ( n -- 0|1|2 )
-    dup 0= if 0 else
+    ?dup 0= if
+        0
+    else
         -128 over 127 <=x<= if 1 else 2 then
-    endif
-    nip ;
+    endif ;
+
+
 
 
 \ Check that the size of both operands is the same or signal an error.
