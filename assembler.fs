@@ -193,14 +193,10 @@ variable inst-imm               variable inst-imm#
 \ Set the displacement field.
 : disp! inst-disp ! ;           : disp#! inst-disp# ! ;
 : disp8! disp! 1 disp#! ;
-: disp16! disp! 2 disp#! ;
 : disp32! disp! 4 disp#! ;
 
 \ Set the immediate field.
 : imm! inst-imm ! ;             : imm#! inst-imm# ! ;
-: imm8! imm! 1 imm#! ;
-: imm16! imm! 2 imm#! ;
-: imm32! imm! 4 imm#! ;
 
 : flush-value ( x size -- )
     case
@@ -397,16 +393,16 @@ reg mem or             constant r/m
     exit
     end-dispatch ;
 
-: encode-immediate
+: encode-immediate-size
     \ NOTE: This is done automatically only if the instruction has
     \ _TWO_ operands. In which case, the size will match the size of
     \ the target operand. Instructions with 1 operand have to handle
     \ the immediate by themselves.
     2ops? if
         begin-dispatch
-        imm r/m8  dispatch: 2swap dup  imm8! 2swap ::
-        imm r/m16 dispatch: 2swap dup imm16! 2swap ::
-        imm r/m32 dispatch: 2swap dup imm32! 2swap ::
+        imm r/m8  dispatch: 1 imm#! ::
+        imm r/m16 dispatch: 2 imm#! ::
+        imm r/m32 dispatch: 4 imm#! ::
         exit
         end-dispatch
     endif ;
@@ -414,7 +410,7 @@ reg mem or             constant r/m
 \ This word can be called in the beginning of an instruction to encode
 \ so much as we can automatically.
 : instruction
-    size-override? encode-memory encode-immediate ;
+    size-override? encode-memory encode-immediate-size ;
 
 \ Check that the size of both operands is the same or signal an error.
 : same-size
@@ -432,6 +428,11 @@ reg mem or             constant r/m
 
 : >reg op/reg! drop ;
 : >opcode |opcode drop ;
+: >imm imm! drop ;
+: >imm8  >imm 1 imm#! ;
+: >imm16 >imm 2 imm#! ;
+: >imm32 >imm 4 imm#! ;
+
 : >r/m
     inst#op @ >r
     1 operand begin-dispatch
@@ -459,11 +460,11 @@ reg mem or             constant r/m
 : opcode-dw   opcode-w direction-bit 2 * |opcode ;
 
 \ Generic 2 operand instructions.
-: inst-imm-mem opcode-w >r/m 2drop ;
-: inst-imm-acc opcode-w 2drop 2drop ;
-: inst-imm-reg opcode-w >r/m 2drop ;
+: inst-imm-mem opcode-w >r/m >imm ;
+: inst-imm-acc opcode-w 2drop >imm ;
+: inst-imm-reg opcode-w >r/m >imm ;
 ( This variant encode the register in the opcode. Used by MOV)
-: inst-imm-reg* opcode-wxxx >opcode 2drop ;
+: inst-imm-reg* opcode-wxxx >opcode >imm ;
 : inst-reg-reg opcode-w >r/m >reg ;
 : inst-reg-mem opcode-dw
     begin-dispatch
@@ -488,7 +489,7 @@ reg mem or             constant r/m
 
 : call 1 operand instruction
     begin-dispatch
-    imm dispatch: $E8 |opcode there 5 + - imm32! drop ::
+    imm dispatch: $E8 |opcode there 5 + - >imm32 ::
     r/m dispatch: $FF |opcode 2 op/reg! >r/m ::
     end-dispatch
     flush ;
@@ -499,8 +500,8 @@ $FA single-instruction cli
 
 : inc 1 operand instruction
     begin-dispatch
-    reg dispatch: $40 |opcode |opcode drop ::
-    mem dispatch: $FE |opcode size-bit |opcode 2drop ::
+    reg dispatch: $40 |opcode >opcode ::
+    mem dispatch: $FE |opcode size-bit |opcode >r/m ::
     end-dispatch
     flush ;
 
@@ -509,9 +510,9 @@ $FA single-instruction cli
     imm dispatch: $E9 |opcode
         \ Try a 8-bit displacement
         dup there 2 + - 8-bit? if
-            there 2 + - imm8! drop 2 |opcode
+            there 2 + - >imm8 2 |opcode
         else \ or a full 32-bit displacement
-            there 5 + - imm32! drop
+            there 5 + - >imm32
         endif ::
     r/m dispatch: $FF |opcode 4 op/reg! >r/m ::
     end-dispatch
