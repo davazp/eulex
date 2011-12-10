@@ -210,6 +210,8 @@ variable inst-imm               variable inst-imm#
 \ Initialize the assembler state for a new instruction. It must be
 \ called in the beginning of each instruction.
 
+: 0F, $0F byte ;
+
 : 0! 0 swap ! ;
 : reset-instruction
     reset-addressing-mode
@@ -278,7 +280,7 @@ latestxt execute
         true abort" Invalid number of bytes."
     endcase ;
 
-: flush-instruction
+: flush
     \ Prefixes
     inst-size-override? @ if $66 byte endif
     \ Opcode, modr/m and sib
@@ -324,8 +326,7 @@ latestxt execute
 
 \ Memory reference encoding
 
-: null-displacement?
-    displacement @ 0= ;
+: null-displacement? displacement @ 0= ;
 
 \ Encode the displacement in the displacement field and the mod field
 \ of the modr/m byte. It is a general encoding which may be necessary
@@ -390,6 +391,31 @@ latestxt execute
     endif ;
 
 
+\ Encode both memory references and immediate (if there) to the ModR/M
+\ byte and the Immediate field, respectively.
+
+: encode-mem
+    begin-dispatch
+    r/m any dispatch: encode-mref ::
+    any r/m dispatch: encode-mref ::
+    exit
+    end-dispatch ;
+
+\ The immediate is encoded with the same size that the second operand
+\ by default. Some instructions may resize it with imm#!.
+: encode-immediate
+    begin-dispatch
+    imm r/m8  dispatch: 2swap dup  imm8! 2swap ::
+    imm r/m16 dispatch: 2swap dup imm16! 2swap ::
+    imm r/m32 dispatch: 2swap dup imm32! 2swap ::
+    exit
+    end-dispatch ;
+
+: >reg op/reg! drop ;
+
+: instruction
+    size-override? encode-mem encode-immediate ;
+
 \ Check that the size of both operands is the same or signal an error.
 : same-size
     begin-dispatch
@@ -414,61 +440,40 @@ latestxt execute
     end-dispatch ;
 
 
-
-: encode-immediate
-    begin-dispatch
-    imm r/m8  dispatch: 2swap dup  imm8! 2swap ::
-    imm r/m16 dispatch: 2swap dup imm16! 2swap ::
-    imm r/m32 dispatch: 2swap dup imm32! 2swap ::
-    end-dispatch ;
-
-: mov-imm-reg
-    size-override?
-    size-bit 3 lshift |opcode
-    encode-immediate
-    |opcode drop 2drop ;
-
-
 \ Define an instruction with no operands
 : single-instruction ( opcode -- )
-    create c, does> 0 operands @ |opcode flush-instruction ;
+    create c, does> 0 operands @ |opcode flush ;
+
+: mov-imm-reg
+    size-bit 3 lshift |opcode
+    |opcode drop 2drop ;
 
 : inst-imm-mem
-    size-override?
-    encode-mref
-    size-bit |opcode
-    encode-immediate
-    2drop 2drop ;
+    size-bit |opcode 2drop 2drop ;
 
 : inst-imm-reg
-    size-override?
     size-bit |opcode
-    encode-immediate
     3 mod! nip r/m!
     2drop ;
 
 : inst-reg-reg
-    size-override?
     size-bit |opcode
     3 mod! nip r/m!
-    op/reg! drop ;
+    >reg ;
 
 : inst-reg-mem
-    size-override?
-    encode-mref
     size-bit |opcode
     direction-bit dup 1 lshift |opcode
     if 2NIP else 2DROP endif
-    op/reg! drop ;
+    >reg ;
 
-: inst-imm-acc
-    size-override?
-    size-bit |opcode
-    encode-immediate
-    2drop 2drop ;
+: inst-imm-acc size-bit |opcode 2drop 2drop ;
 
 
-: add 2 operands same-size
+\ Instruction listing
+\ -------------------------------------------------------------------------
+
+: add 2 operands same-size instruction
     begin-dispatch
     imm acc dispatch: $04 |opcode inst-imm-acc ::
     imm reg dispatch: $80 |opcode inst-imm-reg ::
@@ -476,35 +481,38 @@ latestxt execute
     reg reg dispatch: $00 |opcode inst-reg-reg ::
     r/m r/m dispatch: $00 |opcode inst-reg-mem ::
     end-dispatch
-    flush-instruction ;
+    flush ;
 
-: call 1 operand
+: call 1 operand instruction
     begin-dispatch
     imm dispatch: $E8 |opcode there 5 + - imm32! drop ::
     reg dispatch: $FF |opcode 2 op/reg! 3 mod! r/m! drop ::
-    mem dispatch: $FF |opcode 2 op/reg! encode-mref 2drop ::
+    mem dispatch: $FF |opcode 2 op/reg! 2drop ::
     end-dispatch
-    flush-instruction ;
+    flush ;
 
 $FA single-instruction cli
 
-: inc 1 operand
+: inc 1 operand instruction
     begin-dispatch
-    reg dispatch: size-override? $40 |opcode |opcode drop ::
-    mem dispatch: size-override? $FE |opcode size-bit |opcode encode-mref 2drop ::
+    reg dispatch: $40 |opcode |opcode drop ::
+    mem dispatch: $FE |opcode size-bit |opcode 2drop ::
     end-dispatch
-    flush-instruction ;
+    flush ;
 
+: cpuid 0F, $A2 |opcode flush ;
+
+$F4 single-instruction hlt
 $CF single-instruction iret
 
-: mov 2 operands same-size
+: mov 2 operands same-size instruction
     begin-dispatch
     imm reg dispatch: $B0 |opcode mov-imm-reg ::
     imm mem dispatch: $C6 |opcode inst-imm-mem ::
     reg reg dispatch: $88 |opcode inst-reg-reg ::
     r/m r/m dispatch: $88 |opcode inst-reg-mem ::
     end-dispatch
-    flush-instruction ;
+    flush ;
 
 $90 single-instruction nop
 
@@ -514,7 +522,7 @@ $60 single-instruction pusha
 $C3 single-instruction ret
 $FB single-instruction sti
 
-: sub 2 operands same-size
+: sub 2 operands same-size instruction
     begin-dispatch
     imm acc dispatch: $2C |opcode inst-imm-acc ::
     imm reg dispatch: $80 |opcode inst-imm-reg 5 op/reg! ::
@@ -522,7 +530,7 @@ $FB single-instruction sti
     reg reg dispatch: $28 |opcode inst-reg-reg ::
     r/m r/m dispatch: $28 |opcode inst-reg-mem ::
     end-dispatch
-    flush-instruction ;
+    flush ;
 
 
 SET-CURRENT
