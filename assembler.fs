@@ -416,43 +416,60 @@ latestxt execute
     true abort" The size of the operands must match."
     end-dispatch ;
 
+: size-bit
+    begin-dispatch
+    any r/m8  dispatch: 0 ::
+    any r/m16 dispatch: 1 ::
+    any r/m32 dispatch: 1 ::
+    end-dispatch ;
+
+: direction-bit
+    begin-dispatch
+    reg r/m dispatch: 0 ::
+    r/m reg dispatch: 1 ::
+    end-dispatch ;
+
+: encode-immediate
+    begin-dispatch
+    imm r/m8  dispatch: 2swap dup  imm8! 2swap ::
+    imm r/m16 dispatch: 2swap dup imm16! 2swap ::
+    imm r/m32 dispatch: 2swap dup imm32! 2swap ::
+    end-dispatch ;
+
+
 : mov-imm-reg
     size-override?
-    begin-dispatch
-    imm reg8  dispatch: |opcode $0 |opcode DROP  imm8! DROP ::
-    imm reg16 dispatch: |opcode $8 |opcode DROP imm16! DROP ::
-    imm reg32 dispatch: |opcode $8 |opcode DROP imm32! DROP ::
-    end-dispatch ;
+    size-bit 3 lshift |opcode
+    encode-immediate
+    |opcode drop 2drop ;
 
 : mov-imm-mem
     size-override?
     encode-mref
-    begin-dispatch
-    imm mem8  dispatch: 0 |opcode 2DROP imm8!  DROP ::
-    imm mem16 dispatch: 1 |opcode 2DROP imm16! DROP ::
-    imm mem32 dispatch: 1 |opcode 2DROP imm32! DROP ::
-    end-dispatch ;
+    size-bit |opcode
+    encode-immediate
+    2drop 2drop ;
+
+: mov-reg-reg
+    size-override?
+    size-bit |opcode
+    3 mod! nip r/m!
+    op/reg! drop ;
 
 : mov-reg-mem
     size-override?
     encode-mref
-    begin-dispatch
-    any r/m8  dispatch: 0 |opcode ::
-    any r/m16 dispatch: 1 |opcode ::
-    any r/m32 dispatch: 1 |opcode ::
-    end-dispatch
-    begin-dispatch
-    reg r/m dispatch: 2DROP ::
-    r/m reg dispatch: 2NIP 2 |opcode ::
-    end-dispatch
-    op/reg! DROP ;
-
+    size-bit |opcode
+    direction-bit dup 1 lshift |opcode
+    if 2NIP else 2DROP endif
+    op/reg! drop ;
 
 : mov 2 operands same-size
     s" forth.core" w/o bin create-file throw to asmfd
     begin-dispatch
     imm reg dispatch: $B0 |opcode mov-imm-reg ::
     imm mem dispatch: $C6 |opcode mov-imm-mem ::
+    reg reg dispatch: $88 |opcode mov-reg-reg ::
     r/m r/m dispatch: $88 |opcode mov-reg-mem ::
     end-dispatch
     flush-instruction
