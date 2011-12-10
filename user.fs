@@ -74,6 +74,7 @@ variable error-message-size
             -14 of ." Compile-only word" cr endof
             ." Ocurred an unexpected error of code " dup . cr
         endcase
+        ." >>>" read_word_buffer count type ." <<<" cr
         backtrace
         state 0!
         clearstack
