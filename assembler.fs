@@ -25,31 +25,18 @@ DECIMAL
 
 \ Assembler output
 
-0 value asmfd
+\ This variable provides support for cross-assemble. This offset is
+\ add to the current addres of the top of the dictionary in order to
+\ get the address in the target machine.
+0 value target-offset
+: there here target-offset + ;
 
-\ Emit the low byte of a word without pop it
-: lb dup 255 and asmfd emit-file throw asmfd flush-file throw ;
-\ Shift 8 bits to the right
+: lb dup 255 and c, ;
 : 8>> 8 rshift ;
 
-: byte lb drop ;                       (  8 bits )
-: word lb 8>> lb drop ;                ( 16 bits )
-: dword lb 8>> lb 8>> lb 8>> lb drop ; ( 32 bits )
-
-
-\ Instructions with no operands
-: single-instruction ( opcode -- )
-    create c, does> c@ byte ;
-
-HEX
-60 single-instruction pusha
-61 single-instruction popa
-90 single-instruction nop
-C3 single-instruction ret
-CF single-instruction iret
-FA single-instruction cli
-FB single-instruction sti
-DECIMAL
+: byte lb drop ;
+: word lb 8>> lb drop ;
+: dword lb 8>> lb 8>> lb 8>> lb drop ;
 
 1 constant OP-AL
 2 constant OP-AX
@@ -447,6 +434,11 @@ latestxt execute
     encode-immediate
     |opcode drop 2drop ;
 
+
+\ Define an instruction with no operands
+: single-instruction ( opcode -- )
+    create c, does> 0 operands @ |opcode flush-instruction ;
+
 : inst-imm-mem
     size-override?
     encode-mref
@@ -475,25 +467,14 @@ latestxt execute
     if 2NIP else 2DROP endif
     op/reg! drop ;
 
-: mov 2 operands same-size
-    s" forth.core" w/o bin create-file throw to asmfd
-    begin-dispatch
-    imm reg dispatch: $B0 |opcode mov-imm-reg ::
-    imm mem dispatch: $C6 |opcode mov-imm-mem ::
-    reg reg dispatch: $88 |opcode inst-reg-reg ::
-    r/m r/m dispatch: $88 |opcode inst-reg-mem ::
-    end-dispatch
-    flush-instruction
-    asmfd close-file throw ;
-
 : inst-imm-acc
     size-override?
     size-bit |opcode
     encode-immediate
     2drop 2drop ;
 
+
 : add 2 operands same-size
-    s" forth.core" w/o bin create-file throw to asmfd
     begin-dispatch
     imm acc dispatch: $04 |opcode inst-imm-acc ::
     imm reg dispatch: $80 |opcode inst-imm-reg ::
@@ -501,19 +482,43 @@ latestxt execute
     reg reg dispatch: $00 |opcode inst-reg-reg ::
     r/m r/m dispatch: $00 |opcode inst-reg-mem ::
     end-dispatch
-    flush-instruction
-    asmfd close-file throw ;
+    flush-instruction ;
 
+: call 1 operand
+    begin-dispatch
+    imm dispatch: $E8 |opcode there 5 + - imm32! drop ::
+    reg dispatch: $FF |opcode 2 op/reg! 3 mod! r/m! drop ::
+    mem dispatch: $FF |opcode 2 op/reg! encode-mref 2drop ::
+    end-dispatch
+    flush-instruction ;
+
+$FA single-instruction cli
 
 : inc 1 operand
-    s" forth.core" w/o bin create-file throw to asmfd
     begin-dispatch
     reg dispatch: size-override? $40 |opcode |opcode drop ::
     mem dispatch: size-override? $FE |opcode size-bit |opcode encode-mref 2drop ::
     end-dispatch
-    flush-instruction
-    asmfd close-file throw ;
+    flush-instruction ;
 
+$CF single-instruction iret
+
+: mov 2 operands same-size
+    begin-dispatch
+    imm reg dispatch: $B0 |opcode mov-imm-reg ::
+    imm mem dispatch: $C6 |opcode inst-imm-mem ::
+    reg reg dispatch: $88 |opcode inst-reg-reg ::
+    r/m r/m dispatch: $88 |opcode inst-reg-mem ::
+    end-dispatch
+    flush-instruction ;
+
+$90 single-instruction nop
+
+$61 single-instruction popa
+$60 single-instruction pusha
+
+$C3 single-instruction ret
+$FB single-instruction sti
 
 
 SET-CURRENT
@@ -522,7 +527,8 @@ SET-CURRENT
 
 \ Local Variables:
 \ forth-local-words: ((("begin-dispatch" "end-dispatch" "dispatch:" "::")
-\                      compile-only (font-lock-keyword-face . 2)))
+\                      compile-only (font-lock-keyword-face . 2))
+\                     (("single-instruction") immediate (font-lock-keyword-face . 2)))
 \ End:
 
 \ assembler.fs ends here
