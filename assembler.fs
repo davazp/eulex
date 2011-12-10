@@ -432,6 +432,13 @@ reg mem or             constant r/m
 
 : >reg op/reg! drop ;
 : >opcode |opcode drop ;
+: >r/m
+    inst#op @ >r
+    1 operand begin-dispatch
+    reg dispatch: 3 mod! r/m! drop ::
+    mem dispatch: 2drop ::
+    end-dispatch
+    r> operands ;
 
 : size-bit
     begin-dispatch
@@ -452,16 +459,16 @@ reg mem or             constant r/m
 : opcode-dw   opcode-w direction-bit 2 * |opcode ;
 
 \ Generic 2 operand instructions.
-: inst-imm-mem opcode-w 2drop 2drop ;
+: inst-imm-mem opcode-w >r/m 2drop ;
 : inst-imm-acc opcode-w 2drop 2drop ;
-: inst-imm-reg opcode-w 3 mod! nip r/m! 2drop ;
+: inst-imm-reg opcode-w >r/m 2drop ;
 ( This variant encode the register in the opcode. Used by MOV)
 : inst-imm-reg* opcode-wxxx >opcode 2drop ;
-: inst-reg-reg opcode-w 3 mod! nip r/m! >reg ;
+: inst-reg-reg opcode-w >r/m >reg ;
 : inst-reg-mem opcode-dw
     begin-dispatch
-    reg mem dispatch: 2drop >reg ::
-    mem reg dispatch: >reg 2drop ::
+    reg mem dispatch: >r/m >reg ::
+    mem reg dispatch: >reg >r/m ::
     end-dispatch ;
 
 
@@ -482,8 +489,7 @@ reg mem or             constant r/m
 : call 1 operand instruction
     begin-dispatch
     imm dispatch: $E8 |opcode there 5 + - imm32! drop ::
-    reg dispatch: $FF |opcode 2 op/reg! 3 mod! r/m! drop ::
-    mem dispatch: $FF |opcode 2 op/reg! 2drop ::
+    r/m dispatch: $FF |opcode 2 op/reg! >r/m ::
     end-dispatch
     flush ;
 
@@ -507,8 +513,7 @@ $FA single-instruction cli
         else \ or a full 32-bit displacement
             there 5 + - imm32! drop
         endif ::
-    reg dispatch: $FF |opcode 4 op/reg! 3 mod! r/m! drop ::
-    mem dispatch: $FF |opcode 4 op/reg! 2drop ::
+    r/m dispatch: $FF |opcode 4 op/reg! >r/m ::
     end-dispatch
     flush ;
 
