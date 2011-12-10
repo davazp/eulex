@@ -258,15 +258,13 @@ latestxt execute
 : b!          %00000111 set-sib-bits! ;
 
 \ Set the displacement field.
-: disp! inst-disp ! ;
-: disp#! inst-disp# ! ;
+: disp! inst-disp ! ;           : disp#! inst-disp# ! ;
 : disp8! disp! 1 disp#! ;
 : disp16! disp! 2 disp#! ;
 : disp32! disp! 4 disp#! ;
 
 \ Set the immediate field.
-: imm! inst-imm ! ;
-: imm#! inst-imm# ! ;
+: imm! inst-imm ! ;             : imm#! inst-imm# ! ;
 : imm8! imm! 1 imm#! ;
 : imm16! imm! 2 imm#! ;
 : imm32! imm! 4 imm#! ;
@@ -339,6 +337,7 @@ latestxt execute
         1 of 1 disp#! disp8!  endof
         2 of 4 disp#! disp32! endof
     endcase ;
+
 
 \ Encode memory references where there is not an index register. It
 \ covers memory references of the form BASE + DISP, where BASE and
@@ -514,6 +513,16 @@ $60 single-instruction pusha
 
 $C3 single-instruction ret
 $FB single-instruction sti
+
+: sub 2 operands same-size
+    begin-dispatch
+    imm acc dispatch: $2C |opcode inst-imm-acc ::
+    imm reg dispatch: $80 |opcode inst-imm-reg 5 op/reg! ::
+    imm mem dispatch: $80 |opcode inst-imm-mem 5 op/reg! ::
+    reg reg dispatch: $28 |opcode inst-reg-reg ::
+    r/m r/m dispatch: $28 |opcode inst-reg-mem ::
+    end-dispatch
+    flush-instruction ;
 
 
 SET-CURRENT
