@@ -39,6 +39,7 @@ FORTH_SRC= \
         input.fs \
         memory.fs \
 	user.fs \
+        assembler.fs \
 	eulexrc.fs
 
 TESTING_SRC=tests/tests.fs \
