@@ -460,16 +460,15 @@ reg mem or             constant r/m
 : opcode-dw   opcode-w direction-bit 2 * |opcode ;
 
 \ Generic 2 operand instructions.
-: inst-imm-mem opcode-w >r/m >imm ;
 : inst-imm-acc opcode-w 2drop >imm ;
-: inst-imm-reg opcode-w >r/m >imm ;
+: inst-imm-r/m opcode-w >r/m >imm ;
 ( This variant encode the register in the opcode. Used by MOV)
 : inst-imm-reg* opcode-wxxx >opcode >imm ;
 : inst-reg-reg opcode-w >r/m >reg ;
-: inst-reg-mem opcode-dw
+: inst-reg-r/m opcode-dw
     begin-dispatch
-    reg mem dispatch: >r/m >reg ::
-    mem reg dispatch: >reg >r/m ::
+    reg r/m dispatch: >r/m >reg ::
+    r/m reg dispatch: >reg >r/m ::
     end-dispatch ;
 
 
@@ -480,10 +479,9 @@ reg mem or             constant r/m
 : add 2 operands same-size instruction
     begin-dispatch
     imm acc dispatch: $04 inst-imm-acc ::
-    imm reg dispatch: $80 inst-imm-reg ::
-    imm mem dispatch: $80 inst-imm-mem ::
+    imm r/m dispatch: $80 inst-imm-r/m ::
     reg reg dispatch: $00 inst-reg-reg ::
-    r/m r/m dispatch: $00 inst-reg-mem ::
+    r/m r/m dispatch: $00 inst-reg-r/m ::
     end-dispatch
     flush ;
 
@@ -524,9 +522,9 @@ $CF single-instruction iret
 : mov 2 operands same-size instruction
     begin-dispatch
     imm reg dispatch: $B0 inst-imm-reg* ::
-    imm mem dispatch: $C6 inst-imm-mem  ::
+    imm mem dispatch: $C6 inst-imm-r/m  ::
     reg reg dispatch: $88 inst-reg-reg  ::
-    r/m r/m dispatch: $88 inst-reg-mem  ::
+    r/m r/m dispatch: $88 inst-reg-r/m  ::
     end-dispatch
     flush ;
 
@@ -541,10 +539,9 @@ $FB single-instruction sti
 : sub 2 operands same-size instruction
     begin-dispatch
     imm acc dispatch: $2C inst-imm-acc ::
-    imm reg dispatch: $80 inst-imm-reg 5 op/reg! ::
-    imm mem dispatch: $80 inst-imm-mem 5 op/reg! ::
+    imm r/m dispatch: $80 inst-imm-r/m 5 op/reg! ::
     reg reg dispatch: $28 inst-reg-reg ::
-    r/m r/m dispatch: $28 inst-reg-mem ::
+    r/m r/m dispatch: $28 inst-reg-r/m ::
     end-dispatch
     flush ;
 
