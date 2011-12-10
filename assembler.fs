@@ -310,11 +310,14 @@ latestxt execute
     inst-imm  @ inst-imm-size  @ flush-value
     reset-instruction ;
 
+: 2ops? inst#op @ 2 = ;
+: any? 2ops? if any then ;
+
 \ Set size-override prefix if some of the operands is a r/m16.
 : size-override?
     begin-dispatch
-    any r/m16 dispatch: size-override ::
-    r/m16 any dispatch: size-override ::
+    any? r/m16 dispatch: size-override ::
+    r/m16 any? dispatch: size-override ::
     exit
     end-dispatch ;
 
@@ -418,9 +421,9 @@ latestxt execute
 
 : size-bit
     begin-dispatch
-    any r/m8  dispatch: 0 ::
-    any r/m16 dispatch: 1 ::
-    any r/m32 dispatch: 1 ::
+    any? r/m8  dispatch: 0 ::
+    any? r/m16 dispatch: 1 ::
+    any? r/m32 dispatch: 1 ::
     end-dispatch ;
 
 : direction-bit
@@ -429,13 +432,14 @@ latestxt execute
     r/m reg dispatch: 1 ::
     end-dispatch ;
 
+
+
 : encode-immediate
     begin-dispatch
     imm r/m8  dispatch: 2swap dup  imm8! 2swap ::
     imm r/m16 dispatch: 2swap dup imm16! 2swap ::
     imm r/m32 dispatch: 2swap dup imm32! 2swap ::
     end-dispatch ;
-
 
 : mov-imm-reg
     size-override?
@@ -449,7 +453,6 @@ latestxt execute
     size-bit |opcode
     encode-immediate
     2drop 2drop ;
-
 
 : inst-imm-reg
     size-override?
@@ -475,7 +478,7 @@ latestxt execute
 : mov 2 operands same-size
     s" forth.core" w/o bin create-file throw to asmfd
     begin-dispatch
-    imm reg dispatch: $B0 |opcode inst-imm-reg ::
+    imm reg dispatch: $B0 |opcode mov-imm-reg ::
     imm mem dispatch: $C6 |opcode mov-imm-mem ::
     reg reg dispatch: $88 |opcode inst-reg-reg ::
     r/m r/m dispatch: $88 |opcode inst-reg-mem ::
@@ -500,6 +503,17 @@ latestxt execute
     end-dispatch
     flush-instruction
     asmfd close-file throw ;
+
+
+: inc 1 operand
+    s" forth.core" w/o bin create-file throw to asmfd
+    begin-dispatch
+    reg dispatch: size-override? $40 |opcode |opcode drop ::
+    mem dispatch: size-override? $FE |opcode size-bit |opcode encode-mref 2drop ::
+    end-dispatch
+    flush-instruction
+    asmfd close-file throw ;
+
 
 
 SET-CURRENT
