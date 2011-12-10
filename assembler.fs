@@ -25,9 +25,8 @@ DECIMAL
 
 \ Assembler output
 
-\ This variable provides support for cross-assemble. This offset is
-\ add to the current addres of the top of the dictionary in order to
-\ get the address in the target machine.
+\ Cross-assembler:
+\ Difference between the dictionary pointer to the target address.
 0 value target-offset
 : there here target-offset + ;
 
@@ -77,13 +76,15 @@ DECIMAL
 \ Memory references
 
 \ The more general memory reference mode is
+\
 \     base + index*scale + displacement
+\
 \ where BASE and INDEX are 32bits registers, SCALE is 1, 2 or 4, and
 \ DISPLACEMENT is an immediate offset.
 \
 \ The following variables contain each one of the parts in the general
 \ addressing mode. A value of -1 where a register is expected means
-\ that it is omitted. Note that is it not the ModR/M either thea SIB
+\ that it is omitted. Note that is it not the ModR/M either SIB
 \ bytes. They are encoded later from this variables, however.
 variable base
 variable index
@@ -139,7 +140,7 @@ variable inst#op
 : operands inst#op ! ;
 ' operands alias operand
 
-\ Operands pattern maching
+: 2ops? inst#op @ 2 = ;
 
 : 1-op-match ( op mask -- op flag )
     2 pick and 0<> ;
@@ -151,7 +152,7 @@ variable inst#op
 : op-match ( ops .. masks ... -- ops .. flag )
     inst#op @ 1 = if 1-op-match else 2-op-match then ;
 
-\ Patterns for the dispatcher
+\ Patterns
 ' OP-AL    alias al
 ' OP-AX    alias ax
 ' OP-EAX   alias eax
@@ -163,15 +164,19 @@ variable inst#op
 ' OP-MEM8  alias mem8
 ' OP-MEM16 alias mem16
 ' OP-MEM32 alias mem32
-\ Multicase patterns
+\ Multi-patterns
 -1 constant any
-al ax or eax or constant acc
+al ax or eax or        constant acc
 reg8 reg16 or reg32 or constant reg
 mem8 mem16 or mem32 or constant mem
-reg8 mem8 or constant r/m8
-reg16 mem16 or constant r/m16
-reg32 mem32 or constant r/m32
-reg mem or constant r/m
+reg8 mem8 or           constant r/m8
+reg16 mem16 or         constant r/m16
+reg32 mem32 or         constant r/m32
+reg mem or             constant r/m
+\ any? matches with any type if the current instruction has 2
+\ operands. Otherwise it is ignored.
+: any? 2ops? if any then ;
+
 
 : (no-dispatch)
     true abort" The instruction does not support these operands." ;
@@ -207,26 +212,20 @@ variable inst-sib               variable inst-sib#
 variable inst-disp              variable inst-disp#
 variable inst-imm               variable inst-imm#
 
+: 0! 0 swap ! ;
+: 0F, $0F byte ;        ( extended opcode )
+
 \ Initialize the assembler state for a new instruction. It must be
 \ called in the beginning of each instruction.
-
-: 0F, $0F byte ;
-
-: 0! 0 swap ! ;
 : reset-instruction
     reset-addressing-mode
     inst-size-override? off
-    inst-opcode 0!
-    1 inst-opcode# !
-    inst-modr/m 0!
-    inst-modr/m# 0!
-    inst-sib 0!
-    inst-sib# 0!
-    inst-disp 0!
-    inst-disp# 0!
-    inst-imm 0!
-    inst-imm# 0! ;
-latestxt execute
+    inst-opcode 0!              1 inst-opcode# !
+    inst-modr/m 0!              inst-modr/m# 0!
+    inst-sib 0!                 inst-sib# 0!
+    inst-disp 0!                inst-disp# 0!
+    inst-imm 0!                 inst-imm# 0!
+; latestxt execute
 
 \ Words to fill instruction's data
 
@@ -291,9 +290,6 @@ latestxt execute
     inst-disp @ inst-disp# @ flush-value
     inst-imm  @ inst-imm#  @ flush-value
     reset-instruction ;
-
-: 2ops? inst#op @ 2 = ;
-: any? 2ops? if any then ;
 
 \ Set size-override prefix if some of the operands is a r/m16.
 : size-override?
