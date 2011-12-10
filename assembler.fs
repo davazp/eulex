@@ -201,16 +201,11 @@ reg mem or constant r/m
 \ Parts of the instruction and the size in bytes of them in the
 \ current instruction. A size of zero means this part is not present.
 variable inst-size-override?
-variable inst-opcode
-variable inst-opcode-size
-variable inst-modr/m
-variable inst-modr/m-size
-variable inst-sib
-variable inst-sib-size
-variable inst-disp
-variable inst-disp-size
-variable inst-imm
-variable inst-imm-size
+variable inst-opcode            variable inst-opcode#
+variable inst-modr/m            variable inst-modr/m#
+variable inst-sib               variable inst-sib#
+variable inst-disp              variable inst-disp#
+variable inst-imm               variable inst-imm#
 
 \ Initialize the assembler state for a new instruction. It must be
 \ called in the beginning of each instruction.
@@ -220,15 +215,15 @@ variable inst-imm-size
     reset-addressing-mode
     inst-size-override? off
     inst-opcode 0!
-    1 inst-opcode-size !
+    1 inst-opcode# !
     inst-modr/m 0!
-    inst-modr/m-size 0!
+    inst-modr/m# 0!
     inst-sib 0!
-    inst-sib-size 0!
+    inst-sib# 0!
     inst-disp 0!
-    inst-disp-size 0!
+    inst-disp# 0!
     inst-imm 0!
-    inst-imm-size 0! ;
+    inst-imm# 0! ;
 latestxt execute
 
 \ Words to fill instruction's data
@@ -248,11 +243,11 @@ latestxt execute
 
 : set-modr/m-bits!
     inst-modr/m set-bits!
-    1 inst-modr/m-size ! ;
+    1 inst-modr/m# ! ;
 
 : set-sib-bits!
     inst-sib set-bits!
-    1 inst-sib-size ! ;
+    1 inst-sib# ! ;
 
 : mod!    6 lshift %11000000 set-modr/m-bits! ;
 : op/reg! 3 lshift %00111000 set-modr/m-bits! ;
@@ -264,17 +259,17 @@ latestxt execute
 
 \ Set the displacement field.
 : disp! inst-disp ! ;
-: disp-size! inst-disp-size ! ;
-: disp8! disp! 1 disp-size! ;
-: disp16! disp! 2 disp-size! ;
-: disp32! disp! 4 disp-size! ;
+: disp#! inst-disp# ! ;
+: disp8! disp! 1 disp#! ;
+: disp16! disp! 2 disp#! ;
+: disp32! disp! 4 disp#! ;
 
 \ Set the immediate field.
 : imm! inst-imm ! ;
-: imm-size! inst-imm-size ! ;
-: imm8! imm! 1 imm-size! ;
-: imm16! imm! 2 imm-size! ;
-: imm32! imm! 4 imm-size! ;
+: imm#! inst-imm# ! ;
+: imm8! imm! 1 imm#! ;
+: imm16! imm! 2 imm#! ;
+: imm32! imm! 4 imm#! ;
 
 : flush-value ( x size -- )
     case
@@ -289,12 +284,12 @@ latestxt execute
     \ Prefixes
     inst-size-override? @ if $66 byte endif
     \ Opcode, modr/m and sib
-    inst-opcode @ inst-opcode-size @ flush-value
-    inst-modr/m @ inst-modr/m-size @ flush-value
-    inst-sib    @ inst-sib-size    @ flush-value
+    inst-opcode @ inst-opcode# @ flush-value
+    inst-modr/m @ inst-modr/m# @ flush-value
+    inst-sib    @ inst-sib#    @ flush-value
     \ Displacement and immediate
-    inst-disp @ inst-disp-size @ flush-value
-    inst-imm  @ inst-imm-size  @ flush-value
+    inst-disp @ inst-disp# @ flush-value
+    inst-imm  @ inst-imm#  @ flush-value
     reset-instruction ;
 
 : 2ops? inst#op @ 2 = ;
@@ -340,9 +335,9 @@ latestxt execute
 : encode-displacement
     displacement @ dup disp>mod dup mod!
     case
-        0 of 0 disp-size! drop    endof
-        1 of 1 disp-size! disp8!  endof
-        2 of 4 disp-size! disp32! endof
+        0 of 0 disp#! drop    endof
+        1 of 1 disp#! disp8!  endof
+        2 of 4 disp#! disp32! endof
     endcase ;
 
 \ Encode memory references where there is not an index register. It
