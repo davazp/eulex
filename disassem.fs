@@ -155,4 +155,9 @@ $fb defdisam ." STI " 1+ ;dis
 $ff defdisam ( ff d0 ) 2+ ." CALL *%EAX" ;dis
 
 
+\ Local Variables:
+\ forth-local-words: ((("defdisam") definition-starter (font-lock-keyword-face . 2))
+\                     ((";dis") definition-ender (font-lock-keyword-face . 2)))
+\ End:
+
 \ disassem.fs ends here
