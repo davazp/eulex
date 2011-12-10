@@ -133,74 +133,6 @@ variable displacement
 : PTR32 NIP OP-MEM32 SWAP ; \ Default
 
 
-\ PATTERN-MACHING
-
-variable inst#op
-
-: operands inst#op ! ;
-' operands alias operand
-
-: 2ops? inst#op @ 2 = ;
-
-: 1-op-match ( op mask -- op flag )
-    2 pick and 0<> ;
-
-: 2-op-match ( op1 op2 mask1 mask2 -- op1 op2 flag )
-    3 pick and 0<> swap
-    5 pick and 0<> and ;
-
-: op-match ( ops .. masks ... -- ops .. flag )
-    inst#op @ 1 = if 1-op-match else 2-op-match then ;
-
-\ Patterns
-' OP-AL    alias al
-' OP-AX    alias ax
-' OP-EAX   alias eax
-' OP-REG8  alias reg8
-' OP-REG16 alias reg16
-' OP-REG32 alias reg32
-' OP-SREG  alias sreg
-' OP-IMM   alias imm
-' OP-MEM8  alias mem8
-' OP-MEM16 alias mem16
-' OP-MEM32 alias mem32
-\ Multi-patterns
--1 constant any
-al ax or eax or        constant acc
-reg8 reg16 or reg32 or constant reg
-mem8 mem16 or mem32 or constant mem
-reg8 mem8 or           constant r/m8
-reg16 mem16 or         constant r/m16
-reg32 mem32 or         constant r/m32
-reg mem or             constant r/m
-\ any? matches with any type if the current instruction has 2
-\ operands. Otherwise it is ignored.
-: any? 2ops? if any then ;
-
-
-: (no-dispatch)
-    true abort" The instruction does not support these operands." ;
-
-0 constant begin-dispatch immediate
-
-: ` postpone postpone ; immediate
-
-: dispatch:
-    1+ >r
-    ` op-match ` if
-    r>
-; immediate compile-only
-
-: ::
-    >r ` else r>
-; immediate compile-only
-
-: end-dispatch
-    ` (no-dispatch)
-    0 ?do ` then loop
-; immediate compile-only
-
-
 \ INSTRUCTION ENCODING
 
 \ Parts of the instruction and the size in bytes of them in the
@@ -291,22 +223,15 @@ variable inst-imm               variable inst-imm#
     inst-imm  @ inst-imm#  @ flush-value
     reset-instruction ;
 
-\ Set size-override prefix if some of the operands is a r/m16.
-: size-override?
-    begin-dispatch
-    any? r/m16 dispatch: size-override ::
-    r/m16 any? dispatch: size-override ::
-    exit
-    end-dispatch ;
+
+\ MEMORY REFERENCE ENCODING
 
 : <=x<= ( n1 n2 n3 -- n1<=n2<=n3 )
     over -rot <= >r <= r> and ;
 
 \ return the mod value for a given displacement.
 : disp>mod ( n -- 0|1|2 )
-    ?dup 0= if
-        0
-    else
+    ?dup 0= if 0 else
         -128 swap 127 <=x<= if 1 else 2 then
     endif ;
 
@@ -318,9 +243,6 @@ variable inst-imm               variable inst-imm#
         8 of 3 endof
         true s" Bad scale value."
     endcase ;
-
-
-\ Memory reference encoding
 
 : null-displacement? displacement @ 0= ;
 
@@ -334,7 +256,6 @@ variable inst-imm               variable inst-imm#
         1 of 1 disp#! disp8!  endof
         2 of 4 disp#! disp32! endof
     endcase ;
-
 
 \ Encode memory references where there is not an index register. It
 \ covers memory references of the form BASE + DISP, where BASE and
@@ -387,30 +308,110 @@ variable inst-imm               variable inst-imm#
     endif ;
 
 
+\ INSTRUCTION-DEFINING WORDS
+
+\ Operands Pattern-maching
+variable inst#op
+
+: operands inst#op ! ;
+' operands alias operand
+
+: 2ops? inst#op @ 2 = ;
+
+: 1-op-match ( op mask -- op flag )
+    2 pick and 0<> ;
+
+: 2-op-match ( op1 op2 mask1 mask2 -- op1 op2 flag )
+    3 pick and 0<> swap
+    5 pick and 0<> and ;
+
+: op-match ( ops .. masks ... -- ops .. flag )
+    inst#op @ 1 = if 1-op-match else 2-op-match then ;
+
+\ Patterns
+' OP-AL    alias al
+' OP-AX    alias ax
+' OP-EAX   alias eax
+' OP-REG8  alias reg8
+' OP-REG16 alias reg16
+' OP-REG32 alias reg32
+' OP-SREG  alias sreg
+' OP-IMM   alias imm
+' OP-MEM8  alias mem8
+' OP-MEM16 alias mem16
+' OP-MEM32 alias mem32
+\ Multi-patterns
+-1 constant any
+al ax or eax or        constant acc
+reg8 reg16 or reg32 or constant reg
+mem8 mem16 or mem32 or constant mem
+reg8 mem8 or           constant r/m8
+reg16 mem16 or         constant r/m16
+reg32 mem32 or         constant r/m32
+reg mem or             constant r/m
+\ any? matches with any type if the current instruction has 2
+\ operands. Otherwise it is ignored.
+: any? 2ops? if any then ;
+
+: (no-dispatch)
+    true abort" The instruction does not support these operands." ;
+
+0 constant begin-dispatch immediate
+
+: ` postpone postpone ; immediate
+
+: dispatch:
+    1+ >r
+    ` op-match ` if
+    r>
+; immediate compile-only
+
+: ::
+    >r ` else r>
+; immediate compile-only
+
+: end-dispatch
+    ` (no-dispatch)
+    0 ?do ` then loop
+; immediate compile-only
+
+\ Encode some pieces of the instruction automatically.
+
+\ Set size-override prefix if some of the operands is a r/m16.
+: size-override?
+    begin-dispatch
+    any? r/m16 dispatch: size-override ::
+    r/m16 any? dispatch: size-override ::
+    exit
+    end-dispatch ;
+
 \ Encode both memory references and immediate (if there) to the ModR/M
 \ byte and the Immediate field, respectively.
-
-: encode-mem
+: encode-memory
     begin-dispatch
-    r/m any dispatch: encode-mref ::
-    any r/m dispatch: encode-mref ::
+    mem any? dispatch: encode-mref ::
+    any? mem dispatch: encode-mref ::
     exit
     end-dispatch ;
 
-\ The immediate is encoded with the same size that the second operand
-\ by default. Some instructions may resize it with imm#!.
 : encode-immediate
-    begin-dispatch
-    imm r/m8  dispatch: 2swap dup  imm8! 2swap ::
-    imm r/m16 dispatch: 2swap dup imm16! 2swap ::
-    imm r/m32 dispatch: 2swap dup imm32! 2swap ::
-    exit
-    end-dispatch ;
+    \ NOTE: This is done automatically only if the instruction has
+    \ _TWO_ operands. In which case, the size will match the size of
+    \ the target operand. Instructions with 1 operand have to handle
+    \ the immediate by themselves.
+    2ops? if
+        begin-dispatch
+        imm r/m8  dispatch: 2swap dup  imm8! 2swap ::
+        imm r/m16 dispatch: 2swap dup imm16! 2swap ::
+        imm r/m32 dispatch: 2swap dup imm32! 2swap ::
+        exit
+        end-dispatch
+    endif ;
 
-: >reg op/reg! drop ;
-
+\ This word can be called in the beginning of an instruction to encode
+\ so much as we can automatically.
 : instruction
-    size-override? encode-mem encode-immediate ;
+    size-override? encode-memory encode-immediate ;
 
 \ Check that the size of both operands is the same or signal an error.
 : same-size
@@ -421,6 +422,13 @@ variable inst-imm               variable inst-imm#
     r/m32 r/m32 dispatch: ::
     true abort" The size of the operands must match."
     end-dispatch ;
+
+\ Define an instruction with no operands
+: single-instruction ( opcode -- )
+    create c, does> 0 operands @ |opcode flush ;
+
+: >reg op/reg! drop ;
+: >opcode |opcode drop ;
 
 : size-bit
     begin-dispatch
@@ -435,35 +443,21 @@ variable inst-imm               variable inst-imm#
     r/m reg dispatch: 1 ::
     end-dispatch ;
 
+\ Set opcode and size bit.
+: opcode-s    |opcode size-bit |opcode ;
+: opcode-sxxx |opcode size-bit 3 lshift |opcode ;
 
-\ Define an instruction with no operands
-: single-instruction ( opcode -- )
-    create c, does> 0 operands @ |opcode flush ;
-
-: mov-imm-reg
-    size-bit 3 lshift |opcode
-    |opcode drop 2drop ;
-
-: inst-imm-mem
-    size-bit |opcode 2drop 2drop ;
-
-: inst-imm-reg
-    size-bit |opcode
-    3 mod! nip r/m!
-    2drop ;
-
-: inst-reg-reg
-    size-bit |opcode
-    3 mod! nip r/m!
-    >reg ;
-
+\ Generic 2 operand instructions.
+: inst-imm-mem opcode-s 2drop 2drop ;
+: inst-imm-acc opcode-s 2drop 2drop ;
+: inst-imm-reg opcode-s 3 mod! nip r/m! 2drop ;
+( This variant encode the register in the opcode. Used by MOV)
+: inst-imm-reg* opcode-sxxx >opcode 2drop ;
+: inst-reg-reg opcode-s 3 mod! nip r/m! >reg ;
 : inst-reg-mem
-    size-bit |opcode
-    direction-bit dup 1 lshift |opcode
-    if 2NIP else 2DROP endif
+    opcode-s
+    direction-bit if 2 |opcode 2nip else 2drop endif
     >reg ;
-
-: inst-imm-acc size-bit |opcode 2drop 2drop ;
 
 
 \ Instruction listing
@@ -471,11 +465,11 @@ variable inst-imm               variable inst-imm#
 
 : add 2 operands same-size instruction
     begin-dispatch
-    imm acc dispatch: $04 |opcode inst-imm-acc ::
-    imm reg dispatch: $80 |opcode inst-imm-reg ::
-    imm mem dispatch: $80 |opcode inst-imm-mem ::
-    reg reg dispatch: $00 |opcode inst-reg-reg ::
-    r/m r/m dispatch: $00 |opcode inst-reg-mem ::
+    imm acc dispatch: $04 inst-imm-acc ::
+    imm reg dispatch: $80 inst-imm-reg ::
+    imm mem dispatch: $80 inst-imm-mem ::
+    reg reg dispatch: $00 inst-reg-reg ::
+    r/m r/m dispatch: $00 inst-reg-mem ::
     end-dispatch
     flush ;
 
@@ -503,10 +497,10 @@ $CF single-instruction iret
 
 : mov 2 operands same-size instruction
     begin-dispatch
-    imm reg dispatch: $B0 |opcode mov-imm-reg ::
-    imm mem dispatch: $C6 |opcode inst-imm-mem ::
-    reg reg dispatch: $88 |opcode inst-reg-reg ::
-    r/m r/m dispatch: $88 |opcode inst-reg-mem ::
+    imm reg dispatch: $B0 inst-imm-reg* ::
+    imm mem dispatch: $C6 inst-imm-mem  ::
+    reg reg dispatch: $88 inst-reg-reg  ::
+    r/m r/m dispatch: $88 inst-reg-mem  ::
     end-dispatch
     flush ;
 
@@ -520,11 +514,11 @@ $FB single-instruction sti
 
 : sub 2 operands same-size instruction
     begin-dispatch
-    imm acc dispatch: $2C |opcode inst-imm-acc ::
-    imm reg dispatch: $80 |opcode inst-imm-reg 5 op/reg! ::
-    imm mem dispatch: $80 |opcode inst-imm-mem 5 op/reg! ::
-    reg reg dispatch: $28 |opcode inst-reg-reg ::
-    r/m r/m dispatch: $28 |opcode inst-reg-mem ::
+    imm acc dispatch: $2C inst-imm-acc ::
+    imm reg dispatch: $80 inst-imm-reg 5 op/reg! ::
+    imm mem dispatch: $80 inst-imm-mem 5 op/reg! ::
+    reg reg dispatch: $28 inst-reg-reg ::
+    r/m r/m dispatch: $28 inst-reg-mem ::
     end-dispatch
     flush ;
 
