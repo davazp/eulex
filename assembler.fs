@@ -443,20 +443,28 @@ latestxt execute
     encode-immediate
     |opcode drop 2drop ;
 
-: mov-imm-mem
+: inst-imm-mem
     size-override?
     encode-mref
     size-bit |opcode
     encode-immediate
     2drop 2drop ;
 
-: mov-reg-reg
+
+: inst-imm-reg
+    size-override?
+    size-bit |opcode
+    encode-immediate
+    3 mod! nip r/m!
+    2drop ;
+
+: inst-reg-reg
     size-override?
     size-bit |opcode
     3 mod! nip r/m!
     op/reg! drop ;
 
-: mov-reg-mem
+: inst-reg-mem
     size-override?
     encode-mref
     size-bit |opcode
@@ -467,10 +475,28 @@ latestxt execute
 : mov 2 operands same-size
     s" forth.core" w/o bin create-file throw to asmfd
     begin-dispatch
-    imm reg dispatch: $B0 |opcode mov-imm-reg ::
+    imm reg dispatch: $B0 |opcode inst-imm-reg ::
     imm mem dispatch: $C6 |opcode mov-imm-mem ::
-    reg reg dispatch: $88 |opcode mov-reg-reg ::
-    r/m r/m dispatch: $88 |opcode mov-reg-mem ::
+    reg reg dispatch: $88 |opcode inst-reg-reg ::
+    r/m r/m dispatch: $88 |opcode inst-reg-mem ::
+    end-dispatch
+    flush-instruction
+    asmfd close-file throw ;
+
+: inst-imm-acc
+    size-override?
+    size-bit |opcode
+    encode-immediate
+    2drop 2drop ;
+
+: add 2 operands same-size
+    s" forth.core" w/o bin create-file throw to asmfd
+    begin-dispatch
+    imm acc dispatch: $04 |opcode inst-imm-acc ::
+    imm reg dispatch: $80 |opcode inst-imm-reg ::
+    imm mem dispatch: $80 |opcode inst-imm-mem ::
+    reg reg dispatch: $00 |opcode inst-reg-reg ::
+    r/m r/m dispatch: $00 |opcode inst-reg-mem ::
     end-dispatch
     flush-instruction
     asmfd close-file throw ;
