@@ -229,10 +229,13 @@ variable inst-imm               variable inst-imm#
 : <=x<= ( n1 n2 n3 -- n1<=n2<=n3 )
     over -rot <= >r <= r> and ;
 
+: 8-bit? ( n -- flag )
+    -128 swap 127 <=x<= ;
+
 \ return the mod value for a given displacement.
 : disp>mod ( n -- 0|1|2 )
     ?dup 0= if 0 else
-        -128 swap 127 <=x<= if 1 else 2 then
+        8-bit? if 1 else 2 then
     endif ;
 
 : scale>s ( scale -- s )
@@ -462,6 +465,7 @@ reg mem or             constant r/m
     end-dispatch ;
 
 
+
 \ Instruction listing
 \ -------------------------------------------------------------------------
 
@@ -485,6 +489,8 @@ reg mem or             constant r/m
 
 $FA single-instruction cli
 
+: cpuid 0F, $A2 |opcode flush ;
+
 : inc 1 operand instruction
     begin-dispatch
     reg dispatch: $40 |opcode |opcode drop ::
@@ -492,7 +498,19 @@ $FA single-instruction cli
     end-dispatch
     flush ;
 
-: cpuid 0F, $A2 |opcode flush ;
+: jmp 1 operand instruction
+    begin-dispatch
+    imm dispatch: $E9 |opcode
+        \ Try a 8-bit displacement
+        dup there 2 + - 8-bit? if
+            there 2 + - imm8! drop 2 |opcode
+        else \ or a full 32-bit displacement
+            there 5 + - imm32! drop
+        endif ::
+    reg dispatch: $FF |opcode 4 op/reg! 3 mod! r/m! drop ::
+    mem dispatch: $FF |opcode 4 op/reg! 2drop ::
+    end-dispatch
+    flush ;
 
 $F4 single-instruction hlt
 $CF single-instruction iret
