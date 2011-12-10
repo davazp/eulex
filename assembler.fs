@@ -444,20 +444,22 @@ reg mem or             constant r/m
     end-dispatch ;
 
 \ Set opcode and size bit.
-: opcode-s    |opcode size-bit |opcode ;
-: opcode-sxxx |opcode size-bit 3 lshift |opcode ;
+: opcode-w    |opcode size-bit |opcode ;
+: opcode-wxxx |opcode size-bit 3 lshift |opcode ;
+: opcode-dw   opcode-w direction-bit 2 * |opcode ;
 
 \ Generic 2 operand instructions.
-: inst-imm-mem opcode-s 2drop 2drop ;
-: inst-imm-acc opcode-s 2drop 2drop ;
-: inst-imm-reg opcode-s 3 mod! nip r/m! 2drop ;
+: inst-imm-mem opcode-w 2drop 2drop ;
+: inst-imm-acc opcode-w 2drop 2drop ;
+: inst-imm-reg opcode-w 3 mod! nip r/m! 2drop ;
 ( This variant encode the register in the opcode. Used by MOV)
-: inst-imm-reg* opcode-sxxx >opcode 2drop ;
-: inst-reg-reg opcode-s 3 mod! nip r/m! >reg ;
-: inst-reg-mem
-    opcode-s
-    direction-bit if 2 |opcode 2nip else 2drop endif
-    >reg ;
+: inst-imm-reg* opcode-wxxx >opcode 2drop ;
+: inst-reg-reg opcode-w 3 mod! nip r/m! >reg ;
+: inst-reg-mem opcode-dw
+    begin-dispatch
+    reg mem dispatch: 2drop >reg ::
+    mem reg dispatch: >reg 2drop ::
+    end-dispatch ;
 
 
 \ Instruction listing
