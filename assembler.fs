@@ -454,10 +454,19 @@ reg mem or             constant r/m
     r/m reg dispatch: 1 ::
     end-dispatch ;
 
+: sign-extend-bit
+    begin-dispatch
+    imm r/m8 dispatch: 0 ::
+    imm r/m dispatch:
+        2swap dup >r 2swap r>
+        8-bit? if 1 else 0 then ::
+    end-dispatch ;
+
 \ Set opcode and size bit.
-: opcode-w    |opcode size-bit |opcode ;
+: opcode-w |opcode size-bit |opcode ;
 : opcode-wxxx |opcode size-bit 3 lshift |opcode ;
-: opcode-dw   opcode-w direction-bit 2 * |opcode ;
+: opcode-dw opcode-w direction-bit 2 * |opcode ;
+: opcode-sw opcode-w sign-extend-bit if 2 |opcode 1 imm#! endif ;
 
 \ Generic 2 operand instructions.
 : inst-imm-acc opcode-w 2drop >imm ;
@@ -478,8 +487,13 @@ reg mem or             constant r/m
 
 : add 2 operands same-size instruction
     begin-dispatch
-    imm acc dispatch: $04 inst-imm-acc ::
-    imm r/m dispatch: $80 inst-imm-r/m ::
+    imm acc dispatch:
+        sign-extend-bit if
+            $80 opcode-sw >r/m >imm
+        else
+            $04 inst-imm-acc
+        then ::
+    imm r/m dispatch: $80 opcode-sw >r/m >imm ::
     reg reg dispatch: $00 inst-reg-reg ::
     r/m r/m dispatch: $00 inst-reg-r/m ::
     end-dispatch
@@ -538,8 +552,13 @@ $FB single-instruction sti
 
 : sub 2 operands same-size instruction
     begin-dispatch
-    imm acc dispatch: $2C inst-imm-acc ::
-    imm r/m dispatch: $80 inst-imm-r/m 5 op/reg! ::
+    imm acc dispatch:
+        sign-extend-bit if
+            $80 opcode-sw >r/m >imm 5 op/reg!
+        else
+            $2C inst-imm-acc
+        then ::
+    imm r/m dispatch: $80 opcode-sw >r/m >imm 5 op/reg! ::
     reg reg dispatch: $28 inst-reg-reg ::
     r/m r/m dispatch: $28 inst-reg-r/m ::
     end-dispatch
