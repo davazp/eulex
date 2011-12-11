@@ -506,6 +506,11 @@ reg mem or             constant r/m
     end-dispatch
     flush ;
 
+$94 single-instruction cbw
+$99 single-instruction cdq
+
+$F4 single-instruction clc
+$FC single-instruction cld
 $FA single-instruction cli
 
 : cpuid 0F, $A2 |opcode flush ;
