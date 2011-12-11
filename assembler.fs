@@ -510,10 +510,17 @@ $FA single-instruction cli
 
 : cpuid 0F, $A2 |opcode flush ;
 
+: dec 1 operand instruction
+    begin-dispatch
+    reg8 mem or dispatch: $FE opcode-w >r/m 1 op/reg! ::
+    reg dispatch: $48 |opcode >opcode ::
+    end-dispatch
+    flush ;
+
 : inc 1 operand instruction
     begin-dispatch
+    reg8 mem or dispatch: $FE opcode-w >r/m ::
     reg dispatch: $40 |opcode >opcode ::
-    mem dispatch: $FE |opcode size-bit |opcode >r/m ::
     end-dispatch
     flush ;
 
