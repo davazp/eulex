@@ -507,6 +507,10 @@ reg mem or             constant r/m
 \ Instruction listing
 \ -------------------------------------------------------------------------
 
+: ascii"
+    [char] " parse dup byte
+    here swap move ;
+
 : adc $10 %010 inst-common-arithm ;
 : add $00 %000 inst-common-arithm ;
 : and $20 %100 inst-common-arithm ;
@@ -585,7 +589,7 @@ $FB single-instruction sti
 : xor $30 %110 inst-common-arithm ;
 
 SET-CURRENT
-( PREVIOUS )
+PREVIOUS
 
 
 \ Local Variables:
