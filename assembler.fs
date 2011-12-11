@@ -469,7 +469,7 @@ reg mem or             constant r/m
 : opcode-sw opcode-w sign-extend-bit if 2 |opcode 1 imm#! endif ;
 
 \ Generic 2 operand instructions.
-: inst-imm-acc opcode-w 2drop >imm ;
+: inst-imm-acc opcode-w 4 |opcode 2drop >imm ;
 : inst-imm-r/m opcode-w >r/m >imm ;
 ( This variant encode the register in the opcode. Used by MOV)
 : inst-imm-reg* opcode-wxxx >opcode >imm ;
@@ -481,23 +481,35 @@ reg mem or             constant r/m
     end-dispatch ;
 
 
+\ Base implementation for some arithmetic and logic instructions.
+
+: arith-imm-r/m ( opext -- )
+    >r $80 opcode-sw >r/m >imm r> op/reg! ;
+
+: inst-common-arithm ( opcode op-extension -- )
+    2>r
+    2 operands same-size instruction
+    begin-dispatch
+    imm acc dispatch:
+        \ Here, you can encode as imm-r/m or imm-acc. We choose the
+        \ shorter according to the size of the immediate value.
+        sign-extend-bit if
+            2r> nip arith-imm-r/m
+        else
+            2r> drop inst-imm-acc
+        then ::
+    imm r/m dispatch: 2r> nip arith-imm-r/m ::
+    reg reg dispatch: 2r> drop inst-reg-reg ::
+    r/m r/m dispatch: 2r> drop inst-reg-r/m ::
+    end-dispatch
+    flush ;
 
 \ Instruction listing
 \ -------------------------------------------------------------------------
 
-: add 2 operands same-size instruction
-    begin-dispatch
-    imm acc dispatch:
-        sign-extend-bit if
-            $80 opcode-sw >r/m >imm
-        else
-            $04 inst-imm-acc
-        then ::
-    imm r/m dispatch: $80 opcode-sw >r/m >imm ::
-    reg reg dispatch: $00 inst-reg-reg ::
-    r/m r/m dispatch: $00 inst-reg-r/m ::
-    end-dispatch
-    flush ;
+: adc $10 %010 inst-common-arithm ;
+: add $00 %000 inst-common-arithm ;
+: and $20 %100 inst-common-arithm ;
 
 : call 1 operand instruction
     begin-dispatch
@@ -505,6 +517,8 @@ reg mem or             constant r/m
     r/m dispatch: $FF |opcode 2 op/reg! >r/m ::
     end-dispatch
     flush ;
+
+: cmp $38 %111 inst-common-arithm ;
 
 $94 single-instruction cbw
 $99 single-instruction cdq
@@ -556,26 +570,19 @@ $CF single-instruction iret
 
 $90 single-instruction nop
 
+: or $08 %001 inst-common-arithm ;
+
 $61 single-instruction popa
 $60 single-instruction pusha
 
 $C3 single-instruction ret
+
+: sbb $18 %011 inst-common-arithm ;
+
 $FB single-instruction sti
 
-: sub 2 operands same-size instruction
-    begin-dispatch
-    imm acc dispatch:
-        sign-extend-bit if
-            $80 opcode-sw >r/m >imm 5 op/reg!
-        else
-            $2C inst-imm-acc
-        then ::
-    imm r/m dispatch: $80 opcode-sw >r/m >imm 5 op/reg! ::
-    reg reg dispatch: $28 inst-reg-reg ::
-    r/m r/m dispatch: $28 inst-reg-r/m ::
-    end-dispatch
-    flush ;
-
+: sub $28 %101 inst-common-arithm ;
+: xor $30 %110 inst-common-arithm ;
 
 SET-CURRENT
 ( PREVIOUS )
