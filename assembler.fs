@@ -639,6 +639,28 @@ reg mem or             constant r/m
     imm imm dispatch: $EA |opcode >imm32 flush word drop ::
     end-dispatch ;
 
+
+\ Input and output
+
+: in 2 operands
+    begin-dispatch
+    imm acc dispatch: $E4 opcode-w 2drop >imm8 ::
+    reg16 acc dispatch:
+        $EC opcode-w 2drop
+        %dx nip <> abort" The source operand must be DX" drop ::
+    end-dispatch
+    flush ;
+
+: output 2 operands
+    begin-dispatch
+    imm acc dispatch: $E6 opcode-w 2drop >imm8 ::
+    reg16 acc dispatch:
+        $EE opcode-w 2drop
+        %dx nip <> abort" The source operand must be DX" drop ::
+    end-dispatch
+    flush ;
+
+
 \ Other instructions
 
 : call 1 operand instruction
