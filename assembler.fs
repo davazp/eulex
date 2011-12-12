@@ -648,6 +648,24 @@ reg mem or             constant r/m
     end-dispatch
     flush ;
 
+: pop 1 operand instruction
+    \ TODO: Support for segment registers
+    begin-dispatch
+    reg32 dispatch: $58 |opcode >opcode ::
+    r/m dispatch: $8F |opcode >r/m ::
+    end-dispatch
+    flush ;
+
+: push 1 operand instruction
+    begin-dispatch
+    imm dispatch: $68 |opcode
+        dup 8-bit? if 2 |opcode >imm8 else >imm32 endif ::
+    r/m8 dispatch: (no-dispatch) ::
+    reg dispatch: $50 |opcode >opcode ::
+    r/m dispatch: $FF |opcode >r/m 6 op/reg! ::
+    end-dispatch
+    flush ;
+
 : lgdt 1 operand
     begin-dispatch
     r/m32 dispatch: 0F, $01 |opcode >r/m 2 op/reg! ::
