@@ -628,6 +628,11 @@ reg mem or             constant r/m
     end-dispatch
     flush ;
 
+: ljmp ( selector imm ) 2 operands
+    begin-dispatch
+    imm imm dispatch: $EA |opcode >imm32 flush word drop ::
+    end-dispatch ;
+
 \ Other instructions
 
 : call 1 operand instruction
