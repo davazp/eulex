@@ -423,6 +423,11 @@ reg mem or             constant r/m
     true abort" The size of the operands must match."
     end-dispatch ;
 
+: immediate-operand 1 operand
+    begin-dispatch
+    imm dispatch: ::
+    end-dispatch ;
+
 \ Define an instruction with no operands
 : single-instruction ( opcode -- )
     create c, does> 0 operands @ |opcode flush ;
@@ -470,10 +475,7 @@ reg mem or             constant r/m
 : opcode-sw opcode-w sign-extend-bit if 2 |opcode 1 imm#! endif ;
 
 \ Generic 2 operand instructions.
-: inst-imm-acc opcode-w 4 |opcode 2drop >imm ;
 : inst-imm-r/m opcode-w >r/m >imm ;
-( This variant encode the register in the opcode. Used by MOV)
-: inst-imm-reg* opcode-wxxx >opcode >imm ;
 : inst-reg-reg opcode-w >r/m >reg ;
 : inst-reg-r/m opcode-dw
     begin-dispatch
@@ -482,7 +484,17 @@ reg mem or             constant r/m
     end-dispatch ;
 
 
-\ Base implementation for some arithmetic and logic instructions.
+\ -------------------------------------------------------------------------
+
+: ascii"
+    [char] " parse dup byte
+    here swap move ;
+
+
+\ Add, sub and derivatives.
+
+: inst-imm-acc
+    opcode-w 4 |opcode 2drop >imm ;
 
 : arith-imm-r/m ( opext -- )
     >r $80 opcode-sw >r/m >imm r> op/reg! ;
@@ -505,64 +517,20 @@ reg mem or             constant r/m
     end-dispatch
     flush ;
 
-\ Instruction listing
-\ -------------------------------------------------------------------------
-
-: ascii"
-    [char] " parse dup byte
-    here swap move ;
-
 : adc $10 %010 inst-common-arithm ;
 : add $00 %000 inst-common-arithm ;
 : and $20 %100 inst-common-arithm ;
-
-: call 1 operand instruction
-    begin-dispatch
-    imm dispatch: $E8 |opcode there 5 + - >imm32 ::
-    r/m dispatch: $FF |opcode 2 op/reg! >r/m ::
-    end-dispatch
-    flush ;
-
 : cmp $38 %111 inst-common-arithm ;
+: or  $08 %001 inst-common-arithm ;
+: sbb $18 %011 inst-common-arithm ;
+: sub $28 %101 inst-common-arithm ;
+: xor $30 %110 inst-common-arithm ;
 
-$94 single-instruction cbw
-$99 single-instruction cdq
 
-$F4 single-instruction clc
-$FC single-instruction cld
-$FA single-instruction cli
+\ MOVement instructions
 
-: cpuid 0F, $A2 |opcode flush ;
-
-: dec 1 operand instruction
-    begin-dispatch
-    reg8 mem or dispatch: $FE opcode-w >r/m 1 op/reg! ::
-    reg dispatch: $48 |opcode >opcode ::
-    end-dispatch
-    flush ;
-
-: inc 1 operand instruction
-    begin-dispatch
-    reg8 mem or dispatch: $FE opcode-w >r/m ::
-    reg dispatch: $40 |opcode >opcode ::
-    end-dispatch
-    flush ;
-
-: jmp 1 operand instruction
-    begin-dispatch
-    imm dispatch: $E9 |opcode
-        \ Try a 8-bit displacement
-        dup there 2 + - 8-bit? if
-            there 2 + - >imm8 2 |opcode
-        else \ or a full 32-bit displacement
-            there 5 + - >imm32
-        endif ::
-    r/m dispatch: $FF |opcode 4 op/reg! >r/m ::
-    end-dispatch
-    flush ;
-
-$F4 single-instruction hlt
-$CF single-instruction iret
+( This variant encode the register in the opcode. Used by MOV)
+: inst-imm-reg* opcode-wxxx >opcode >imm ;
 
 : mov 2 operands same-size instruction
     begin-dispatch
@@ -589,21 +557,97 @@ $CF single-instruction iret
     end-dispatch
     flush ;
 
-$90 single-instruction nop
 
-: or $08 %001 inst-common-arithm ;
+\ Branching
+
+: short-jump? ( target -- flag )
+    there 2 + - 8-bit? ;
+
+: rel8  there 2 + - >imm8 ;
+: rel32 there 5 + - >imm32 ;
+
+\ Base implementation for conditional jumps.
+
+: inst-short-jcc ( target tttn -- )
+    $70 |opcode |opcode rel8 flush ;
+: inst-long-jcc ( target tttn -- )
+    0F, $80 |opcode |opcode rel32 flush ;
+
+: inst-jcc ( tttn -- ) >r immediate-operand instruction r>
+    over short-jump? if inst-short-jcc else inst-long-jcc endif ;
+
+: jo  %0000 inst-jcc ;          : jno  %0001 inst-jcc ;
+: jb  %0010 inst-jcc ;          : jnb  %0011 inst-jcc ;
+' jb  alias jnae                ' jnb  alias jae
+: je  %0100 inst-jcc ;          : jne  %0101 inst-jcc ;
+' je  alias jz                  ' jne  alias jnz
+: jbe %0110 inst-jcc ;          : jnbe %0111 inst-jcc ;
+' jbe alias jna                 ' jnbe alias ja
+: js  %1000 inst-jcc ;          : jns  %1001 inst-jcc ;
+: jp  %1010 inst-jcc ;          : jnp  %1011 inst-jcc ;
+' jp  alias jpe                 ' jnp  alias jpo
+: jl  %1100 inst-jcc ;          : jnl  %1101 inst-jcc ;
+' jl  alias jnge                ' jnl  alias jge
+: jle %1110 inst-jcc ;          : jnle  %1111 inst-jcc ;
+' jle alias jng                 ' jnle alias jg
+
+\ Unconditional jump
+: jmp 1 operand instruction
+    begin-dispatch
+    imm dispatch: $E9 |opcode
+        dup short-jump? if rel8 2 |opcode else rel32 endif ::
+    r/m dispatch: $FF |opcode 4 op/reg! >r/m ::
+    end-dispatch
+    flush ;
+
+
+\ Arithmetics
+
+: inc 1 operand instruction
+    begin-dispatch
+    reg8 mem or dispatch: $FE opcode-w >r/m ::
+    reg dispatch: $40 |opcode >opcode ::
+    end-dispatch
+    flush ;
+
+: dec 1 operand instruction
+    begin-dispatch
+    reg8 mem or dispatch: $FE opcode-w >r/m 1 op/reg! ::
+    reg dispatch: $48 |opcode >opcode ::
+    end-dispatch
+    flush ;
+
+
+\ Other instructions
+
+: call 1 operand instruction
+    begin-dispatch
+    imm dispatch: $E8 |opcode there 5 + - >imm32 ::
+    r/m dispatch: $FF |opcode 2 op/reg! >r/m ::
+    end-dispatch
+    flush ;
+
+$94 single-instruction cbw
+$99 single-instruction cdq
+
+$F4 single-instruction clc
+$FC single-instruction cld
+$FA single-instruction cli
+
+: cpuid 0F, $A2 |opcode flush ;
+
+$F4 single-instruction hlt
+$CF single-instruction iret
+
+$90 single-instruction nop
 
 $61 single-instruction popa
 $60 single-instruction pusha
 
 $C3 single-instruction ret
 
-: sbb $18 %011 inst-common-arithm ;
-
 $FB single-instruction sti
 
-: sub $28 %101 inst-common-arithm ;
-: xor $30 %110 inst-common-arithm ;
 
 SET-CURRENT
 PREVIOUS
