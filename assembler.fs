@@ -642,6 +642,18 @@ reg mem or             constant r/m
     end-dispatch
     flush ;
 
+: lgdt 1 operand
+    begin-dispatch
+    r/m32 dispatch: 0F, $01 |opcode >r/m 2 op/reg! ::
+    end-dispatch
+    flush ;
+
+: lidt 1 operand
+    begin-dispatch
+    r/m32 dispatch: 0F, $01 |opcode >r/m 3 op/reg! ::
+    end-dispatch
+    flush ;
+
 $94 single-instruction cbw
 $99 single-instruction cdq
 
