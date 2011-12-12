@@ -491,7 +491,7 @@ reg mem or             constant r/m
     here swap move ;
 
 
-\ Add, sub and derivatives.
+\ Arithmetic
 
 : inst-imm-acc
     opcode-w 4 |opcode 2drop >imm ;
@@ -499,7 +499,7 @@ reg mem or             constant r/m
 : arith-imm-r/m ( opext -- )
     >r $80 opcode-sw >r/m >imm r> op/reg! ;
 
-: inst-common-arithm ( opcode op-extension -- )
+: inst-binary-arithm ( opcode op-extension -- )
     2>r
     2 operands same-size instruction
     begin-dispatch
@@ -517,14 +517,42 @@ reg mem or             constant r/m
     end-dispatch
     flush ;
 
-: adc $10 %010 inst-common-arithm ;
-: add $00 %000 inst-common-arithm ;
-: and $20 %100 inst-common-arithm ;
-: cmp $38 %111 inst-common-arithm ;
-: or  $08 %001 inst-common-arithm ;
-: sbb $18 %011 inst-common-arithm ;
-: sub $28 %101 inst-common-arithm ;
-: xor $30 %110 inst-common-arithm ;
+: adc $10 %010 inst-binary-arithm ;
+: add $00 %000 inst-binary-arithm ;
+: and $20 %100 inst-binary-arithm ;
+: cmp $38 %111 inst-binary-arithm ;
+: or  $08 %001 inst-binary-arithm ;
+: sbb $18 %011 inst-binary-arithm ;
+: sub $28 %101 inst-binary-arithm ;
+: xor $30 %110 inst-binary-arithm ;
+
+: inst-unary-arithm ( ext )
+    >r 1 operand instruction
+    begin-dispatch
+    r/m dispatch: $F6 opcode-w >r/m r> op/reg! ::
+    end-dispatch
+    flush ;
+
+: div  %110 inst-unary-arithm ;
+: idiv %111 inst-unary-arithm ;
+: imul %101 inst-unary-arithm ;  \ Binary version is not supported.
+: mul  %100 inst-unary-arithm ;
+: neg  %011 inst-unary-arithm ;
+: not  %010 inst-unary-arithm ;
+
+: inc 1 operand instruction
+    begin-dispatch
+    reg8 mem or dispatch: $FE opcode-w >r/m ::
+    reg dispatch: $40 |opcode >opcode ::
+    end-dispatch
+    flush ;
+
+: dec 1 operand instruction
+    begin-dispatch
+    reg8 mem or dispatch: $FE opcode-w >r/m 1 op/reg! ::
+    reg dispatch: $48 |opcode >opcode ::
+    end-dispatch
+    flush ;
 
 
 \ MOVement instructions
@@ -599,24 +627,6 @@ reg mem or             constant r/m
     r/m dispatch: $FF |opcode 4 op/reg! >r/m ::
     end-dispatch
     flush ;
-
-
-\ Arithmetics
-
-: inc 1 operand instruction
-    begin-dispatch
-    reg8 mem or dispatch: $FE opcode-w >r/m ::
-    reg dispatch: $40 |opcode >opcode ::
-    end-dispatch
-    flush ;
-
-: dec 1 operand instruction
-    begin-dispatch
-    reg8 mem or dispatch: $FE opcode-w >r/m 1 op/reg! ::
-    reg dispatch: $48 |opcode >opcode ::
-    end-dispatch
-    flush ;
-
 
 \ Other instructions
 
