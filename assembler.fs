@@ -642,7 +642,9 @@ $CF single-instruction iret
 $90 single-instruction nop
 
 $61 single-instruction popa
+$9D single-instruction popf
 $60 single-instruction pusha
+$9C single-instruction pushf
 
 $C3 single-instruction ret
 
