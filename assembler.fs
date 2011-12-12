@@ -146,6 +146,7 @@ variable inst-imm               variable inst-imm#
 
 : 0! 0 swap ! ;
 : 0F, $0F byte ;        ( extended opcode )
+: 66, $66 byte ;
 
 \ Initialize the assembler state for a new instruction. It must be
 \ called in the beginning of each instruction.
@@ -209,7 +210,7 @@ variable inst-imm               variable inst-imm#
 
 : flush
     \ Prefixes
-    inst-size-override? @ if $66 byte endif
+    inst-size-override? @ if 66, endif
     \ Opcode, modr/m and sib
     inst-opcode @ inst-opcode# @ flush-value
     inst-modr/m @ inst-modr/m# @ flush-value
@@ -569,6 +570,22 @@ $CF single-instruction iret
     imm mem dispatch: $C6 inst-imm-r/m  ::
     reg reg dispatch: $88 inst-reg-reg  ::
     r/m r/m dispatch: $88 inst-reg-r/m  ::
+    end-dispatch
+    flush ;
+
+: movs 2 operands encode-memory
+    begin-dispatch
+    r/m8  reg16 dispatch: 66, 0F, $BE |opcode >reg >r/m ::
+    r/m8  reg32 dispatch:     0F, $BE |opcode >reg >r/m ::
+    r/m16 reg32 dispatch:     0F, $BF |opcode >reg >r/m ::
+    end-dispatch
+    flush ;
+
+: movz 2 operands encode-memory
+    begin-dispatch
+    r/m8  reg16 dispatch: 66, 0F, $B6 |opcode >reg >r/m ::
+    r/m8  reg32 dispatch:     0F, $B6 |opcode >reg >r/m ::
+    r/m16 reg32 dispatch:     0F, $B7 |opcode >reg >r/m ::
     end-dispatch
     flush ;
 
