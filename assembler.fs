@@ -354,6 +354,7 @@ reg mem or             constant r/m
 : any? 2ops? if any then ;
 
 : (no-dispatch)
+    reset-instruction
     true abort" The instruction does not support these operands." ;
 
 0 constant begin-dispatch immediate
@@ -560,8 +561,13 @@ reg mem or             constant r/m
 ( This variant encode the register in the opcode. Used by MOV)
 : inst-imm-reg* opcode-wxxx >opcode >imm ;
 
-: mov 2 operands same-size instruction
+: mov 2 operands instruction
     begin-dispatch
+    \ Segment registers
+    r/m sreg dispatch: $8E |opcode >reg >r/m ::
+    sreg r/m dispatch: $8C |opcode >r/m >reg ::
+    \ General purpose registers
+    SAME-SIZE
     imm reg dispatch: $B0 inst-imm-reg* ::
     imm mem dispatch: $C6 inst-imm-r/m  ::
     reg reg dispatch: $88 inst-reg-reg  ::
