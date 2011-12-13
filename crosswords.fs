@@ -19,10 +19,33 @@
 
 : tos [A] [%esi] [F] ;
 
+: push, ( imm|r/m -- )
+    [A]
+    # 4 , %esi
+        , tos mov
+    [F] ;
+
+: variable
+    CODE
+    there 0 t,
+    there cfa!
+    push,
+    END-CODE ;
+
+variable base
+
+code dp
+    %edi push,
+end-code
+
+code dp!
+    tos , %edi mov
+    # 4 , %esi
+end-code
+
 code dup
-    tos  , %eax mov
-    # 4  , %esi sub
-    %eax , tos  mov
+    tos , %eax mov
+    %eax push,
 end-code
 
 code drop
