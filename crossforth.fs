@@ -18,7 +18,6 @@
 \ along with Eulex.  If not, see <http://www.gnu.org/licenses/>.
 
 require assembler.fs
-require assembler.fs
 
 vocabulary crossforth
 only forth
