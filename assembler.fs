@@ -18,6 +18,7 @@
 \ along with Eulex.  If not, see <http://www.gnu.org/licenses/>.
 
 vocabulary Assembler
+
 get-current
 also Assembler definitions
 
@@ -26,11 +27,21 @@ DECIMAL
 \ Assembler output
 
 \ Cross-assembler:
+DEFER asm,
+DEFER casm,
+DEFER where
+
+' here is where
+' ,  is asm,
+' c, is casm,
+
 \ Difference between the dictionary pointer to the target address.
 0 value target-offset
-: there here target-offset + ;
 
-: lb dup 255 and c, ;
+\ Target compilation addresss.
+: there where target-offset + ;
+
+: lb dup 255 and casm, ;
 : 8>> 8 rshift ;
 
 : byte lb drop ;
@@ -51,10 +62,10 @@ DECIMAL
 
 \ Registers
 
-: reg8  create , does> @  OP-REG8 swap ;
-: reg16 create , does> @ OP-REG16 swap ;
-: reg32 create , does> @ OP-REG32 swap ;
-: sreg  create , does> @  OP-SREG swap ;
+: reg8  create asm, does> @  OP-REG8 swap ;
+: reg16 create asm, does> @ OP-REG16 swap ;
+: reg32 create asm, does> @ OP-REG32 swap ;
+: sreg  create asm, does> @  OP-SREG swap ;
 
 : %al  OP-AL OP-REG8 or 0 ;
 : %ax  OP-AX OP-REG16 or 0 ;
@@ -72,6 +83,8 @@ DECIMAL
 \ Immediate values
 : # OP-IMM ;
 
+\ Name a location in the target machine
+: label create there , does> >r # r> @ ;
 
 \ Memory references
 
@@ -489,10 +502,40 @@ reg mem or             constant r/m
 
 : ascii"
     [char] " parse dup byte
-    here swap move ;
+    0 ?do dup c@ byte 1+ loop
+    drop
+; immediate
 
 
 \ Arithmetic
+
+: inst-unary-arithm ( ext )
+    >r 1 operand instruction
+    begin-dispatch
+    r/m dispatch: $F6 opcode-w >r/m r> op/reg! ::
+    end-dispatch
+    flush ;
+
+: div  %110 inst-unary-arithm ;
+: idiv %111 inst-unary-arithm ;
+: imul %101 inst-unary-arithm ;  \ Binary version is not supported.
+: mul  %100 inst-unary-arithm ;
+: neg  %011 inst-unary-arithm ;
+: not  %010 inst-unary-arithm ;
+
+: inc 1 operand instruction
+    begin-dispatch
+    reg8 mem or dispatch: $FE opcode-w >r/m ::
+    reg dispatch: $40 |opcode >opcode ::
+    end-dispatch
+    flush ;
+
+: dec 1 operand instruction
+    begin-dispatch
+    reg8 mem or dispatch: $FE opcode-w >r/m 1 op/reg! ::
+    reg dispatch: $48 |opcode >opcode ::
+    end-dispatch
+    flush ;
 
 : inst-imm-acc
     opcode-w 4 |opcode 2drop >imm ;
@@ -526,34 +569,6 @@ reg mem or             constant r/m
 : sbb $18 %011 inst-binary-arithm ;
 : sub $28 %101 inst-binary-arithm ;
 : xor $30 %110 inst-binary-arithm ;
-
-: inst-unary-arithm ( ext )
-    >r 1 operand instruction
-    begin-dispatch
-    r/m dispatch: $F6 opcode-w >r/m r> op/reg! ::
-    end-dispatch
-    flush ;
-
-: div  %110 inst-unary-arithm ;
-: idiv %111 inst-unary-arithm ;
-: imul %101 inst-unary-arithm ;  \ Binary version is not supported.
-: mul  %100 inst-unary-arithm ;
-: neg  %011 inst-unary-arithm ;
-: not  %010 inst-unary-arithm ;
-
-: inc 1 operand instruction
-    begin-dispatch
-    reg8 mem or dispatch: $FE opcode-w >r/m ::
-    reg dispatch: $40 |opcode >opcode ::
-    end-dispatch
-    flush ;
-
-: dec 1 operand instruction
-    begin-dispatch
-    reg8 mem or dispatch: $FE opcode-w >r/m 1 op/reg! ::
-    reg dispatch: $48 |opcode >opcode ::
-    end-dispatch
-    flush ;
 
 
 \ Shift
