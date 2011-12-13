@@ -28,12 +28,13 @@ also crossforth definitions
 : kb 1024 * ;
 : mb 1024 kb * ;
 
+\ Address of the start of the dictionary.
+$100000 constant tbase
+
 \ Buffer in memory where to keep the image of the target
 \ dictionary. Make sure than the size of the allocated memory is
 \ enough to keep the metacompiled core.
 create tdict 1 mb allot
-\ Address of the start of the dictionary.
-$100000 constant tbase
 \ Target address to the next available in the dictionary.
 variable tdp
 tbase tdp !
@@ -82,6 +83,20 @@ IS WHERE
 : <asm also assembler ;
 : asm> previous ;
 PREVIOUS
+
+' <asm alias [A] immediate
+' asm> alias [F] immediate
+
+\ Debug symbols
+
+: 32hex ( u -- )
+    base @ hex swap s>d
+    <# # # # # # # # # #>
+    rot base ! ;
+
+\ TODO: Port!
+: latest-name
+    latest name>string ( GNU/Forth ) ;
 
 \ CROSSWORDS AND WORDLIST
 
@@ -144,20 +159,30 @@ THERE
 ... .( load_addr = ) tbase dword.
 ... .( load_end_addr = ) 0 dword.
 ... .( bss_end_addr = ) 0 dword.
-... .( entry_addr = <to be patched> ) to-patch: entry-point CR
+to-patch: entry-point
 
 CR .( \ Crosscompiling...) CR
 
-... .( entry-point ) CR
-there entry-point
-<asm
-%ECX %ECX XOR
-label foo
-# CHAR X $B8000 #PTR8 >%ECX 2* MOV
-%ECX INC
-foo JMP
-asm>
+: code
+    parse-name
+    2dup nextname header
+    ... 2dup type CR
+    <asm
+    nextname [A] label [F]
+    there cfa! ;
+: end-code [A] ret [F] asm> ;
+: , ;
 
-s" forth.core" DUMP BYE
+require crosswords.fs
+
+... .( entry-point ) CR
+THERE ENTRY-POINT
+<ASM
+debug call
+cli
+hlt
+ASM>
+
+s" eulex.core" DUMP BYE
 
 \ crossforth.fs ends here
