@@ -556,6 +556,28 @@ reg mem or             constant r/m
     flush ;
 
 
+\ Shift
+
+: inst-shift/rotate ( extension -- ) op/reg!
+    2 operands instruction
+    begin-dispatch
+    imm r/m dispatch:
+        $C0 opcode-w >r/m dup 1 = if
+            $10 |opcode 2drop
+        else
+            >imm8
+        then ::
+    reg8 r/m dispatch:
+        $D2 opcode-w >r/m
+        nip %cl nip <> abort" The source register must be %cl." ::
+    end-dispatch
+    flush ;
+
+: rol %000 inst-shift/rotate ;
+: ror %001 inst-shift/rotate ;
+: shl %100 inst-shift/rotate ;
+: shr %101 inst-shift/rotate ;
+
 \ MOVement instructions
 
 ( This variant encode the register in the opcode. Used by MOV)
