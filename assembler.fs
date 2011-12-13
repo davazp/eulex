@@ -146,6 +146,7 @@ variable inst-imm               variable inst-imm#
 
 : 0! 0 swap ! ;
 : 0F, $0F byte ;        ( extended opcode )
+: 66, $66 byte ;
 
 \ Initialize the assembler state for a new instruction. It must be
 \ called in the beginning of each instruction.
@@ -209,7 +210,7 @@ variable inst-imm               variable inst-imm#
 
 : flush
     \ Prefixes
-    inst-size-override? @ if $66 byte endif
+    inst-size-override? @ if 66, endif
     \ Opcode, modr/m and sib
     inst-opcode @ inst-opcode# @ flush-value
     inst-modr/m @ inst-modr/m# @ flush-value
@@ -353,6 +354,7 @@ reg mem or             constant r/m
 : any? 2ops? if any then ;
 
 : (no-dispatch)
+    reset-instruction
     true abort" The instruction does not support these operands." ;
 
 0 constant begin-dispatch immediate
@@ -422,6 +424,11 @@ reg mem or             constant r/m
     true abort" The size of the operands must match."
     end-dispatch ;
 
+: immediate-operand 1 operand
+    begin-dispatch
+    imm dispatch: ::
+    end-dispatch ;
+
 \ Define an instruction with no operands
 : single-instruction ( opcode -- )
     create c, does> 0 operands @ |opcode flush ;
@@ -469,10 +476,7 @@ reg mem or             constant r/m
 : opcode-sw opcode-w sign-extend-bit if 2 |opcode 1 imm#! endif ;
 
 \ Generic 2 operand instructions.
-: inst-imm-acc opcode-w 2drop >imm ;
 : inst-imm-r/m opcode-w >r/m >imm ;
-( This variant encode the register in the opcode. Used by MOV)
-: inst-imm-reg* opcode-wxxx >opcode >imm ;
 : inst-reg-reg opcode-w >r/m >reg ;
 : inst-reg-r/m opcode-dw
     begin-dispatch
@@ -481,41 +485,61 @@ reg mem or             constant r/m
     end-dispatch ;
 
 
-
-\ Instruction listing
 \ -------------------------------------------------------------------------
 
-: add 2 operands same-size instruction
+: ascii"
+    [char] " parse dup byte
+    here swap move ;
+
+
+\ Arithmetic
+
+: inst-imm-acc
+    opcode-w 4 |opcode 2drop >imm ;
+
+: arith-imm-r/m ( opext -- )
+    >r $80 opcode-sw >r/m >imm r> op/reg! ;
+
+: inst-binary-arithm ( opcode op-extension -- )
+    2>r
+    2 operands same-size instruction
     begin-dispatch
     imm acc dispatch:
+        \ Here, you can encode as imm-r/m or imm-acc. We choose the
+        \ shorter according to the size of the immediate value.
         sign-extend-bit if
-            $80 opcode-sw >r/m >imm
+            2r> nip arith-imm-r/m
         else
-            $04 inst-imm-acc
+            2r> drop inst-imm-acc
         then ::
-    imm r/m dispatch: $80 opcode-sw >r/m >imm ::
-    reg reg dispatch: $00 inst-reg-reg ::
-    r/m r/m dispatch: $00 inst-reg-r/m ::
+    imm r/m dispatch: 2r> nip arith-imm-r/m ::
+    reg reg dispatch: 2r> drop inst-reg-reg ::
+    r/m r/m dispatch: 2r> drop inst-reg-r/m ::
     end-dispatch
     flush ;
 
-: call 1 operand instruction
+: adc $10 %010 inst-binary-arithm ;
+: add $00 %000 inst-binary-arithm ;
+: and $20 %100 inst-binary-arithm ;
+: cmp $38 %111 inst-binary-arithm ;
+: or  $08 %001 inst-binary-arithm ;
+: sbb $18 %011 inst-binary-arithm ;
+: sub $28 %101 inst-binary-arithm ;
+: xor $30 %110 inst-binary-arithm ;
+
+: inst-unary-arithm ( ext )
+    >r 1 operand instruction
     begin-dispatch
-    imm dispatch: $E8 |opcode there 5 + - >imm32 ::
-    r/m dispatch: $FF |opcode 2 op/reg! >r/m ::
+    r/m dispatch: $F6 opcode-w >r/m r> op/reg! ::
     end-dispatch
     flush ;
 
-$FA single-instruction cli
-
-: cpuid 0F, $A2 |opcode flush ;
-
-: dec 1 operand instruction
-    begin-dispatch
-    reg8 mem or dispatch: $FE opcode-w >r/m 1 op/reg! ::
-    reg dispatch: $48 |opcode >opcode ::
-    end-dispatch
-    flush ;
+: div  %110 inst-unary-arithm ;
+: idiv %111 inst-unary-arithm ;
+: imul %101 inst-unary-arithm ;  \ Binary version is not supported.
+: mul  %100 inst-unary-arithm ;
+: neg  %011 inst-unary-arithm ;
+: not  %010 inst-unary-arithm ;
 
 : inc 1 operand instruction
     begin-dispatch
@@ -524,24 +548,48 @@ $FA single-instruction cli
     end-dispatch
     flush ;
 
-: jmp 1 operand instruction
+: dec 1 operand instruction
     begin-dispatch
-    imm dispatch: $E9 |opcode
-        \ Try a 8-bit displacement
-        dup there 2 + - 8-bit? if
-            there 2 + - >imm8 2 |opcode
-        else \ or a full 32-bit displacement
-            there 5 + - >imm32
-        endif ::
-    r/m dispatch: $FF |opcode 4 op/reg! >r/m ::
+    reg8 mem or dispatch: $FE opcode-w >r/m 1 op/reg! ::
+    reg dispatch: $48 |opcode >opcode ::
     end-dispatch
     flush ;
 
-$F4 single-instruction hlt
-$CF single-instruction iret
 
-: mov 2 operands same-size instruction
+\ Shift
+
+: inst-shift/rotate ( extension -- ) op/reg!
+    2 operands instruction
     begin-dispatch
+    imm r/m dispatch:
+        $C0 opcode-w >r/m dup 1 = if
+            $10 |opcode 2drop
+        else
+            >imm8
+        then ::
+    reg8 r/m dispatch:
+        $D2 opcode-w >r/m
+        nip %cl nip <> abort" The source register must be %cl." ::
+    end-dispatch
+    flush ;
+
+: rol %000 inst-shift/rotate ;
+: ror %001 inst-shift/rotate ;
+: shl %100 inst-shift/rotate ;
+: shr %101 inst-shift/rotate ;
+
+\ MOVement instructions
+
+( This variant encode the register in the opcode. Used by MOV)
+: inst-imm-reg* opcode-wxxx >opcode >imm ;
+
+: mov 2 operands instruction
+    begin-dispatch
+    \ Segment registers
+    r/m sreg dispatch: $8E |opcode >reg >r/m ::
+    sreg r/m dispatch: $8C |opcode >r/m >reg ::
+    \ General purpose registers
+    SAME-SIZE
     imm reg dispatch: $B0 inst-imm-reg* ::
     imm mem dispatch: $C6 inst-imm-r/m  ::
     reg reg dispatch: $88 inst-reg-reg  ::
@@ -549,31 +597,157 @@ $CF single-instruction iret
     end-dispatch
     flush ;
 
-$90 single-instruction nop
-
-$61 single-instruction popa
-$60 single-instruction pusha
-
-$C3 single-instruction ret
-$FB single-instruction sti
-
-: sub 2 operands same-size instruction
+: movs 2 operands encode-memory
     begin-dispatch
-    imm acc dispatch:
-        sign-extend-bit if
-            $80 opcode-sw >r/m >imm 5 op/reg!
-        else
-            $2C inst-imm-acc
-        then ::
-    imm r/m dispatch: $80 opcode-sw >r/m >imm 5 op/reg! ::
-    reg reg dispatch: $28 inst-reg-reg ::
-    r/m r/m dispatch: $28 inst-reg-r/m ::
+    r/m8  reg16 dispatch: 66, 0F, $BE |opcode >reg >r/m ::
+    r/m8  reg32 dispatch:     0F, $BE |opcode >reg >r/m ::
+    r/m16 reg32 dispatch:     0F, $BF |opcode >reg >r/m ::
+    end-dispatch
+    flush ;
+
+: movz 2 operands encode-memory
+    begin-dispatch
+    r/m8  reg16 dispatch: 66, 0F, $B6 |opcode >reg >r/m ::
+    r/m8  reg32 dispatch:     0F, $B6 |opcode >reg >r/m ::
+    r/m16 reg32 dispatch:     0F, $B7 |opcode >reg >r/m ::
     end-dispatch
     flush ;
 
 
+\ Branching
+
+: short-jump? ( target -- flag )
+    there 2 + - 8-bit? ;
+
+: rel8  there 2 + - >imm8 ;
+: rel32 there 5 + - >imm32 ;
+
+\ Base implementation for conditional jumps.
+
+: inst-short-jcc ( target tttn -- )
+    $70 |opcode |opcode rel8 flush ;
+: inst-long-jcc ( target tttn -- )
+    0F, $80 |opcode |opcode rel32 flush ;
+
+: inst-jcc ( tttn -- ) >r immediate-operand instruction r>
+    over short-jump? if inst-short-jcc else inst-long-jcc endif ;
+
+: jo  %0000 inst-jcc ;          : jno  %0001 inst-jcc ;
+: jb  %0010 inst-jcc ;          : jnb  %0011 inst-jcc ;
+' jb  alias jnae                ' jnb  alias jae
+: je  %0100 inst-jcc ;          : jne  %0101 inst-jcc ;
+' je  alias jz                  ' jne  alias jnz
+: jbe %0110 inst-jcc ;          : jnbe %0111 inst-jcc ;
+' jbe alias jna                 ' jnbe alias ja
+: js  %1000 inst-jcc ;          : jns  %1001 inst-jcc ;
+: jp  %1010 inst-jcc ;          : jnp  %1011 inst-jcc ;
+' jp  alias jpe                 ' jnp  alias jpo
+: jl  %1100 inst-jcc ;          : jnl  %1101 inst-jcc ;
+' jl  alias jnge                ' jnl  alias jge
+: jle %1110 inst-jcc ;          : jnle  %1111 inst-jcc ;
+' jle alias jng                 ' jnle alias jg
+
+\ Unconditional jump
+: jmp 1 operand instruction
+    begin-dispatch
+    imm dispatch: $E9 |opcode
+        dup short-jump? if rel8 2 |opcode else rel32 endif ::
+    r/m dispatch: $FF |opcode 4 op/reg! >r/m ::
+    end-dispatch
+    flush ;
+
+: ljmp ( selector imm ) 2 operands
+    begin-dispatch
+    imm imm dispatch: $EA |opcode >imm32 flush word drop ::
+    end-dispatch ;
+
+
+\ Input and output
+
+: in 2 operands
+    begin-dispatch
+    imm acc dispatch: $E4 opcode-w 2drop >imm8 ::
+    reg16 acc dispatch:
+        $EC opcode-w 2drop
+        %dx nip <> abort" The source operand must be DX" drop ::
+    end-dispatch
+    flush ;
+
+: output 2 operands
+    begin-dispatch
+    imm acc dispatch: $E6 opcode-w 2drop >imm8 ::
+    reg16 acc dispatch:
+        $EE opcode-w 2drop
+        %dx nip <> abort" The source operand must be DX" drop ::
+    end-dispatch
+    flush ;
+
+
+\ Other instructions
+
+: call 1 operand instruction
+    begin-dispatch
+    imm dispatch: $E8 |opcode there 5 + - >imm32 ::
+    r/m dispatch: $FF |opcode 2 op/reg! >r/m ::
+    end-dispatch
+    flush ;
+
+: pop 1 operand instruction
+    \ TODO: Support for segment registers
+    begin-dispatch
+    reg32 dispatch: $58 |opcode >opcode ::
+    r/m dispatch: $8F |opcode >r/m ::
+    end-dispatch
+    flush ;
+
+: push 1 operand instruction
+    begin-dispatch
+    imm dispatch: $68 |opcode
+        dup 8-bit? if 2 |opcode >imm8 else >imm32 endif ::
+    r/m8 dispatch: (no-dispatch) ::
+    reg dispatch: $50 |opcode >opcode ::
+    r/m dispatch: $FF |opcode >r/m 6 op/reg! ::
+    end-dispatch
+    flush ;
+
+: lgdt 1 operand
+    begin-dispatch
+    r/m32 dispatch: 0F, $01 |opcode >r/m 2 op/reg! ::
+    end-dispatch
+    flush ;
+
+: lidt 1 operand
+    begin-dispatch
+    r/m32 dispatch: 0F, $01 |opcode >r/m 3 op/reg! ::
+    end-dispatch
+    flush ;
+
+$94 single-instruction cbw
+$99 single-instruction cdq
+
+$F4 single-instruction clc
+$FC single-instruction cld
+$FA single-instruction cli
+
+: cpuid 0F, $A2 |opcode flush ;
+
+$F4 single-instruction hlt
+$CF single-instruction iret
+
+$90 single-instruction nop
+
+$61 single-instruction popa
+$9D single-instruction popf
+$60 single-instruction pusha
+$9C single-instruction pushf
+
+$C3 single-instruction ret
+
+$FB single-instruction sti
+
+
 SET-CURRENT
-( PREVIOUS )
+PREVIOUS
 
 
 \ Local Variables:
