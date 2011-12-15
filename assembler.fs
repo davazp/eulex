@@ -48,17 +48,24 @@ DEFER where
 : word lb 8>> lb drop ;
 : dword lb 8>> lb 8>> lb 8>> lb drop ;
 
-1 constant OP-AL
-2 constant OP-AX
-4 constant OP-EAX
-8 constant OP-REG8
-16 constant OP-REG16
-32 constant OP-REG32
-64 constant OP-SREG
-128 constant OP-IMM
-256 constant OP-MEM8
-512 constant OP-MEM16
-1024 constant OP-MEM32
+: bit-field 0 ;
+: bit 1 over lshift constant 1+ ;
+: end-bit-field drop ;
+
+bit-field
+bit OP-AL
+bit OP-AX
+bit OP-EAX
+bit OP-REG8
+bit OP-REG16
+bit OP-REG32
+bit OP-SREG
+bit OP-IMM
+bit OP-MEM8
+bit OP-MEM16
+bit OP-MEM32
+bit OP-FREF
+end-bit-field
 
 \ Registers
 
@@ -353,6 +360,8 @@ variable inst#op
 ' OP-MEM8  alias mem8
 ' OP-MEM16 alias mem16
 ' OP-MEM32 alias mem32
+' OP-FREF  alias fref
+
 \ Multi-patterns
 -1 constant any
 al ax or eax or        constant acc
@@ -435,11 +444,6 @@ reg mem or             constant r/m
     r/m16 r/m16 dispatch: ::
     r/m32 r/m32 dispatch: ::
     true abort" The size of the operands must match."
-    end-dispatch ;
-
-: immediate-operand 1 operand
-    begin-dispatch
-    imm dispatch: ::
     end-dispatch ;
 
 \ Define an instruction with no operands
@@ -631,21 +635,113 @@ reg mem or             constant r/m
 
 \ Branching
 
+\ There are three levels of reference for branchs, the word `##' marks
+\ a location in the code. You can use `>>' and '<<' to refer the
+\ previous and the next mark respectively.
+\
+\ Similarly, there are words like ###, <<<, >>> and ####, <<<<, >>>>
+\ in order to refer to the levels or branchs.
+\
+\ Indeed, you can save/restore the current scope to the data stack
+\ with the words `save-refs' and `restore-refs'. It is useful to
+\ create lexical contexts as in loops.
+
+3 constant REFLEVELS
+REFLEVELS cells constant VREFSIZE
+
+\ Like ALLOT, but initialize the memory to zero. Only for N positive.
+: zallot ( n -- )
+    here over allot swap 0 fill ;
+
+: last-cell
+    there cell - ;
+
+create vpositions VREFSIZE zallot
+create vreferences VREFSIZE zallot
+
+: refcontext>pcontext ;
+: refcontext>vcontext VREFSIZE + ;
+
+: save-refs ( -- refcontext )
+    VREFSIZE 2 * allocate throw
+    vpositions over refcontext>pcontext VREFSIZE move
+    vreferences over refcontext>vcontext VREFSIZE move ;
+
+: restore-refs ( refcontext -- )
+    dup refcontext>pcontext vpositions VREFSIZE move
+    dup refcontext>vcontext vreferences VREFSIZE move
+    free throw ;
+
+
+: position ( level -- )
+    cells vpositions + ;
+: last-fref ( level -- )
+    cells vreferences + ;
+
+\ Add a forward reference to the list, where the jump address slot is
+\ the last cell in the (target) dictionary.
+: add-last-ref ( level -- )
+    dup last-fref @ last-cell !
+    last-cell swap last-fref ! ;
+
+\ Set the reference position of level N to the current address.
+: set-position ( n -- )
+    there swap position ! ;
+
+: patch-jump ( target jaddr -- )
+    tuck cell + - swap ! ;
+: patch-fref-list ( target addr -- )
+    begin dup while 2dup @ 2swap patch-jump repeat 2drop ;
+\ Patch each forward reference of the list of level N ones with the
+\ current assembler compilation address.
+: patch-freferences ( n -- )
+    >r there r> last-fref @ patch-fref-list ;
+
+\ Disable the active forward references.
+: clear-freference ( level -- )
+    0 swap last-fref ! ;
+
+\ Level-specific words
+: level dup dup ;
+
+: ## 0 level patch-freferences clear-freference set-position ;
+: >> OP-FREF 0 ;
+: << # 0 position @ ;
+
+: ### 1 level patch-freferences clear-freference set-position ;
+: >>> OP-FREF 1 ;
+: <<< # 1 position @ ;
+
+: #### 2 level patch-freferences clear-freference set-position ;
+: >>>> OP-FREF 2 ;
+: <<<< # 2 position @ ;
+
+
 : short-jump? ( target -- flag )
     there 2 + - 8-bit? ;
 
 : rel8  there 2 + - >imm8 ;
 : rel32 there 5 + - >imm32 ;
 
-\ Base implementation for conditional jumps.
-
-: inst-short-jcc ( target tttn -- )
+: inst-short-jcc ( TARGET tttn -- )
     $70 |opcode |opcode rel8 flush ;
-: inst-long-jcc ( target tttn -- )
+
+: inst-long-jcc ( TARGET tttn -- )
     0F, $80 |opcode |opcode rel32 flush ;
 
-: inst-jcc ( tttn -- ) >r immediate-operand instruction r>
-    over short-jump? if inst-short-jcc else inst-long-jcc endif ;
+: inst-forward-jcc ( level tttn -- )
+    >r # 0 r> inst-long-jcc add-last-ref ;
+
+: inst-jcc ( tttn -- ) >r 1 operand instruction
+    begin-dispatch
+    fref dispatch: nip r> inst-forward-jcc ::
+    imm dispatch:
+        dup short-jump? if
+            r> inst-short-jcc
+        else
+            r> inst-long-jcc
+        endif ::
+    end-dispatch ;
 
 : jo  %0000 inst-jcc ;          : jno  %0001 inst-jcc ;
 : jb  %0010 inst-jcc ;          : jnb  %0011 inst-jcc ;
@@ -662,14 +758,18 @@ reg mem or             constant r/m
 : jle %1110 inst-jcc ;          : jnle  %1111 inst-jcc ;
 ' jle alias jng                 ' jnle alias jg
 
-\ Unconditional jump
+: short-jmp
+    $E9 |opcode 2 |opcode rel8 flush ;
+
+: long-jmp
+    $E9 |opcode rel32 flush ;
+
 : jmp 1 operand instruction
     begin-dispatch
-    imm dispatch: $E9 |opcode
-        dup short-jump? if rel8 2 |opcode else rel32 endif ::
-    r/m dispatch: $FF |opcode 4 op/reg! >r/m ::
-    end-dispatch
-    flush ;
+    fref dispatch: # 0 long-jmp add-last-ref drop ::
+    imm dispatch: dup short-jump? if short-jmp else long-jmp endif ::
+    r/m dispatch: $FF |opcode 4 op/reg! >r/m flush ::
+    end-dispatch ;
 
 : ljmp ( selector imm ) 2 operands
     begin-dispatch
