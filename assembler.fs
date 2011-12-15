@@ -61,6 +61,7 @@ bit OP-REG16
 bit OP-REG32
 bit OP-SREG
 bit OP-IMM
+bit OP-DISP
 bit OP-MEM8
 bit OP-MEM16
 bit OP-MEM32
@@ -89,9 +90,6 @@ end-bit-field
 
 \ Immediate values
 : # OP-IMM ;
-
-\ Name a location in the target machine
-: label create there , does> >r # r> @ ;
 
 \ Memory references
 
@@ -127,10 +125,13 @@ variable displacement
 : D displacement ! ;
 
 \ For addressing modes without base
+: #PTR  D OP-DISP 0 ;
 : #PTR8 D OP-MEM8 0 ;
 : #PTR16 D OP-MEM16 0 ;
 : #PTR32 D OP-MEM32 0 ;
-' #PTR32 alias #PTR
+
+\ Disable the disp flag
+: -D >R OP-DISP NEGATE AND R> ;
 
 : 1* 1 S ;
 : 2* 2 S ;
@@ -138,19 +139,19 @@ variable displacement
 : 8* 8 S ;
 
 \ BASE                               BASE + DISP                   INDEX
-: [%eax] %eax B OP-MEM32 0 ;       : +[%eax] D [%eax] ;          : >%eax %eax I ;
-: [%ecx] %ecx B OP-MEM32 0 ;       : +[%ecx] D [%ecx] ;          : >%ecx %ecx I ;
-: [%edx] %edx B OP-MEM32 0 ;       : +[%edx] D [%edx] ;          : >%edx %edx I ;
-: [%ebx] %ebx B OP-MEM32 0 ;       : +[%ebx] D [%ebx] ;          : >%ebx %ebx I ;
+: [%eax] %eax B OP-MEM32 0 ;       : +[%eax] D [%eax] ;          : >%eax %eax I -D ;
+: [%ecx] %ecx B OP-MEM32 0 ;       : +[%ecx] D [%ecx] ;          : >%ecx %ecx I -D ;
+: [%edx] %edx B OP-MEM32 0 ;       : +[%edx] D [%edx] ;          : >%edx %edx I -D ;
+: [%ebx] %ebx B OP-MEM32 0 ;       : +[%ebx] D [%ebx] ;          : >%ebx %ebx I -D ;
 : [%esp] %esp B OP-MEM32 0 ;       : +[%esp] D [%esp] ;          ( %esp is not a valid index )
-: [%ebp] %ebp B OP-MEM32 0 ;       : +[%ebp] D [%ebp] ;          : >%ebp %ebp I ;
-: [%esi] %esi B OP-MEM32 0 ;       : +[%esi] D [%esi] ;          : >%esi %esi I ;
-: [%edi] %edi B OP-MEM32 0 ;       : +[%edi] D [%edi] ;          : >%edi %edi I ;
+: [%ebp] %ebp B OP-MEM32 0 ;       : +[%ebp] D [%ebp] ;          : >%ebp %ebp I -D ;
+: [%esi] %esi B OP-MEM32 0 ;       : +[%esi] D [%esi] ;          : >%esi %esi I -D ;
+: [%edi] %edi B OP-MEM32 0 ;       : +[%edi] D [%edi] ;          : >%edi %edi I -D ;
 
 \ Override size of the memory reference
-: PTR8 NIP OP-MEM8 SWAP ;
-: PTR16 NIP OP-MEM16 SWAP ;
-: PTR32 NIP OP-MEM32 SWAP ; \ Default
+:  PTR8 >R OP-MEM8  OR R> -D ;
+: PTR16 >R OP-MEM16 OR R> -D ;
+: PTR32 >R OP-MEM32 OR R> -D ; \ Default
 
 
 \ INSTRUCTION ENCODING
@@ -203,6 +204,8 @@ variable inst-imm               variable inst-imm#
     inst-sib set-bits!
     1 inst-sib# ! ;
 
+: no-modr/m inst-modr/m# 0! ;
+
 : mod!    6 lshift %11000000 set-modr/m-bits! ;
 : op/reg! 3 lshift %00111000 set-modr/m-bits! ;
 : r/m!             %00000111 set-modr/m-bits! ;
@@ -215,6 +218,8 @@ variable inst-imm               variable inst-imm#
 : disp! inst-disp ! ;           : disp#! inst-disp# ! ;
 : disp8! disp! 1 disp#! ;
 : disp32! disp! 4 disp#! ;
+: short 1 disp#! ;
+: long  2 disp#! ;
 
 \ Set the immediate field.
 : imm! inst-imm ! ;             : imm#! inst-imm# ! ;
@@ -251,8 +256,16 @@ variable inst-imm               variable inst-imm#
 
 \ return the mod value for a given displacement.
 : disp>mod ( n -- 0|1|2 )
-    ?dup 0= if 0 else
-        8-bit? if 1 else 2 then
+    inst-disp# @ 0= if
+        ?dup 0= if 0 else
+            8-bit? if 1 else 2 then
+        endif
+    else
+        inst-disp# @ case
+            1 of 1 endof
+            4 of 2 endof
+            true abort" No valid displacement size."
+        endcase
     endif ;
 
 : scale>s ( scale -- s )
@@ -357,6 +370,7 @@ variable inst#op
 ' OP-REG32 alias reg32
 ' OP-SREG  alias sreg
 ' OP-IMM   alias imm
+' OP-DISP  alias disp
 ' OP-MEM8  alias mem8
 ' OP-MEM16 alias mem16
 ' OP-MEM32 alias mem32
@@ -366,7 +380,8 @@ variable inst#op
 -1 constant any
 al ax or eax or        constant acc
 reg8 reg16 or reg32 or constant reg
-mem8 mem16 or mem32 or constant mem
+mem8 mem16 or mem32 or constant mem*
+disp mem* or           constant mem
 reg8 mem8 or           constant r/m8
 reg16 mem16 or         constant r/m16
 reg32 mem32 or         constant r/m32
@@ -409,6 +424,7 @@ reg mem or             constant r/m
     end-dispatch ;
 
 \ Encode both memory references and immediate (if there) to the ModR/M
+
 \ byte and the Immediate field, respectively.
 : encode-memory
     begin-dispatch
@@ -653,8 +669,8 @@ REFLEVELS cells constant VREFSIZE
 : zallot ( n -- )
     here over allot swap 0 fill ;
 
-: last-cell
-    there cell - ;
+: last-cell ( -- addr )
+    where cell - ;
 
 create vpositions VREFSIZE zallot
 create vreferences VREFSIZE zallot
@@ -672,7 +688,6 @@ create vreferences VREFSIZE zallot
     dup refcontext>vcontext vreferences VREFSIZE move
     free throw ;
 
-
 : position ( level -- )
     cells vpositions + ;
 : last-fref ( level -- )
@@ -689,7 +704,7 @@ create vreferences VREFSIZE zallot
     there swap position ! ;
 
 : patch-jump ( target jaddr -- )
-    tuck cell + - swap ! ;
+    dup >r target-offset + cell + - r> ! ;
 : patch-fref-list ( target addr -- )
     begin dup while 2dup @ 2swap patch-jump repeat 2drop ;
 \ Patch each forward reference of the list of level N ones with the
@@ -706,37 +721,36 @@ create vreferences VREFSIZE zallot
 
 : ## 0 level patch-freferences clear-freference set-position ;
 : >> OP-FREF 0 ;
-: << # 0 position @ ;
+: << 0 position @ #PTR ;
 
 : ### 1 level patch-freferences clear-freference set-position ;
 : >>> OP-FREF 1 ;
-: <<< # 1 position @ ;
+: <<< 1 position @ #PTR ;
 
 : #### 2 level patch-freferences clear-freference set-position ;
 : >>>> OP-FREF 2 ;
-: <<<< # 2 position @ ;
+: <<<< 2 position @ #PTR ;
 
+: rel8  inst-disp @ there 2 + - disp8!  no-modr/m ;
+: rel32 inst-disp @ there 5 + - disp32! no-modr/m ;
 
-: short-jump? ( target -- flag )
-    there 2 + - 8-bit? ;
+: short-jump?
+    inst-disp @ there 2 + - 8-bit? ;
 
-: rel8  there 2 + - >imm8 ;
-: rel32 there 5 + - >imm32 ;
-
-: inst-short-jcc ( TARGET tttn -- )
+: inst-short-jcc ( tttn -- )
     $70 |opcode |opcode rel8 flush ;
 
-: inst-long-jcc ( TARGET tttn -- )
+: inst-long-jcc ( tttn -- )
     0F, $80 |opcode |opcode rel32 flush ;
 
 : inst-forward-jcc ( level tttn -- )
-    >r # 0 r> inst-long-jcc add-last-ref ;
+    inst-long-jcc add-last-ref ;
 
 : inst-jcc ( tttn -- ) >r 1 operand instruction
     begin-dispatch
     fref dispatch: nip r> inst-forward-jcc ::
-    imm dispatch:
-        dup short-jump? if
+    disp dispatch: 2drop
+        short-jump? if
             r> inst-short-jcc
         else
             r> inst-long-jcc
@@ -766,14 +780,15 @@ create vreferences VREFSIZE zallot
 
 : jmp 1 operand instruction
     begin-dispatch
-    fref dispatch: # 0 long-jmp add-last-ref drop ::
-    imm dispatch: dup short-jump? if short-jmp else long-jmp endif ::
+    fref dispatch: long-jmp add-last-ref drop ::
+    disp dispatch: 2drop short-jump? if short-jmp else long-jmp endif ::
     r/m dispatch: $FF |opcode 4 op/reg! >r/m flush ::
     end-dispatch ;
 
-: ljmp ( selector imm ) 2 operands
+: ljmp ( selector imm ) 2 operands instruction
     begin-dispatch
-    imm imm dispatch: $EA |opcode >imm32 flush word drop ::
+    imm disp dispatch:
+    2drop $EA |opcode 4 disp#! no-modr/m flush word drop ::
     end-dispatch ;
 
 
@@ -802,7 +817,7 @@ create vreferences VREFSIZE zallot
 
 : call 1 operand instruction
     begin-dispatch
-    imm dispatch: $E8 |opcode there 5 + - >imm32 ::
+    disp dispatch: 2drop $E8 |opcode rel32 ::
     r/m dispatch: $FF |opcode 2 op/reg! >r/m ::
     end-dispatch
     flush ;
