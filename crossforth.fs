@@ -105,17 +105,17 @@ variable latest-nt
 : latest latest-nt @ ;
 
 : header-previous, latest t, ;
-: header-name, parse-name dup tc, >t ;
+: header-name, dup tc, >t ;
 : header-flags, 0 tc, ;
 : header-cfa, 0 t, ;
 
-: header
+: header ( addr u -- )
     header-previous,
-    there
+    there >r
     header-name,
     header-flags,
     header-cfa,
-    latest-nt ! ;
+    r> latest-nt ! ;
 
 : previous-word
     cell - t@ ;
@@ -162,14 +162,23 @@ to-patch: entry-point
 
 CR .( \ Crosscompiling...) CR
 
+\ Name a location in the target machine
+: label create there , does> @ [A] #PTR [F] ;
+
+: debug there ;
+: end-debug there over - swap taddr>addr swap discode ;
+
 : code
     parse-name
-    2dup nextname header
-    ... 2dup type CR
+    2dup header
+    CR ... 2dup type 3 spaces
     <asm
-    nextname [A] label [F]
-    there cfa! ;
-: end-code [A] ret [F] asm> ;
+    nextname label
+    there cfa!
+    debug ;
+: end-code
+    end-debug asm> ;
+
 : , ;
 
 require crosswords.fs
@@ -177,7 +186,7 @@ require crosswords.fs
 ... .( entry-point ) CR
 THERE ENTRY-POINT
 <ASM
-debug call
+main call
 cli
 hlt
 ASM>
