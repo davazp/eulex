@@ -86,13 +86,6 @@ PREVIOUS
 ' <asm alias [A] immediate
 ' asm> alias [F] immediate
 
-\ Debug symbols
-
-: 32hex ( u -- )
-    base @ hex swap s>d
-    <# # # # # # # # # #>
-    rot base ! ;
-
 \ TODO: Port!
 : latest-name
     latest name>string ( GNU/Forth ) ;
@@ -158,38 +151,151 @@ THERE
 ... .( load_addr = ) tbase dword.
 ... .( load_end_addr = ) 0 dword.
 ... .( bss_end_addr = ) 0 dword.
-to-patch: entry-point
+to-patch: entry-point!
 
 CR .( \ Crosscompiling...) CR
 
 \ Name a location in the target machine
 : label create there , does> @ [A] #PTR [F] ;
+: addr >r drop [A] # [F] r> ;
 
 : debug there ;
 : end-debug there over - swap taddr>addr swap discode ;
 
+\ External symbol file. Generate a file eulex.symbols with the
+\ translation of wordnames to the address of the code. It can be
+\ useful for debugging hopefully.
+
+s" eulex.symbols" w/o create-file throw value debug-file
+debug-file file-size throw
+debug-file reposition-file throw
+
+: hexify ( u -- addr u )
+    base @ >r
+    hex s>d <# # # # # # # # # #>
+    r> base ! ;
+
+: add-debug-symbol-value ( value -- )
+    hexify debug-file write-file throw ;
+
+: add-debug-symbol-name ( addr u -- )
+    debug-file write-file throw ;
+
+: add-debug-symbol ( addr u value -- )
+    add-debug-symbol-value
+    s"  " debug-file write-file throw
+    add-debug-symbol-name
+    10 debug-file emit-file throw
+    debug-file flush-file throw ;
+
+
+\ Crossdefinitions
+
+\ We define two ways to define crosswords:
+\
+\ o The couple `builtin' `end-builtin' define a location in the target
+\   compilation address, you can compile a call or jump with `LABEL jmp/call'.
+\   Arguments will be required in registers and memory mostly. They are
+\   internal routines to the compiler/interpreter.
+\
+\ o The words `code' and `end-code' work as the above but it include
+\   the word in the target wordlist, so they can be called from the
+\   target Forth once it is built. They must accept arguments from the
+\   data stack.
+\
+
+: builtin-label
+    CR ... 2dup type 3 spaces
+    2dup nextname label
+    there add-debug-symbol ;
+
+: builtin
+    parse-name
+    builtin-label <asm debug ;
+
+: end-builtin
+    end-debug asm> ;
+
 : code
     parse-name
     2dup header
-    CR ... 2dup type 3 spaces
-    <asm
-    nextname label
-    there cfa!
-    debug ;
+    builtin-label <asm debug there cfa! ;
+
 : end-code
     end-debug asm> ;
 
 : , ;
 
+[A]
+' %esi    alias %S              \ stack pointer
+' %edi    alias %D              \ dictionary pointer
+\ Yield a reference to the element in the N position in the data
+\ stack, (first position is zero).
+: #S cells +[%esi] ;
+\ Yield a reference to the element in the top of the data stack.
+: %TOS 0 #S ;
+\ Immediate character
+: #char # char ;
+
+\ Primitive control-flow
+
+: compare& ( ) ( ) 2swap cmp 0 #PTR ;
+
+\ KLUDGE: LAST-CELL and PATCH-JUMP are not public words of the
+\ assembler, they should not be used here. Implement stack-based
+\ forward references in the assembler to replace it.
+ALSO ASSEMBLER-IMPL
+: last-jump last-cell ;
+: jump-here there swap patch-jump ;
+PREVIOUS
+
+: <  compare& jnl ;             : >=  compare& jnge ;
+: >  compare& jng ;             : <=  compare& jnle ;
+: u< compare& jnb ;             : u>= compare& jnae ;
+: u> compare& jna ;             : u<= compare& jnbe ;
+: =  compare& jne ;             : <>  compare& je   ;
+: 0=  # 0 =  ;
+: 0<> # 0 <> ;
+
+: if last-jump ;
+: else >r long 0 #PTR jmp r> jump-here last-jump ;
+: then jump-here ;
+
+: begin there ;
+: while last-jump ;
+: repeat >r #PTR jmp r> jump-here ;
+
+: wind ( imm/reg -- )
+    # cell , %S sub ;
+
+: unwind ( imm/reg -- )
+    # cell , %S add ;
+
+: push, ( imm/reg -- )
+    wind
+    ( ) , %TOS mov ;
+
+: variable
+    code
+    # there
+    0 t,
+    there cfa!
+    push,
+    ret
+    end-code ;
+
+[F]
+
 require crosswords.fs
 
-... .( entry-point ) CR
-THERE ENTRY-POINT
-<ASM
-main call
-cli
-hlt
-ASM>
+THERE ENTRY-POINT!
+builtin entry-point
+    # 10 , base mov
+    main call
+    cli
+    ## hlt
+    << jmp
+end-builtin
 
 s" eulex.core" DUMP BYE
 
