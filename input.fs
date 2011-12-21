@@ -73,4 +73,16 @@ CREATE TIB video-width allot
     input_source_id 0!
     refill drop ;
 
+
+: parsing-area input_buffer @ >in @ + ;
+: in-parsing-area? >in @ input_buffer_size @ u< ;
+
+: parse ( char -- addr u )
+    >r parsing-area dup
+    begin dup c@ r@ <> in-parsing-area? and while
+        1+ >in 1+!
+    repeat
+    >in 1+! over -
+    r> drop ;
+
 \ input.fs ends here
