@@ -17,75 +17,45 @@
 \ You should have received a copy of the GNU General Public License
 \ along with Eulex.  If not, see <http://www.gnu.org/licenses/>.
 
-vocabulary Assembler-impl
 vocabulary Assembler
-
 get-current
-also Assembler-impl definitions
-also Assembler
-also
+also Assembler definitions
 
 DECIMAL
-
-: public: assembler definitions ;
-: end-public assembler-impl definitions ;
 
 \ Assembler output
 
 \ Cross-assembler:
-PUBLIC:
-DEFER asm,
-DEFER casm,
-DEFER where
-END-PUBLIC
-
-' here is where
-' ,  is asm,
-' c, is casm,
-
 \ Difference between the dictionary pointer to the target address.
-PUBLIC:
 0 value target-offset
-END-PUBLIC
+: there here target-offset + ;
 
-\ Target compilation addresss.
-: there where target-offset + ;
-
-: lb dup 255 and casm, ;
+: lb dup 255 and c, ;
 : 8>> 8 rshift ;
 
 : byte lb drop ;
 : word lb 8>> lb drop ;
 : dword lb 8>> lb 8>> lb 8>> lb drop ;
 
-: bit-field 0 ;
-: bit 1 over lshift constant 1+ ;
-: end-bit-field drop ;
-
-bit-field
-bit OP-AL
-bit OP-AX
-bit OP-EAX
-bit OP-REG8
-bit OP-REG16
-bit OP-REG32
-bit OP-SREG
-bit OP-IMM
-bit OP-DISP
-bit OP-MEM8
-bit OP-MEM16
-bit OP-MEM32
-bit OP-FREF
-end-bit-field
+1 constant OP-AL
+2 constant OP-AX
+4 constant OP-EAX
+8 constant OP-REG8
+16 constant OP-REG16
+32 constant OP-REG32
+64 constant OP-SREG
+128 constant OP-IMM
+256 constant OP-MEM8
+512 constant OP-MEM16
+1024 constant OP-MEM32
 
 \ Registers
 
-: reg8  create asm, does> @  OP-REG8 swap ;
-: reg16 create asm, does> @ OP-REG16 swap ;
-: reg32 create asm, does> @ OP-REG32 swap ;
-: sreg  create asm, does> @  OP-SREG swap ;
+: reg8  create , does> @  OP-REG8 swap ;
+: reg16 create , does> @ OP-REG16 swap ;
+: reg32 create , does> @ OP-REG32 swap ;
+: sreg  create , does> @  OP-SREG swap ;
 
-PUBLIC:
 : %al  OP-AL OP-REG8 or 0 ;
 : %ax  OP-AX OP-REG16 or 0 ;
 : %eax OP-EAX OP-REG32 or 0 ;
@@ -98,12 +68,10 @@ PUBLIC:
 5 reg32 %ebp     5 reg16 %bp     5 reg8 %ch     5 sreg %gs
 6 reg32 %esi     6 reg16 %si     6 reg8 %dh
 7 reg32 %edi     7 reg16 %di     7 reg8 %bh
-END-PUBLIC
 
 \ Immediate values
-PUBLIC:
 : # OP-IMM ;
-END-PUBLIC
+
 
 \ Memory references
 
@@ -139,41 +107,31 @@ variable displacement
 : D displacement ! ;
 
 \ For addressing modes without base
-PUBLIC:
-: #PTR  dup D OP-DISP OP-MEM32 or swap ;
 : #PTR8 D OP-MEM8 0 ;
 : #PTR16 D OP-MEM16 0 ;
 : #PTR32 D OP-MEM32 0 ;
-END-PUBLIC
+' #PTR32 alias #PTR
 
-\ Disable the disp flag
-: -D >R OP-DISP NEGATE AND R> ;
-
-PUBLIC:
 : 1* 1 S ;
 : 2* 2 S ;
 : 4* 4 S ;
 : 8* 8 S ;
-END-PUBLIC
 
-PUBLIC:
 \ BASE                               BASE + DISP                   INDEX
-: [%eax] %eax B OP-MEM32 0 ;       : +[%eax] D [%eax] ;          : >%eax %eax I -D ;
-: [%ecx] %ecx B OP-MEM32 0 ;       : +[%ecx] D [%ecx] ;          : >%ecx %ecx I -D ;
-: [%edx] %edx B OP-MEM32 0 ;       : +[%edx] D [%edx] ;          : >%edx %edx I -D ;
-: [%ebx] %ebx B OP-MEM32 0 ;       : +[%ebx] D [%ebx] ;          : >%ebx %ebx I -D ;
+: [%eax] %eax B OP-MEM32 0 ;       : +[%eax] D [%eax] ;          : >%eax %eax I ;
+: [%ecx] %ecx B OP-MEM32 0 ;       : +[%ecx] D [%ecx] ;          : >%ecx %ecx I ;
+: [%edx] %edx B OP-MEM32 0 ;       : +[%edx] D [%edx] ;          : >%edx %edx I ;
+: [%ebx] %ebx B OP-MEM32 0 ;       : +[%ebx] D [%ebx] ;          : >%ebx %ebx I ;
 : [%esp] %esp B OP-MEM32 0 ;       : +[%esp] D [%esp] ;          ( %esp is not a valid index )
-: [%ebp] %ebp B OP-MEM32 0 ;       : +[%ebp] D [%ebp] ;          : >%ebp %ebp I -D ;
-: [%esi] %esi B OP-MEM32 0 ;       : +[%esi] D [%esi] ;          : >%esi %esi I -D ;
-: [%edi] %edi B OP-MEM32 0 ;       : +[%edi] D [%edi] ;          : >%edi %edi I -D ;
-END-PUBLIC
+: [%ebp] %ebp B OP-MEM32 0 ;       : +[%ebp] D [%ebp] ;          : >%ebp %ebp I ;
+: [%esi] %esi B OP-MEM32 0 ;       : +[%esi] D [%esi] ;          : >%esi %esi I ;
+: [%edi] %edi B OP-MEM32 0 ;       : +[%edi] D [%edi] ;          : >%edi %edi I ;
 
 \ Override size of the memory reference
-PUBLIC:
-:  PTR8 >R OP-MEM8  OR R> -D ;
-: PTR16 >R OP-MEM16 OR R> -D ;
-: PTR32 >R OP-MEM32 OR R> -D ; \ Default
-END-PUBLIC
+: PTR8 NIP OP-MEM8 SWAP ;
+: PTR16 NIP OP-MEM16 SWAP ;
+: PTR32 NIP OP-MEM32 SWAP ; \ Default
+
 
 \ INSTRUCTION ENCODING
 
@@ -225,8 +183,6 @@ variable inst-imm               variable inst-imm#
     inst-sib set-bits!
     1 inst-sib# ! ;
 
-: no-modr/m inst-modr/m# 0! ;
-
 : mod!    6 lshift %11000000 set-modr/m-bits! ;
 : op/reg! 3 lshift %00111000 set-modr/m-bits! ;
 : r/m!             %00000111 set-modr/m-bits! ;
@@ -239,11 +195,6 @@ variable inst-imm               variable inst-imm#
 : disp! inst-disp ! ;           : disp#! inst-disp# ! ;
 : disp8! disp! 1 disp#! ;
 : disp32! disp! 4 disp#! ;
-
-PUBLIC:
-: short 1 disp#! ;
-: long  2 disp#! ;
-END-PUBLIC
 
 \ Set the immediate field.
 : imm! inst-imm ! ;             : imm#! inst-imm# ! ;
@@ -280,16 +231,8 @@ END-PUBLIC
 
 \ return the mod value for a given displacement.
 : disp>mod ( n -- 0|1|2 )
-    inst-disp# @ 0= if
-        ?dup 0= if 0 else
-            8-bit? if 1 else 2 then
-        endif
-    else
-        inst-disp# @ case
-            1 of 1 endof
-            4 of 2 endof
-            true abort" No valid displacement size."
-        endcase
+    ?dup 0= if 0 else
+        8-bit? if 1 else 2 then
     endif ;
 
 : scale>s ( scale -- s )
@@ -394,18 +337,14 @@ variable inst#op
 ' OP-REG32 alias reg32
 ' OP-SREG  alias sreg
 ' OP-IMM   alias imm
-' OP-DISP  alias disp
 ' OP-MEM8  alias mem8
 ' OP-MEM16 alias mem16
 ' OP-MEM32 alias mem32
-' OP-FREF  alias fref
-
 \ Multi-patterns
 -1 constant any
 al ax or eax or        constant acc
 reg8 reg16 or reg32 or constant reg
-mem8 mem16 or mem32 or constant mem*
-disp mem* or           constant mem
+mem8 mem16 or mem32 or constant mem
 reg8 mem8 or           constant r/m8
 reg16 mem16 or         constant r/m16
 reg32 mem32 or         constant r/m32
@@ -448,7 +387,6 @@ reg mem or             constant r/m
     end-dispatch ;
 
 \ Encode both memory references and immediate (if there) to the ModR/M
-
 \ byte and the Immediate field, respectively.
 : encode-memory
     begin-dispatch
@@ -484,6 +422,11 @@ reg mem or             constant r/m
     r/m16 r/m16 dispatch: ::
     r/m32 r/m32 dispatch: ::
     true abort" The size of the operands must match."
+    end-dispatch ;
+
+: immediate-operand 1 operand
+    begin-dispatch
+    imm dispatch: ::
     end-dispatch ;
 
 \ Define an instruction with no operands
@@ -544,47 +487,12 @@ reg mem or             constant r/m
 
 \ -------------------------------------------------------------------------
 
-PUBLIC:
 : ascii"
     [char] " parse dup byte
-    0 ?do dup c@ byte 1+ loop
-    drop
-; immediate
-END-PUBLIC
+    here swap move ;
+
 
 \ Arithmetic
-
-: inst-unary-arithm ( ext )
-    >r 1 operand instruction
-    begin-dispatch
-    r/m dispatch: $F6 opcode-w >r/m r> op/reg! ::
-    end-dispatch
-    flush ;
-
-PUBLIC:
-: div  %110 inst-unary-arithm ;
-: idiv %111 inst-unary-arithm ;
-: imul %101 inst-unary-arithm ;  \ Binary version is not supported.
-: mul  %100 inst-unary-arithm ;
-: neg  %011 inst-unary-arithm ;
-: not  %010 inst-unary-arithm ;
-END-PUBLIC
-
-PUBLIC:
-: inc 1 operand instruction
-    begin-dispatch
-    reg8 mem or dispatch: $FE opcode-w >r/m ::
-    reg dispatch: $40 |opcode >opcode ::
-    end-dispatch
-    flush ;
-
-: dec 1 operand instruction
-    begin-dispatch
-    reg8 mem or dispatch: $FE opcode-w >r/m 1 op/reg! ::
-    reg dispatch: $48 |opcode >opcode ::
-    end-dispatch
-    flush ;
-END-PUBLIC
 
 : inst-imm-acc
     opcode-w 4 |opcode 2drop >imm ;
@@ -610,7 +518,6 @@ END-PUBLIC
     end-dispatch
     flush ;
 
-PUBLIC:
 : adc $10 %010 inst-binary-arithm ;
 : add $00 %000 inst-binary-arithm ;
 : and $20 %100 inst-binary-arithm ;
@@ -619,7 +526,35 @@ PUBLIC:
 : sbb $18 %011 inst-binary-arithm ;
 : sub $28 %101 inst-binary-arithm ;
 : xor $30 %110 inst-binary-arithm ;
-END-PUBLIC
+
+: inst-unary-arithm ( ext )
+    >r 1 operand instruction
+    begin-dispatch
+    r/m dispatch: $F6 opcode-w >r/m r> op/reg! ::
+    end-dispatch
+    flush ;
+
+: div  %110 inst-unary-arithm ;
+: idiv %111 inst-unary-arithm ;
+: imul %101 inst-unary-arithm ;  \ Binary version is not supported.
+: mul  %100 inst-unary-arithm ;
+: neg  %011 inst-unary-arithm ;
+: not  %010 inst-unary-arithm ;
+
+: inc 1 operand instruction
+    begin-dispatch
+    reg8 mem or dispatch: $FE opcode-w >r/m ::
+    reg dispatch: $40 |opcode >opcode ::
+    end-dispatch
+    flush ;
+
+: dec 1 operand instruction
+    begin-dispatch
+    reg8 mem or dispatch: $FE opcode-w >r/m 1 op/reg! ::
+    reg dispatch: $48 |opcode >opcode ::
+    end-dispatch
+    flush ;
+
 
 \ Shift
 
@@ -638,19 +573,16 @@ END-PUBLIC
     end-dispatch
     flush ;
 
-PUBLIC:
 : rol %000 inst-shift/rotate ;
 : ror %001 inst-shift/rotate ;
 : shl %100 inst-shift/rotate ;
 : shr %101 inst-shift/rotate ;
-END-PUBLIC
 
 \ MOVement instructions
 
 ( This variant encode the register in the opcode. Used by MOV)
 : inst-imm-reg* opcode-wxxx >opcode >imm ;
 
-PUBLIC:
 : mov 2 operands instruction
     begin-dispatch
     \ Segment registers
@@ -680,121 +612,26 @@ PUBLIC:
     r/m16 reg32 dispatch:     0F, $B7 |opcode >reg >r/m ::
     end-dispatch
     flush ;
-END-PUBLIC
+
 
 \ Branching
 
-\ There are three levels of reference for branchs, the word `##' marks
-\ a location in the code. You can use `>>' and '<<' to refer the
-\ previous and the next mark respectively.
-\
-\ Similarly, there are words like ###, <<<, >>> and ####, <<<<, >>>>
-\ in order to refer to the levels or branchs.
-\
-\ Indeed, you can save/restore the current scope to the data stack
-\ with the words `save-refs' and `restore-refs'. It is useful to
-\ create lexical contexts as in loops.
+: short-jump? ( target -- flag )
+    there 2 + - 8-bit? ;
 
-3 constant REFLEVELS
-REFLEVELS cells constant VREFSIZE
+: rel8  there 2 + - >imm8 ;
+: rel32 there 5 + - >imm32 ;
 
-\ Like ALLOT, but initialize the memory to zero. Only for N positive.
-: zallot ( n -- )
-    here over allot swap 0 fill ;
+\ Base implementation for conditional jumps.
 
-: last-cell ( -- addr )
-    where cell - ;
-
-create vpositions VREFSIZE zallot
-create vreferences VREFSIZE zallot
-
-: refcontext>pcontext ;
-: refcontext>vcontext VREFSIZE + ;
-
-PUBLIC:
-: save-refs ( -- refcontext )
-    VREFSIZE 2 * allocate throw
-    vpositions over refcontext>pcontext VREFSIZE move
-    vreferences over refcontext>vcontext VREFSIZE move ;
-
-: restore-refs ( refcontext -- )
-    dup refcontext>pcontext vpositions VREFSIZE move
-    dup refcontext>vcontext vreferences VREFSIZE move
-    free throw ;
-END-PUBLIC
-
-: position ( level -- )
-    cells vpositions + ;
-: last-fref ( level -- )
-    cells vreferences + ;
-
-\ Add a forward reference to the list, where the jump address slot is
-\ the last cell in the (target) dictionary.
-: add-last-ref ( level -- )
-    dup last-fref @ last-cell !
-    last-cell swap last-fref ! ;
-
-\ Set the reference position of level N to the current address.
-: set-position ( n -- )
-    there swap position ! ;
-
-: patch-jump ( target jaddr -- )
-    dup >r target-offset + cell + - r> ! ;
-: patch-fref-list ( target addr -- )
-    begin dup while 2dup @ 2swap patch-jump repeat 2drop ;
-\ Patch each forward reference of the list of level N ones with the
-\ current assembler compilation address.
-: patch-freferences ( n -- )
-    >r there r> last-fref @ patch-fref-list ;
-
-\ Disable the active forward references.
-: clear-freference ( level -- )
-    0 swap last-fref ! ;
-
-\ Level-specific words
-: level dup dup ;
-
-PUBLIC:
-: ## 0 level patch-freferences clear-freference set-position ;
-: >> OP-FREF 0 ;
-: << 0 position @ #PTR ;
-
-: ### 1 level patch-freferences clear-freference set-position ;
-: >>> OP-FREF 1 ;
-: <<< 1 position @ #PTR ;
-
-: #### 2 level patch-freferences clear-freference set-position ;
-: >>>> OP-FREF 2 ;
-: <<<< 2 position @ #PTR ;
-END-PUBLIC
-
-: rel8  inst-disp @ there 2 + - disp8!  no-modr/m ;
-: rel32 inst-disp @ there 5 + - disp32! no-modr/m ;
-
-: short-jump?
-    inst-disp @ there 2 + - 8-bit? ;
-
-: inst-short-jcc ( tttn -- )
+: inst-short-jcc ( target tttn -- )
     $70 |opcode |opcode rel8 flush ;
-
-: inst-long-jcc ( tttn -- )
+: inst-long-jcc ( target tttn -- )
     0F, $80 |opcode |opcode rel32 flush ;
 
-: inst-forward-jcc ( level tttn -- )
-    inst-long-jcc add-last-ref ;
+: inst-jcc ( tttn -- ) >r immediate-operand instruction r>
+    over short-jump? if inst-short-jcc else inst-long-jcc endif ;
 
-: inst-jcc ( tttn -- ) >r 1 operand instruction
-    begin-dispatch
-    fref dispatch: nip r> inst-forward-jcc ::
-    disp dispatch: 2drop
-        short-jump? if
-            r> inst-short-jcc
-        else
-            r> inst-long-jcc
-        endif ::
-    end-dispatch ;
-
-PUBLIC:
 : jo  %0000 inst-jcc ;          : jno  %0001 inst-jcc ;
 : jb  %0010 inst-jcc ;          : jnb  %0011 inst-jcc ;
 ' jb  alias jnae                ' jnb  alias jae
@@ -809,32 +646,24 @@ PUBLIC:
 ' jl  alias jnge                ' jnl  alias jge
 : jle %1110 inst-jcc ;          : jnle  %1111 inst-jcc ;
 ' jle alias jng                 ' jnle alias jg
-END-PUBLIC
 
-: short-jmp
-    $E9 |opcode 2 |opcode rel8 flush ;
-
-: long-jmp
-    $E9 |opcode rel32 flush ;
-
-PUBLIC:
+\ Unconditional jump
 : jmp 1 operand instruction
     begin-dispatch
-    fref dispatch: long-jmp add-last-ref drop ::
-    disp dispatch: 2drop short-jump? if short-jmp else long-jmp endif ::
-    r/m dispatch: $FF |opcode 4 op/reg! >r/m flush ::
+    imm dispatch: $E9 |opcode
+        dup short-jump? if rel8 2 |opcode else rel32 endif ::
+    r/m dispatch: $FF |opcode 4 op/reg! >r/m ::
+    end-dispatch
+    flush ;
+
+: ljmp ( selector imm ) 2 operands
+    begin-dispatch
+    imm imm dispatch: $EA |opcode >imm32 flush word drop ::
     end-dispatch ;
 
-: ljmp ( selector imm ) 2 operands instruction
-    begin-dispatch
-    imm disp dispatch:
-    2drop $EA |opcode 4 disp#! no-modr/m flush word drop ::
-    end-dispatch ;
-END-PUBLIC
 
 \ Input and output
 
-PUBLIC:
 : in 2 operands
     begin-dispatch
     imm acc dispatch: $E4 opcode-w 2drop >imm8 ::
@@ -852,15 +681,13 @@ PUBLIC:
         %dx nip <> abort" The source operand must be DX" drop ::
     end-dispatch
     flush ;
-END-PUBLIC
+
 
 \ Other instructions
 
-PUBLIC:
-
 : call 1 operand instruction
     begin-dispatch
-    disp dispatch: 2drop $E8 |opcode rel32 ::
+    imm dispatch: $E8 |opcode there 5 + - >imm32 ::
     r/m dispatch: $FF |opcode 2 op/reg! >r/m ::
     end-dispatch
     flush ;
@@ -918,10 +745,9 @@ $C3 single-instruction ret
 
 $FB single-instruction sti
 
-END-PUBLIC
 
 SET-CURRENT
-PREVIOUS PREVIOUS PREVIOUS
+PREVIOUS
 
 
 \ Local Variables:
