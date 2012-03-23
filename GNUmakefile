@@ -40,7 +40,8 @@ FORTH_SRC= \
         memory.fs \
 	user.fs \
         assembler.fs \
-	eulexrc.fs
+	eulexrc.fs \
+	app/lisp.fs
 
 TESTING_SRC=tests/tests.fs \
 	    tests/tsuite.fs \
@@ -58,7 +59,7 @@ $(KERNEL): $(OBJS) $(LINKER_SCRIPT)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
 
 clean:
-	-rm -f *.[do] kernel/*.[do] tests/*.[do] $(KERNEL) BUILTIN-FILES.S
+	-rm -f *.[do] kernel/*.[do] tests/*.[do] app/*.[do] $(KERNEL) BUILTIN-FILES.S
 
 %.d: %.S GNUmakefile
 	@$(CC) $(DEPEND_FLAGS) $(CPPFLAGS) $< > $@.tmp; \

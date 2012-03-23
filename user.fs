@@ -20,10 +20,13 @@
 require @kernel/timer.fs
 require @input.fs
 
+\ Applications
+require @app/lisp.fs
+
 page
 ." Welcome to Eulex!" cr
 cr
-." Copyright (C) 2011 David Vazquez" cr
+." Copyright (C) 2011,2012 David Vazquez" cr
 ." This is free software; see the source for copying conditions.  There is NO"  cr
 ." warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE." cr cr
 
@@ -89,7 +92,7 @@ variable error-message-size
     begin ['] user-interaction catch-errors again ;
 
 : start-user-interaction
-    only forth definitions
+    only forth definitions also
     load-eulexrc
     user-interaction-loop ;
 
