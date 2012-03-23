@@ -24,9 +24,6 @@ require @string.fs
 require @structures.fs
 require @kernel/multiboot.fs
 
-: 2aligned ( u -- u* )
-    dup 8 mod ?dup if - 8 + then ;
-
 \ Heap region memory limits. It covers from the end of the dictionary
 \ to the end of the upper memory as provided by the
 \ multiboot-compliant bootloader.

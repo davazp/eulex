@@ -77,7 +77,11 @@
 : aligned ( c-addr -- a-addr )
     %11 + %11 invert and ;
 
+: 2aligned ( u -- u* )
+    %111 + %111 invert and ;
+
 : align dp aligned dp! ;
+: 2align dp 2aligned dp! ;
 
 : clearstack sp-limit sp! ;
 : depth sp-limit sp - cell / 1- ;
