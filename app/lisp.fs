@@ -18,6 +18,8 @@
 \ along with Eulex.  If not, see <http://www.gnu.org/licenses/>.
 
 VOCABULARY LISP
+VOCABULARY LISP-PACKAGE
+
 ALSO LISP DEFINITIONS
 
 3 constant tag-bits
@@ -44,14 +46,20 @@ ALSO LISP DEFINITIONS
 \ Like tagged, but check for x!=0.
 : ?tagged ( x tag -- x* )
     swap dup 0= if nip else swap tagged then ;
-
-vocabulary lisp-package
 
+
+\ We write the lisp package system upon the vocabulary forth
+\ system. To keep a word in the vocabulary `lisp-package' for each
+\ symbol. The PF of the words contains the symbol value and the symbol
+\ function parameters aligned to cell size.
+\ 
 : in-lisp-package:
     only eulex lisp-package ;
 
 : ?nt>pfa dup if nt>pfa then ;
 
+\ Look for the symbol whose name is given in the counted string C-ADDR
+\ or 0 if there is not that symbol.
 : find-symbol ( c-addr -- symbol|0 )
     >r get-order r>
     in-lisp-package: find-cname
@@ -61,6 +69,7 @@ vocabulary lisp-package
 : create-cname ( c-addr -- )
     count nextname header reveal ;
 
+\ Like find-symbol, but if there is not a symbol then create one.
 : intern-symbol ( c-addr -- symbol )
     dup find-symbol ?dup if nip else
         >r get-order get-current in-lisp-package: definitions r>
@@ -69,9 +78,10 @@ vocabulary lisp-package
     then ;
 
 
+
 : run-lisp
-    ." RUNNING EULEX LISP." CR
-;
+    PAGE
+    0 0 AT-XY ." RUNNING EULEX LISP." CR ;
 
 PREVIOUS DEFINITIONS
 
