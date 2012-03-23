@@ -69,6 +69,10 @@ vocabulary lisp-package
     then ;
 
 
+: run-lisp
+    ." RUNNING EULEX LISP." CR
+;
+
 PREVIOUS DEFINITIONS
 
 \ Provide RUN-LISP in the system vocabulary
