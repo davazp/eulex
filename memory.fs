@@ -3,7 +3,7 @@
 \   This file provides support for Forth words ALLOCATE, FREE and
 \   RESIZE by a simple first-fit strategy implementation.
 
-\ Copyright 2011 (C) David Vazquez
+\ Copyright 2011,2012 (C) David Vazquez
 
 \ This file is part of Eulex.
 
@@ -24,15 +24,19 @@ require @string.fs
 require @structures.fs
 require @kernel/multiboot.fs
 
+: 2aligned ( u -- u* )
+    dup 8 mod ?dup if - 8 + then ;
+
 \ Heap region memory limits. It covers from the end of the dictionary
 \ to the end of the upper memory as provided by the
 \ multiboot-compliant bootloader.
-dp-limit aligned  constant heap-start
-mem-upper-limit   constant heap-end
+dp-limit 2aligned constant heap-start
+mem-upper-limit 2 cells - 2aligned constant heap-end
 
 heap-start heap-end - constant heap-size
 
 struct
+    ( reserved ) cell noname field                       
     cell field chunk-size
     0    field chunk>addr
 end-struct chunk-alloc%
@@ -56,14 +60,14 @@ end-struct chunk%
 heap-start        constant sentinel-chunk-begin
 heap-end chunk% - constant sentinel-chunk-end
 
-: align-chunk-size ( u -- u )
+: align-chunk-size ( u -- u* )
     dup cell negate u<= if
-        aligned
+        2aligned
     else
         drop $ffffffff
     then ;
 
-: validate-chunk-size ( u -- u )
+: validate-chunk-size ( u -- u* )
     align-chunk-size dup chunk% u<= if
         drop chunk%
     endif ;
