@@ -29,6 +29,7 @@ also lisp definitions
 %100 constant odd-fixnum-tag
 %001 constant cons-tag
 %011 constant symbol-tag
+%101 constant subr-tag
 
 : tagged or ;
 : ?tagged swap dup 0= if nip else swap tagged then ;
@@ -38,6 +39,7 @@ also lisp definitions
 : void-variable 1 throw ;
 : void-function 2 throw ;
 : wrong-type-argument 3 throw ;
+: wrong-number-of-arguments 4 throw ;
 
 \ Symbols
 
@@ -98,6 +100,27 @@ create-symbol nil nil , ::unbound ,
 : #fset ( symbol definition -- )
     swap check-symbol untag cell + ! ;
     
+
+\ Subrs (primitive functions)
+
+: check-number-of-arguments
+    = not if wrong-number-of-arguments endif ;
+
+\ Create a subr object (a primitive function to the Lisp system),
+\ which accepts N arguments, checks that the number of arguments is
+\ correct and then call to the execution token XT.
+: trampoline ( n xt -- subr )
+    2align here >r
+    swap postpone literal
+    postpone check-number-of-arguments
+    postpone literal
+    postpone execute
+    return
+    r> subr-tag tagged ;
+
+: #subrp tag-mask and subr-tag = >bool ;
+
+
 \ Integers
 
 : >fixnum [ tag-bits 1 - ]L lshift ;
