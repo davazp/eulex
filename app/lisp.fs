@@ -137,6 +137,9 @@ create-symbol nil nil , ::unbound ,
     tag-mask and subr-tag = >bool ;
 1 FUNC subrp
 
+: funcall-subr ( arg1 arg2 .. argn n subr -- ... )
+    untag execute ;
+
 \ Integers
 
 : >fixnum [ tag-bits 1 - ]L lshift ;
