@@ -17,10 +17,10 @@
 \ You should have received a copy of the GNU General Public License
 \ along with Eulex.  If not, see <http://www.gnu.org/licenses/>.
 
-VOCABULARY LISP
-VOCABULARY LISP-PACKAGE
-
-ALSO LISP DEFINITIONS
+vocabulary lisp
+get-current
+also eulex
+also lisp definitions
 
 3 constant tag-bits
 1 tag-bits lshift 1 - constant tag-mask
@@ -30,60 +30,76 @@ ALSO LISP DEFINITIONS
 %001 constant cons-tag
 %011 constant symbol-tag
 
-: allocate-cons ( x y -- xy )
-    2 cells allocate throw cons-tag or ;
+: tagged or ;
+: ?tagged swap dup 0= if nip else swap tagged then ;
+: untag tag-mask invert and ;
 
-: >fixnum [ tag-bits 1 - ]L lshift ;
-: fixnum> [ tag-bits 1 - ]L rshift ;
+\ We write the lisp package system upon wordlists. The PF of the words
+\ contains the symbol value and the symbol function parameters aligned
+\ to a double cell size.
+wordlist constant lisp-package
+lisp-package >order
 
-: integer? 1 and 0= ;
-: cons? tag-mask and cons-tag = ;
-: symbol? tag-mask and symbol-tag = ;
+: in-lisp-package: only eulex lisp-package >order ;
 
-: tagged ( x tag -- x* )
-    swap tag-bits lshift or ;
+: create-in-lisp-package
+    get-order get-current in-lisp-package: definitions
+    create set-current set-order ;
 
-\ Like tagged, but check for x!=0.
-: ?tagged ( x tag -- x* )
-    swap dup 0= if nip else swap tagged then ;
+: find-cname-in-lisp-package ( c-addr -- )
+    >r get-order in-lisp-package: r>
+    find-cname >r set-order r> ;
 
+: create-symbol
+    create-in-lisp-package 2align does> 2aligned symbol-tag tagged ;
 
-\ We write the lisp package system upon the vocabulary forth
-\ system. To keep a word in the vocabulary `lisp-package' for each
-\ symbol. The PF of the words contains the symbol value and the symbol
-\ function parameters aligned to cell size.
-\ 
-: in-lisp-package:
-    only eulex lisp-package ;
+: ::unbound [ here 2aligned symbol-tag tagged ]L ;
 
-: ?nt>pfa dup if nt>pfa then ;
+create-symbol t                 t , ::unbound ,
+create-symbol nil             nil , ::unbound ,
 
-\ Look for the symbol whose name is given in the counted string C-ADDR
-\ or 0 if there is not that symbol.
-: find-symbol ( c-addr -- symbol|0 )
-    >r get-order r>
-    in-lisp-package: find-cname
-    >r set-order r>
-    ?nt>pfa aligned symbol-tag ?tagged ;
+: >bool if t else nil then ;
+: bool> nil = if 0 else -1 then ;
 
-: create-cname ( c-addr -- )
-    count nextname header reveal ;
+: eq? = >bool ;
 
-\ Like find-symbol, but if there is not a symbol then create one.
-: intern-symbol ( c-addr -- symbol )
-    dup find-symbol ?dup if nip else
-        >r get-order get-current in-lisp-package: definitions r>
-        create-cname set-current set-order
-        align here 2 cells allot symbol-tag tagged         
+: symbol?
+    tag-mask and symbol-tag = >bool ;
+
+\ Check if X is a symbol object. If not, it signals an error.
+: check-symbol ( x -- x )
+    dup symbol? NIL = if 1 throw then ;
+
+: %find-symbol ( c-addr -- symbol|0 )
+    find-cname-in-lisp-package ?dup if nt>xt execute endif ;
+
+: %intern-symbol ( c-addr -- symbol )
+    dup %find-symbol ?dup if nip else
+        count nextname create-symbol ::unbound , ::unbound ,
+        latestxt execute 
     then ;
+
+: symbol-value ( symbol -- value )
+    check-symbol untag @
+    dup ::unbound = if 2 throw endif ;
+
+: symbol-function ( symbol -- value )
+    check-symbol untag cell + @
+    dup ::unbound = if 3 throw endif ;
+
+: set ( symb value -- )
+    swap check-symbol untag ! ;
+
+: fset ( symbol definition -- )
+    swap check-symbol untag cell + ! ;
+    
 
 
 
 : run-lisp
-    PAGE
-    0 0 AT-XY ." RUNNING EULEX LISP." CR ;
+    page 0 0 at-xy ." RUNNING EULEX LISP." cr ;
 
-PREVIOUS DEFINITIONS
+previous previous set-current
 
 \ Provide RUN-LISP in the system vocabulary
 LATESTXT ALIAS RUN-LISP
