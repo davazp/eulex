@@ -49,13 +49,14 @@ also lisp definitions
 wordlist constant lisp-package
 lisp-package >order
 
-: in-lisp-package: only eulex lisp-package >order ;
+: in-lisp-package:
+    lisp-package 1 set-order ;
 
 : create-in-lisp-package
     get-order get-current in-lisp-package: definitions
     create set-current set-order ;
 
-: find-cname-in-lisp-package ( c-addr -- )
+: find-cname-in-lisp-package ( c-addr -- nt|0 )
     >r get-order in-lisp-package: r>
     find-cname >r set-order r> ;
 
@@ -71,7 +72,7 @@ create-symbol nil nil , ::unbound ,
 : bool> nil = if 0 else -1 then ;
 
 : find-symbol ( c-addr -- symbol|0 )
-    find-cname-in-lisp-package ?dup if nt>xt execute endif ;
+    find-cname-in-lisp-package dup if nt>xt execute endif ;
 
 : intern-symbol ( c-addr -- symbol )
     dup find-symbol ?dup if nip else
@@ -118,8 +119,17 @@ create-symbol nil nil , ::unbound ,
     return
     r> subr-tag tagged ;
 
-: #subrp tag-mask and subr-tag = >bool ;
+\ Parse a word and intern a symbol for it, with a function value which
+\ accepts N arguments and calls to XT.
+: register-func ( n xt parse:name -- )
+    parse-cname intern-symbol rot trampoline #fset ;
 
+: FUNC ( n parse:name -- )
+    latestxt register-func ;
+
+: #subrp
+    tag-mask and subr-tag = >bool ;
+1 FUNC subrp
 
 \ Integers
 
