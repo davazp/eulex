@@ -34,6 +34,13 @@ also lisp definitions
 : ?tagged swap dup 0= if nip else swap tagged then ;
 : untag tag-mask invert and ;
 
+\ Errors
+: void-variable 1 throw ;
+: void-function 2 throw ;
+: wrong-type-argument 3 throw ;
+
+\ Symbols
+
 \ We write the lisp package system upon wordlists. The PF of the words
 \ contains the symbol value and the symbol function parameters aligned
 \ to a double cell size.
@@ -55,46 +62,67 @@ lisp-package >order
 
 : ::unbound [ here 2aligned symbol-tag tagged ]L ;
 
-create-symbol t                 t , ::unbound ,
-create-symbol nil             nil , ::unbound ,
+create-symbol t     t , ::unbound ,
+create-symbol nil nil , ::unbound ,
 
 : >bool if t else nil then ;
 : bool> nil = if 0 else -1 then ;
 
-: eq? = >bool ;
-
-: symbol?
-    tag-mask and symbol-tag = >bool ;
-
-\ Check if X is a symbol object. If not, it signals an error.
-: check-symbol ( x -- x )
-    dup symbol? NIL = if 1 throw then ;
-
-: %find-symbol ( c-addr -- symbol|0 )
+: find-symbol ( c-addr -- symbol|0 )
     find-cname-in-lisp-package ?dup if nt>xt execute endif ;
 
-: %intern-symbol ( c-addr -- symbol )
-    dup %find-symbol ?dup if nip else
+: intern-symbol ( c-addr -- symbol )
+    dup find-symbol ?dup if nip else
         count nextname create-symbol ::unbound , ::unbound ,
         latestxt execute 
     then ;
 
-: symbol-value ( symbol -- value )
+: #symbolp
+    tag-mask and symbol-tag = >bool ;
+
+\ Check if X is a symbol object. If not, it signals an error.
+: check-symbol ( x -- x )
+    dup #symbolp NIL = if wrong-type-argument then ;
+
+: #symbol-value ( symbol -- value )
     check-symbol untag @
-    dup ::unbound = if 2 throw endif ;
+    dup ::unbound = if void-variable endif ;
 
-: symbol-function ( symbol -- value )
+: #symbol-function ( symbol -- value )
     check-symbol untag cell + @
-    dup ::unbound = if 3 throw endif ;
+    dup ::unbound = if void-function endif ;
 
-: set ( symb value -- )
+: #set ( symb value -- )
     swap check-symbol untag ! ;
 
-: fset ( symbol definition -- )
+: #fset ( symbol definition -- )
     swap check-symbol untag cell + ! ;
     
+\ Integers
 
+: >fixnum [ tag-bits 1 - ]L lshift ;
+: fixnum> [ tag-bits 1 - ]L rshift ;
 
+: #fixnump 1 and 0= >bool ;
+' #fixnump alias #integerp
+
+: check-integer ( x -- x )
+    dup #integerp NIL = if wrong-type-argument endif ;
+
+: 2-check-integers
+    check-integer swap check-integer swap ;
+
+\ : allocate-cons ( x y -- xy )
+\     2 cells allocate throw
+\     tuck cell + ! tuck !
+\     ." Allocating cons at " dup hex. CR
+\     cons-tag tagged ;
+
+\ : cons? tag-mask and cons-tag = ;
+\ : cons-car untag @ ;
+\ : cons-cdr untag cell + @ ;
+
+: eq = >bool ;
 
 : run-lisp
     page 0 0 at-xy ." RUNNING EULEX LISP." cr ;
@@ -102,6 +130,6 @@ create-symbol nil             nil , ::unbound ,
 previous previous set-current
 
 \ Provide RUN-LISP in the system vocabulary
-LATESTXT ALIAS RUN-LISP
+latestxt alias run-lisp
 
 \ lisp.fs ends here
