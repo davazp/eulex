@@ -101,6 +101,14 @@ create-symbol nil nil , ::unbound ,
 : #fset ( symbol definition -- )
     swap check-symbol untag cell + ! ;
     
+\ Lisp basic conditional. It runs the true-branch if the top of the
+\ stack is non-nil. It is compatible with `else' and `then' words.
+: #if
+    [ nil ]L postpone literal
+    postpone =
+    postpone not
+    postpone if
+; immediate compile-only
 
 \ Subrs (primitive functions)
 
@@ -140,6 +148,32 @@ create-symbol nil nil , ::unbound ,
 : funcall-subr ( arg1 arg2 .. argn n subr -- ... )
     untag execute ;
 
+\ CONSes
+
+variable allocated-conses
+
+: #cons ( x y -- cons )
+    2 cells allocate throw
+    tuck cell+ ! tuck ! cons-tag tagged
+    allocated-conses 1+! ;
+2 FUNC cons
+
+: #consp tag-mask and cons-tag = >bool ;
+1 FUNC consp
+
+: check-cons
+    dup #consp nil = if wrong-type-argument endif ;
+
+: #car dup #if check-cons untag @ endif ;
+1 FUNC car
+
+: #cdr dup #if check-cons untag cell + @ endif ;
+1 FUNC cdr
+
+\ Misc
+
+: #eq = >bool ; 2 FUNC eq
+
 \ Integers
 
 : >fixnum [ tag-bits 1 - ]L lshift ;
@@ -154,20 +188,19 @@ create-symbol nil nil , ::unbound ,
 : 2-check-integers
     check-integer swap check-integer swap ;
 
+: #= = >bool ; 2 FUNC =
+: #< < >bool ; 2 FUNC <
+: #> > >bool ; 2 FUNC >
+: #<= <= >bool ; 2 FUNC <=
+: #>= >= >bool ; 2 FUNC >=
+: #/= = not >bool ; 2 FUNC >=
 
-\ : allocate-cons ( x y -- xy )
-\     2 cells allocate throw
-\     tuck cell + ! tuck !
-\     ." Allocating cons at " dup hex. CR
-\     cons-tag tagged ;
+: #+ + ; 2 FUNC +
+: #- - ; 2 FUNC -
+: #* fixnum> * ; 2 FUNC *
+: #/ / >fixnum ; 2 FUNC /
 
-\ : cons? tag-mask and cons-tag = ;
-\ : cons-car untag @ ;
-\ : cons-cdr untag cell + @ ;
-
-: #eq = >bool ;
-2 FUNC eq
-
+\ Interpreter
 
 : run-lisp
     page 0 0 at-xy ." RUNNING EULEX LISP." cr ;
@@ -176,5 +209,9 @@ previous previous set-current
 
 \ Provide RUN-LISP in the system vocabulary
 latestxt alias run-lisp
+
+\ Local Variables:
+\ forth-local-words: ((("#if") compile-only (font-lock-keyword-face . 2)))
+\ End:
 
 \ lisp.fs ends here
