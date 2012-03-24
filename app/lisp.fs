@@ -148,6 +148,33 @@ create-symbol nil nil , ::unbound ,
 : funcall-subr ( arg1 arg2 .. argn n subr -- ... )
     untag execute ;
 
+
+\ Integers
+
+: >fixnum [ tag-bits 1 - ]L lshift ;
+: fixnum> [ tag-bits 1 - ]L rshift ;
+
+: #fixnump 1 and 0= >bool ; 1 FUNC fixnump
+' #fixnump alias #integerp  1 FUNC integerp
+
+: check-integer ( x -- x )
+    dup #integerp NIL = if wrong-type-argument endif ;
+
+: 2-check-integers
+    check-integer swap check-integer swap ;
+
+: #= = >bool ; \ 2 FUNC =
+: #< < >bool ; \ 2 FUNC <
+: #> > >bool ; \ 2 FUNC >
+: #<= <= >bool ; \ 2 FUNC <=
+: #>= >= >bool ; \ 2 FUNC >=
+: #/= = not >bool ; \ 2 FUNC >=
+
+: #+ + ; \ 2 FUNC +
+: #- - ; \ 2 FUNC -
+: #* fixnum> * ; \ 2 FUNC *
+: #/ / >fixnum ; \ 2 FUNC / 
+
 \ CONSes
 
 variable allocated-conses
@@ -170,35 +197,12 @@ variable allocated-conses
 : #cdr dup #if check-cons untag cell + @ endif ;
 1 FUNC cdr
 
+: list ( x1 x2 ... xn n -- list )
+    nil swap 0 ?do #cons loop ;
+
 \ Misc
 
 : #eq = >bool ; 2 FUNC eq
-
-\ Integers
-
-: >fixnum [ tag-bits 1 - ]L lshift ;
-: fixnum> [ tag-bits 1 - ]L rshift ;
-
-: #fixnump 1 and 0= >bool ; 1 FUNC fixnump
-' #fixnump alias #integerp  1 FUNC integerp
-
-: check-integer ( x -- x )
-    dup #integerp NIL = if wrong-type-argument endif ;
-
-: 2-check-integers
-    check-integer swap check-integer swap ;
-
-: #= = >bool ; 2 FUNC =
-: #< < >bool ; 2 FUNC <
-: #> > >bool ; 2 FUNC >
-: #<= <= >bool ; 2 FUNC <=
-: #>= >= >bool ; 2 FUNC >=
-: #/= = not >bool ; 2 FUNC >=
-
-: #+ + ; 2 FUNC +
-: #- - ; 2 FUNC -
-: #* fixnum> * ; 2 FUNC *
-: #/ / >fixnum ; 2 FUNC /
 
 \ Interpreter
 
