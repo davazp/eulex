@@ -122,7 +122,13 @@ create-symbol nil nil , ::unbound ,
 \ Parse a word and intern a symbol for it, with a function value which
 \ accepts N arguments and calls to XT.
 : register-func ( n xt parse:name -- )
-    parse-cname intern-symbol rot trampoline #fset ;
+    parse-cname intern-symbol -rot trampoline #fset ;
+
+1 ' #symbolp         register-func symbolp
+1 ' #symbol-function register-func symbol-function
+1 ' #symbol-value    register-func symbol-value
+2 ' #set             register-func set
+2 ' #fset            register-func fset
 
 : FUNC ( n parse:name -- )
     latestxt register-func ;
@@ -136,14 +142,15 @@ create-symbol nil nil , ::unbound ,
 : >fixnum [ tag-bits 1 - ]L lshift ;
 : fixnum> [ tag-bits 1 - ]L rshift ;
 
-: #fixnump 1 and 0= >bool ;
-' #fixnump alias #integerp
+: #fixnump 1 and 0= >bool ; 1 FUNC fixnump
+' #fixnump alias #integerp  1 FUNC integerp
 
 : check-integer ( x -- x )
     dup #integerp NIL = if wrong-type-argument endif ;
 
 : 2-check-integers
     check-integer swap check-integer swap ;
+
 
 \ : allocate-cons ( x y -- xy )
 \     2 cells allocate throw
@@ -155,7 +162,9 @@ create-symbol nil nil , ::unbound ,
 \ : cons-car untag @ ;
 \ : cons-cdr untag cell + @ ;
 
-: eq = >bool ;
+: #eq = >bool ;
+2 FUNC eq
+
 
 : run-lisp
     page 0 0 at-xy ." RUNNING EULEX LISP." cr ;
