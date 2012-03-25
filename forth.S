@@ -1007,14 +1007,13 @@ fpeekchar:
         jle fpeekchar_eob
         addl input_buffer, %edx
         movzbl (%edx), %eax
-fpeekchar_lc:
-        cmp $10, %eax
-        je 1f
+        /* Update input source line and column */
         incl input_source_column
-        jmp 2f
-1:      movl $0, input_source_column
+        cmp $10, %eax
+        jne 1f
         incl input_source_line
-2:      ret
+        movl $0, input_source_column
+1:      ret
 fpeekchar_last:
         movl $'\n', %eax
         ret
