@@ -591,6 +591,18 @@ BUILTIN_WORD(rshift)
 END_WORD(rshift)
 
 
+BUILTIN_WORD_NAME(two_times, "2*")
+        sall $1, (%esi)
+        ret
+END_WORD(two_times)
+
+
+BUILTIN_WORD_NAME(two_divides, "2/")
+        sarl $1, (%esi)
+        ret
+END_WORD(two_divides)
+	
+
 BUILTIN_WORD_ENTRY(to_r, ">r", F_COMPILE_TIME)
         /* Skip the stored %eip. */
         movl (%esi), %eax
