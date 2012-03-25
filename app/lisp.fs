@@ -295,12 +295,18 @@ create token-buffer token-buffer-size allot
         drop try-unumber 0
     endcase ;
 
+: >sym/num ( c-addr -- x )
+    dup count try-number if
+        nip >fixnum
+    else
+        drop intern-symbol
+    endif ;
 
 : #read ( -- x )
     peek-char case
         [char] ( of read-( endof
         [char] ' of read-' endof
-        \ read-token >sym/num swap
+        drop read-token >sym/num 0
     endcase ;
 
 ' #read is read-lisp-obj
