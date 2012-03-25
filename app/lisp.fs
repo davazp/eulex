@@ -17,6 +17,8 @@
 \ You should have received a copy of the GNU General Public License
 \ along with Eulex.  If not, see <http://www.gnu.org/licenses/>.
 
+\ TODO: Implement a basic GC!
+
 vocabulary lisp
 get-current
 also eulex
