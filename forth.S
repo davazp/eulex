@@ -1004,14 +1004,11 @@ fpeekchar:
         movl input_buffer_in, %edx
         cmpl %edx, input_buffer_size
         je fpeekchar_last
-        cmpl %edx, input_buffer_size
         jle fpeekchar_eob
         addl input_buffer, %edx
         movzbl (%edx), %eax
 fpeekchar_lc:
         cmp $10, %eax
-        je 1f
-        cmp $13, %eax
         je 1f
         incl input_source_column
         jmp 2f
