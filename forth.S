@@ -994,45 +994,9 @@ dictionary_end:
 /* Read a character from input_buffer.
    If it is empty, then it will try to refill it before. */
 fgetchar:
-        movl input_buffer_in, %edx
-        cmpl %edx, input_buffer_size
-        je fgetchar_last
-        cmpl %edx, input_buffer_size
-        jle fgetchar_eob
-        addl input_buffer, %edx
-        movzbl (%edx), %eax
+        call fpeekchar
         incl input_buffer_in
-fgetchar_lc:
-        cmp $10, %eax
-        je 1f
-        cmp $13, %eax
-        je 1f
-        incl input_source_column
-        jmp 2f
-1:      movl $0, input_source_column
-        incl input_source_line
-2:      ret
-fgetchar_last:
-	incl input_buffer_in
-        movl $'\n', %eax
         ret
-fgetchar_eob:
-        /* End-of-buffer. The input buffer is empty. It may be due to
-	   all memory buffer has been processed, or the user did not
-           type more data yet. INPUT_SOURCE_ID is used to know the
-           reason of that. */
-        movl input_source_id, %edx
-        cmpl $-1, %edx
-        je fgetchar_eof
-        /* The TIB is empty, so return a delimitier (space) and refill
-           the user input buffer for the next time. */
-        call *tib_fill_routine
-        movl $10, %eax
-        ret
-fgetchar_eof:
-        xorl %eax, %eax
-        ret
-
 
 /* Read a character from input_buffer without using it.
    If it is empty, then it will try to refill it before. */
@@ -1068,8 +1032,7 @@ fpeekchar_eob:
         /* The TIB is empty, so return a delimitier (space) and refill
            the user input buffer for the next time. */
         call *tib_fill_routine
-        movl $10, %eax
-        ret
+        jmp fpeekchar
 fpeekchar_eof:
         xorl %eax, %eax
         ret
