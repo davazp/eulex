@@ -68,6 +68,8 @@ lisp-package >order
 create-symbol t     t , ::unbound ,
 create-symbol nil nil , ::unbound ,
 
+create-symbol quote ::unbound , ::unbound ,
+
 : >bool if t else nil then ;
 : bool> nil = if 0 else -1 then ;
 
@@ -203,6 +205,39 @@ variable allocated-conses
 \ Misc
 
 : #eq = >bool ; 2 FUNC eq
+
+
+\ Reader
+
+: digit-char? ( ch -- bool )
+    [char] 0 swap [char] 9 between ;
+
+: whitespace-char? ( ch -- bool )
+    case
+        32 of true endof
+        10 of true endof
+        08 of true endof
+        false swap
+    endcase ;
+
+: close-parent? [char] ) = ;
+: token-terminal-char? ( ch -- bool )
+    dup whitespace-char? swap close-parent? or ;
+
+defer read-lisp-obj
+
+: skip-whitespaces
+    begin peek-char whitespace-char? while parse-char drop repeat ;
+
+: #read ( -- x )
+    peek-char case
+        [char] ( of endof
+        [char] ' of endof
+    endcase ;
+
+' #read is read-lisp-obj
+0 FUNC read
+
 
 \ Interpreter
 
