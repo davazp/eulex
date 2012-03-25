@@ -214,6 +214,9 @@ variable allocated-conses
 : digit-char? ( ch -- bool )
     [char] 0 swap [char] 9 between ;
 
+: digit-value ( ch -- d )
+    [char] 0 - ;
+
 : whitespace-char? ( ch -- bool )
     case
         32 of true endof
@@ -271,10 +274,33 @@ create token-buffer token-buffer-size allot
     repeat
     drop token-buffer ;
 
+: try-unumber ( addr u -- d f )
+    0 -rot
+    0 ?do ( d addr )
+        dup I + c@ digit-char? if
+            swap 10 * over I + c@ digit-value + swap
+        else
+            unloop drop false exit
+        endif
+    loop
+    drop true ;
+
+: trim0 ( addr u -- addr+1 u-1 )
+    dup if 1- swap 1+ swap endif ;
+
+: try-number ( addr u -- d f )
+    over c@ case
+        [char] - of trim0 try-unumber swap negate swap endof
+        [char] + of trim0 try-unumber endof
+        drop try-unumber 0
+    endcase ;
+
+
 : #read ( -- x )
     peek-char case
         [char] ( of read-( endof
         [char] ' of read-' endof
+        \ read-token >sym/num swap
     endcase ;
 
 ' #read is read-lisp-obj
