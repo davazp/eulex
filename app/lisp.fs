@@ -223,18 +223,58 @@ variable allocated-conses
     endcase ;
 
 : close-parent? [char] ) = ;
-: token-terminal-char? ( ch -- bool )
-    dup whitespace-char? swap close-parent? or ;
 
 defer read-lisp-obj
 
+: discard-char
+    parse-char drop ;
+
 : skip-whitespaces
-    begin peek-char whitespace-char? while parse-char drop repeat ;
+    begin peek-char whitespace-char? while discard-char repeat ;
+
+: read-'
+    discard-char quote read-lisp-obj 2 list ;
+
+: read-(... recursive
+    skip-whitespaces
+    peek-char case
+        [char] ) of discard-char nil endof
+        [char] . of discard-char read-lisp-obj endof
+        read-lisp-obj read-(... #cons swap
+    endcase ;
+: read-( discard-char read-(... ;
+
+
+32 constant token-buffer-size
+create token-buffer token-buffer-size allot
+
+: token-terminal-char? ( ch -- bool )
+    dup whitespace-char? swap close-parent? or ;
+
+: token-size
+    token-buffer c@ ;
+
+: full-token-buffer? ( -- bool )
+    token-size token-buffer-size >= ;
+
+: push-token-char ( ch -- )
+    full-token-buffer? if drop else
+        token-buffer 1+ token-size + c!
+        token-size 1+ token-buffer c!
+    endif ;
+
+: read-token
+    0 token-buffer c!
+    begin parse-char
+    dup token-terminal-char? not while
+        push-token-char
+    repeat
+    drop token-buffer ;
 
 : #read ( -- x )
     peek-char case
-        [char] ( of endof
-        [char] ' of endof
+        [char] ( of read-( endof
+        [char] ' of read-' endof
     endcase ;
 
 ' #read is read-lisp-obj
