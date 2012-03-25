@@ -109,9 +109,6 @@ heap-end chunk% - constant sentinel-chunk-end
     repeat
     nip ;
 
-: between ( a b c -- a<=b<=c )
-    over u>= >r u<= r> and ;
-
 : preceding-chunk? ( addr chunk -- flag )
     dup -rot next-chunk between ;
 

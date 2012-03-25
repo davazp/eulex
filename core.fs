@@ -56,6 +56,9 @@
 : and! dup @ rot and swap ! ;
 : or!  dup @ rot or swap ! ;
 
+: between ( a b c -- a<=b<=c )
+    over u>= >r u<= r> and ;
+
 : bit? ( x n -- flag )
     1 swap lshift and 0<> ;
 : CF? ( -- flag )
