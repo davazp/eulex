@@ -155,8 +155,8 @@ create-symbol quote ::unbound , ::unbound ,
 
 \ Integers
 
-: >fixnum [ tag-bits 1 - ]L lshift ;
-: fixnum> [ tag-bits 1 - ]L rshift ;
+: >fixnum 2* 2* ;
+: fixnum> 2/ 2/ ;
 
 : #fixnump 1 and 0= >bool ; 1 FUNC fixnump
 ' #fixnump alias #integerp  1 FUNC integerp
@@ -311,6 +311,7 @@ create token-buffer token-buffer-size allot
 
 ' #read is read-lisp-obj
 0 FUNC read
+
 
 
 \ Interpreter
