@@ -63,7 +63,7 @@ lisp-package >order
     find-cname >r set-order r> ;
 
 : create-symbol
-    create-in-lisp-package 2align does> 2aligned symbol-tag tagged ;
+    create-in-lisp-package latest 2align , does> 2aligned symbol-tag tagged ;
 
 : ::unbound [ here 2aligned symbol-tag tagged ]L ;
 
@@ -91,19 +91,22 @@ create-symbol quote ::unbound , ::unbound ,
 : check-symbol ( x -- x )
     dup #symbolp NIL = if wrong-type-argument then ;
 
+: symbol-name ( symbol -- caddr )
+    check-symbol untag @ ;
+
 : #symbol-value ( symbol -- value )
-    check-symbol untag @
+    check-symbol untag cell + @
     dup ::unbound = if void-variable endif ;
 
 : #symbol-function ( symbol -- value )
-    check-symbol untag cell + @
+    check-symbol untag 2 cells + @
     dup ::unbound = if void-function endif ;
 
 : #set ( symb value -- )
-    swap check-symbol untag ! ;
+    swap check-symbol untag cell + ! ;
 
 : #fset ( symbol definition -- )
-    swap check-symbol untag cell + ! ;
+    swap check-symbol untag 2 cells + ! ;
     
 \ Lisp basic conditional. It runs the true-branch if the top of the
 \ stack is non-nil. It is compatible with `else' and `then' words.
@@ -318,7 +321,7 @@ create token-buffer token-buffer-size allot
 defer print-lisp-obj
 
 : print-integer fixnum> print-number ;
-: print-symbol drop ." <symbol>" ;
+: print-symbol symbol-name count type ;
 
 : print-list
     [char] ( emit
