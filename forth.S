@@ -850,6 +850,14 @@ BUILTIN_WORD_NAME(parse_char, "parse-char")
 END_WORD(parse_char)
 
 
+BUILTIN_WORD_NAME(peek_char, "peek-char")
+        call fpeekchar
+        subl $4, %esi
+        movl %eax, (%esi)
+        ret
+END_WORD(peek_char)
+        
+
 /********************************** COMPILER **********************************/
 
 /* If it is not null, the following call to read_word will return that
@@ -1025,6 +1033,49 @@ fgetchar_eof:
         xorl %eax, %eax
         ret
 
+
+/* Read a character from input_buffer without using it.
+   If it is empty, then it will try to refill it before. */
+fpeekchar:
+        movl input_buffer_in, %edx
+        cmpl %edx, input_buffer_size
+        je fpeekchar_last
+        cmpl %edx, input_buffer_size
+        jle fpeekchar_eob
+        addl input_buffer, %edx
+        movzbl (%edx), %eax
+fpeekchar_lc:
+        cmp $10, %eax
+        je 1f
+        cmp $13, %eax
+        je 1f
+        incl input_source_column
+        jmp 2f
+1:      movl $0, input_source_column
+        incl input_source_line
+2:      ret
+fpeekchar_last:
+        movl $'\n', %eax
+        ret
+fpeekchar_eob:
+        /* End-of-buffer. The input buffer is empty. It may be due to
+	   all memory buffer has been processed, or the user did not
+           type more data yet. INPUT_SOURCE_ID is used to know the
+           reason of that. */
+        movl input_source_id, %edx
+        cmpl $-1, %edx
+        je fpeekchar_eof
+        /* The TIB is empty, so return a delimitier (space) and refill
+           the user input buffer for the next time. */
+        call *tib_fill_routine
+        movl $10, %eax
+        ret
+fpeekchar_eof:
+        xorl %eax, %eax
+        ret
+	
+
+        
 /* Check if two given counted strings are equal. EAX y EDX point to the strings,
    the result is stored in the ZF flag. */
 wordname_match:
