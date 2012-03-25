@@ -313,6 +313,34 @@ create token-buffer token-buffer-size allot
 0 FUNC read
 
 
+\ Printer
+
+defer print-lisp-obj
+
+: print-integer fixnum> print-number ;
+: print-symbol drop ." <symbol>" ;
+
+: print-list
+    [char] ( emit
+    dup #car print-lisp-obj #cdr
+    begin
+    dup #consp bool> while
+        space dup #car print-lisp-obj #cdr
+    repeat
+    \ Trailing element
+    dup #if
+        ."  . " print-lisp-obj ." )"
+    else
+        drop [char] ) emit
+    endif ;
+
+: #print ( x -- )
+    dup #symbolp  #if print-symbol  exit endif
+    dup #integerp #if print-integer exit endif
+    dup #consp    #if print-list    exit endif
+    drop wrong-type-argument ;
+' #print is print-lisp-obj
+1 FUNC print
 
 \ Interpreter
 
