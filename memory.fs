@@ -139,6 +139,9 @@ heap-end chunk% - constant sentinel-chunk-end
 : expand-chunk ( u chunk -- )
     tuck chunk>size + swap adjust-chunk-size ;
 
+: reduce-chunk ( u chunk -- )
+    swap negate swap expand-chunk ;
+
 : too-large-chunk? ( n chunk -- flag )
     chunk>size swap chunk% + 2* u>= ;
 
