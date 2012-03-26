@@ -42,6 +42,7 @@ also lisp definitions
 : void-function 2 throw ;
 : wrong-type-argument 3 throw ;
 : wrong-number-of-arguments 4 throw ;
+: parse-error 5 throw ;
 
 \ Symbols
 
@@ -238,17 +239,30 @@ defer read-lisp-obj
 : skip-whitespaces
     begin peek-char whitespace-char? while discard-char repeat ;
 
+: peek-conforming-char
+    skip-whitespaces peek-char ;
+    
+: assert-char
+    parse-char = invert if parse-error endif ;
+
 : read-'
     discard-char quote read-lisp-obj 2 list ;
 
 : read-(... recursive
-    skip-whitespaces
-    peek-char case
+    peek-conforming-char case
         [char] ) of discard-char nil endof
-        [char] . of discard-char read-lisp-obj endof
+        [char] . of
+            discard-char read-lisp-obj
+            skip-whitespaces [char] ) assert-char
+        endof
         read-lisp-obj read-(... #cons swap
     endcase ;
-: read-( discard-char read-(... ;
+
+: read-(
+\    ." first: " peek-char emit CR
+    discard-char peek-conforming-char [char] ) = if nil else
+        read-lisp-obj read-(... #cons
+    endif ;
 
 
 32 constant token-buffer-size
@@ -271,11 +285,9 @@ create token-buffer token-buffer-size allot
 
 : read-token
     0 token-buffer c!
-    begin parse-char
-    dup token-terminal-char? not while
-        push-token-char
-    repeat
-    drop token-buffer ;
+    begin parse-char push-token-char
+    peek-char token-terminal-char? until
+    token-buffer dup c@ 0= if parse-error endif ;
 
 : try-unumber ( addr u -- d f )
     0 -rot
@@ -306,9 +318,10 @@ create token-buffer token-buffer-size allot
     endif ;
 
 : #read ( -- x )
-    peek-char case
+    peek-conforming-char case
         [char] ( of read-( endof
         [char] ' of read-' endof
+        [char] . of parse-error endof
         drop read-token >sym/num 0
     endcase ;
 
@@ -345,10 +358,55 @@ defer print-lisp-obj
 ' #print is print-lisp-obj
 1 FUNC print
 
+
 \ Interpreter
 
+defer eval-lisp-obj
+
+: eval-funcall-args ( list -- )
+    0 swap
+    begin
+    dup nil = invert while
+        dup #car eval-lisp-obj -rot
+        swap 1+ swap #cdr
+    repeat
+    drop ;
+
+: eval-funcall ( list -- x )
+    dup #car #symbol-function >r
+    #cdr eval-funcall-args
+    r> funcall-subr ;
+
+: eval-list ( cons -- x )
+    dup #car case
+        quote of #cdr #car endof
+        drop eval-funcall 0
+    endcase ;
+
+: #eval ( x -- y )
+    dup #integerp #if exit endif
+    dup #symbolp  #if #symbol-value exit endif
+    dup #consp    #if eval-list exit endif
+    wrong-type-argument
+; ' #eval is eval-lisp-obj
+
+
+: toplevel-repl-interaction
+    ." * " query #read CR #eval #print CR ;
+    
+: toplevel-repl
+    begin toplevel-repl-interaction again ;
+
 : run-lisp
-    page 0 0 at-xy ." RUNNING EULEX LISP." cr ;
+    page 0 0 at-xy ." RUNNING EULEX LISP." CR CR
+    refill-silent? on
+    get-order get-current
+    in-lisp-package: definitions
+    ['] toplevel-repl catch >r
+    set-current set-order
+    refill-silent? off
+    CR ." GOOD BYE!"
+    r> throw ;
 
 previous previous set-current
 
