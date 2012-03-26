@@ -166,7 +166,7 @@ heap-end chunk% - constant sentinel-chunk-end
     2dup adjoint-chunks? -rot limit-chunks? not and ;
 
 : absorb-chunk ( chunk1 chunk2 -- )
-    chunk>size cell + swap expand-chunk ;
+    chunk>size chunk-alloc% + swap expand-chunk ;
 
 : try-coalesce-chunks ( chunk1 chunk2 -- chunk )
     2dup coalescable? if
