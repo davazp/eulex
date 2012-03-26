@@ -145,9 +145,13 @@ heap-end chunk% - constant sentinel-chunk-end
 : too-large-chunk? ( n chunk -- flag )
     chunk>size swap chunk% + 2* u>= ;
 
-\ Split a chunk in two ones. Remarkly, this word works for both
-\ allocated chunks as for avalaible chunks.
 : split-chunk ( u chunk -- new-chunk )
+    dup chunk>end >r
+    tuck adjust-chunk-size
+    chunk>end r> create-chunk ;
+
+\ Resize CHUNK to U and return a new available new-chunk.
+: split-allocated-chunk ( u chunk -- new-chunk )
     dup chunk>end >r
     tuck adjust-chunk-size
     chunk>end r> create-chunk ;
@@ -223,7 +227,7 @@ heap-end chunk% - constant sentinel-chunk-end
 : resize-without-reallocation ( addr u -- addr error )
     swap addr>chunk
     2dup too-large-chunk? if
-        tuck split-chunk try-coalesce drop
+        tuck split-allocated-chunk try-coalesce drop
     else
         nip
     endif
