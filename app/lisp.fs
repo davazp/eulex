@@ -43,7 +43,8 @@ also lisp definitions
 : wrong-type-argument 3 throw ;
 : wrong-number-of-arguments 4 throw ;
 : parse-error 5 throw ;
-
+: quit-condition 6 throw ;
+    
 \ Symbols
 
 \ We write the lisp package system upon wordlists. The PF of the words
@@ -171,17 +172,17 @@ create-symbol quote ::unbound , ::unbound ,
 : 2-check-integers
     check-integer swap check-integer swap ;
 
-: #= = >bool ; \ 2 FUNC =
-: #< < >bool ; \ 2 FUNC <
-: #> > >bool ; \ 2 FUNC >
-: #<= <= >bool ; \ 2 FUNC <=
-: #>= >= >bool ; \ 2 FUNC >=
-: #/= = not >bool ; \ 2 FUNC >=
+: #= 2-check-integers >bool ; \ 2 FUNC =
+: #< 2-check-integers >bool ; \ 2 FUNC <
+: #> 2-check-integers >bool ; \ 2 FUNC >
+: #<= 2-check-integers <= >bool ; \ 2 FUNC <=
+: #>= 2-check-integers >= >bool ; \ 2 FUNC >=
+: #/= 2-check-integers = not >bool ; \ 2 FUNC >=
 
-: #+ + ; \ 2 FUNC +
-: #- - ; \ 2 FUNC -
-: #* fixnum> * ; \ 2 FUNC *
-: #/ / >fixnum ; \ 2 FUNC / 
+: #+ 2-check-integers + ; \ 2 FUNC +
+: #- 2-check-integers - ; \ 2 FUNC -
+: #* 2-check-integers fixnum> * ; \ 2 FUNC *
+: #/ 2-check-integers / >fixnum ; \ 2 FUNC / 
 
 \ CONSes
 
@@ -212,6 +213,8 @@ variable allocated-conses
 
 : #eq = >bool ; 2 FUNC eq
 
+: #quit quit-condition ;
+0 FUNC quit
 
 \ Reader
 
@@ -405,6 +408,7 @@ defer eval-lisp-obj
             3 of ." ERROR: wrong type of argument" CR endof
             4 of ." ERROR: wrong number of arguments" CR endof
             5 of ." ERROR: parsing error" CR endof
+            6 of exit endof
             throw
         endcase
     again ;
@@ -417,8 +421,7 @@ defer eval-lisp-obj
     toplevel-repl
     set-current set-order
     refill-silent? off
-    CR ." GOOD BYE!"
-    r> throw ;
+    CR ." GOOD BYE!" CR CR ;
 
 2 ' #= register-func =
 2 ' #< register-func <
