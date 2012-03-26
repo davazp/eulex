@@ -59,13 +59,18 @@ CREATE TIB video-width allot
         false
     endif
 ;
+
+variable refill-silent?
+
 :noname
-    space
-    state @ if
-        ." compiled" cr
-    else
-        ." ok" cr
-    then
+    refill-silent? @ not if
+        space
+        state @ if
+            ." compiled" cr
+        else
+            ." ok" cr
+        then
+    endif
     refill drop
 ; tib_fill_routine !
 
