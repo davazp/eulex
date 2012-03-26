@@ -259,7 +259,6 @@ defer read-lisp-obj
     endcase ;
 
 : read-(
-\    ." first: " peek-char emit CR
     discard-char peek-conforming-char [char] ) = if nil else
         read-lisp-obj read-(... #cons
     endif ;
@@ -290,6 +289,7 @@ create token-buffer token-buffer-size allot
     token-buffer dup c@ 0= if parse-error endif ;
 
 : try-unumber ( addr u -- d f )
+    dup 0= if 2drop 0 0 exit then
     0 -rot
     0 ?do ( d addr )
         dup I + c@ digit-char? if
@@ -354,6 +354,8 @@ defer print-lisp-obj
     dup #symbolp  #if print-symbol  exit endif
     dup #integerp #if print-integer exit endif
     dup #consp    #if print-list    exit endif
+\   Unreadable objects
+    dup #subrp    #if drop ." #<subr object>" exit endif
     drop wrong-type-argument ;
 ' #print is print-lisp-obj
 1 FUNC print
@@ -395,18 +397,40 @@ defer eval-lisp-obj
     ." * " query #read CR #eval #print CR ;
     
 : toplevel-repl
-    begin toplevel-repl-interaction again ;
+    begin
+        ['] toplevel-repl-interaction catch case
+            0 of endof
+            1 of ." ERROR: void variable" CR endof
+            2 of ." ERROR: void function" CR endof
+            3 of ." ERROR: wrong type of argument" CR endof
+            4 of ." ERROR: wrong number of arguments" CR endof
+            5 of ." ERROR: parsing error" CR endof
+            throw
+        endcase
+    again ;
 
 : run-lisp
     page 0 0 at-xy ." RUNNING EULEX LISP." CR CR
     refill-silent? on
     get-order get-current
     in-lisp-package: definitions
-    ['] toplevel-repl catch >r
+    toplevel-repl
     set-current set-order
     refill-silent? off
     CR ." GOOD BYE!"
     r> throw ;
+
+2 ' #= register-func =
+2 ' #< register-func <
+2 ' #> register-func >
+2 ' #<= register-func <=
+2 ' #>= register-func >=
+2 ' #/= register-func /=
+
+2 ' #+ register-func +
+2 ' #- register-func -
+2 ' #* register-func *
+2 ' #/ register-func /
 
 previous previous set-current
 
