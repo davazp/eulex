@@ -119,11 +119,19 @@ create-symbol if     ::unbound , ::unbound ,
 \ Lisp basic conditional. It runs the true-branch if the top of the
 \ stack is non-nil. It is compatible with `else' and `then' words.
 : #if
-    [ nil ]L postpone literal
+    nil postpone literal
     postpone =
     postpone not
     postpone if
 ; immediate compile-only
+
+: #while
+    nil postpone literal
+    postpone =
+    postpone not
+    postpone while
+; immediate compile-only
+
 
 \ Subrs (primitive functions)
 
@@ -221,8 +229,7 @@ variable allocated-conses
 
 : #length ( list -- n )
     0 swap
-    begin
-    dup nil = invert while
+    begin dup #while
         swap 1+ swap #cdr
     repeat
     drop >fixnum
@@ -381,7 +388,7 @@ defer print-lisp-obj
     [char] ( emit
     dup #car print-lisp-obj #cdr
     begin
-    dup #consp bool> while
+    dup #consp #while
         space dup #car print-lisp-obj #cdr
     repeat
     \ Trailing element
@@ -408,8 +415,7 @@ defer eval-lisp-obj
 
 : eval-funcall-args ( list -- )
     0 swap
-    begin
-    dup nil = invert while
+    begin dup #while
         dup #car eval-lisp-obj -rot
         swap 1+ swap #cdr
     repeat
@@ -499,7 +505,7 @@ previous previous set-current
 latestxt alias run-lisp
 
 \ Local Variables:
-\ forth-local-words: ((("#if") compile-only (font-lock-keyword-face . 2)))
+\ forth-local-words: ((("#if") compile-only (font-lock-keyword-face . 2))(("#while") compile-only (font-lock-keyword-face . 2)))
 \ End:
 
 \ lisp.fs ends here
