@@ -51,7 +51,6 @@ also lisp definitions
 \ contains the symbol value and the symbol function parameters aligned
 \ to a double cell size.
 wordlist constant lisp-package
-lisp-package >order
 
 : in-lisp-package:
     lisp-package 1 set-order ;
@@ -69,13 +68,10 @@ lisp-package >order
 
 : ::unbound [ here 2aligned symbol-tag tagged ]L ;
 
-create-symbol t     t , ::unbound ,
-create-symbol nil nil , ::unbound ,
+create-symbol t   latestxt execute , ::unbound ,
+create-symbol nil latestxt execute , ::unbound ,
 
 create-symbol quote ::unbound , ::unbound ,
-
-: >bool if t else nil then ;
-: bool> nil = if 0 else -1 then ;
 
 : find-symbol ( c-addr -- symbol|0 )
     find-cname-in-lisp-package dup if nt>xt execute endif ;
@@ -86,12 +82,21 @@ create-symbol quote ::unbound , ::unbound ,
         latestxt execute 
     then ;
 
+: '' parse-cname intern-symbol ;
+: [''] '' postpone literal ; immediate
+
+'' t constant t
+'' nil constant nil
+
+: >bool if t else nil then ;
+: bool> nil = if 0 else -1 then ;
+
 : #symbolp
     tag-mask and symbol-tag = >bool ;
 
 \ Check if X is a symbol object. If not, it signals an error.
 : check-symbol ( x -- x )
-    dup #symbolp NIL = if wrong-type-argument then ;
+    dup #symbolp nil = if wrong-type-argument then ;
 
 : symbol-name ( symbol -- caddr )
     check-symbol untag @ ;
@@ -167,7 +172,7 @@ create-symbol quote ::unbound , ::unbound ,
 ' #fixnump alias #integerp  1 FUNC integerp
 
 : check-integer ( x -- x )
-    dup #integerp NIL = if wrong-type-argument endif ;
+    dup #integerp nil = if wrong-type-argument endif ;
 
 : 2-check-integers
     check-integer swap check-integer swap ;
@@ -249,7 +254,7 @@ defer read-lisp-obj
     parse-char = invert if parse-error endif ;
 
 : read-'
-    discard-char quote read-lisp-obj 2 list ;
+    discard-char [''] quote read-lisp-obj 2 list ;
 
 : read-(... recursive
     peek-conforming-char case
@@ -384,7 +389,7 @@ defer eval-lisp-obj
 
 : eval-list ( cons -- x )
     dup #car case
-        quote of #cdr #car endof
+        [''] quote of #cdr #car endof
         drop eval-funcall 0
     endcase ;
 
