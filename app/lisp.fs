@@ -514,7 +514,7 @@ previous previous set-current
 latestxt alias run-lisp
 
 \ Local Variables:
-\ forth-local-words: ((("#if") compile-only (font-lock-keyword-face . 2))(("#while") compile-only (font-lock-keyword-face . 2))(("#dolist") compile-only (font-lock-keyword-face . 2))(("#repeat") compile-only (font-lock-keyword-face . 2)))
+\ forth-local-words: ((("#if #while" "#dolist" "#repeat") compile-only (font-lock-keyword-face . 2)))
 \ End:
 
 \ lisp.fs ends here
