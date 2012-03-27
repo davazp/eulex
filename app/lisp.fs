@@ -224,16 +224,24 @@ variable allocated-conses
 : assert-cdr
     #cdr dup nil = if parse-error endif ;
 
+: #dolist
+    postpone begin
+    postpone dup
+    postpone #while
+; immediate compile-only
+
+: #repeat
+    postpone #cdr
+    postpone repeat
+    postpone drop
+; immediate compile-only
+
 : list ( x1 x2 ... xn n -- list )
     nil swap 0 ?do #cons loop ;
 
 : #length ( list -- n )
-    0 swap
-    begin dup #while
-        swap 1+ swap #cdr
-    repeat
-    drop >fixnum
-; 1 FUNC length
+    0 swap #dolist swap 1+ swap #repeat >fixnum ;
+1 FUNC length
     
 
 \ Misc
@@ -387,8 +395,7 @@ defer print-lisp-obj
 : print-list
     [char] ( emit
     dup #car print-lisp-obj #cdr
-    begin
-    dup #consp #while
+    begin dup #consp #while
         space dup #car print-lisp-obj #cdr
     repeat
     \ Trailing element
@@ -415,11 +422,10 @@ defer eval-lisp-obj
 
 : eval-funcall-args ( list -- )
     0 swap
-    begin dup #while
+    #dolist
         dup #car eval-lisp-obj -rot
-        swap 1+ swap #cdr
-    repeat
-    drop ;
+        swap 1+ swap 
+    #repeat ;
 
 : eval-funcall ( list -- x )
     dup #car #symbol-function >r
@@ -505,7 +511,7 @@ previous previous set-current
 latestxt alias run-lisp
 
 \ Local Variables:
-\ forth-local-words: ((("#if") compile-only (font-lock-keyword-face . 2))(("#while") compile-only (font-lock-keyword-face . 2)))
+\ forth-local-words: ((("#if") compile-only (font-lock-keyword-face . 2))(("#while") compile-only (font-lock-keyword-face . 2))(("#dolist") compile-only (font-lock-keyword-face . 2))(("#repeat") compile-only (font-lock-keyword-face . 2)))
 \ End:
 
 \ lisp.fs ends here
