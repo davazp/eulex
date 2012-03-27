@@ -434,7 +434,7 @@ defer eval-lisp-obj
     nil swap
     begin
         nip dup #car eval-lisp-obj swap
-    #cdr dup nil = until
+    #cdr dup #null #until
     drop ;
 
 : eval-progn
@@ -501,7 +501,7 @@ previous previous set-current
 latestxt alias run-lisp
 
 \ Local Variables:
-\ forth-local-words: ((("#if" "#while" "#dolist" "#repeat" "``") compile-only (font-lock-keyword-face . 2))(("c/o" "imm-c/o") immediate (font-lock-keyword-face . 2)))
+\ forth-local-words: ((("#if" "#while" "#until" "#dolist" "#repeat" "``") compile-only (font-lock-keyword-face . 2))(("c/o" "imm-c/o") immediate (font-lock-keyword-face . 2)))
 \ End:
 
 \ lisp.fs ends here
