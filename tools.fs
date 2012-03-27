@@ -194,6 +194,7 @@ require @disassem.fs
 
 : .chunk ( chunk -- )
     ." Base: " dup chunk>addr print-hex-number 5 SPACES
+    ." End:  " dup chunk>end  print-hex-number 5 SPACES
     ." Size: "     chunk>size print-hex-number CR ;
 
 : meminfo
@@ -203,5 +204,6 @@ require @disassem.fs
         next-chunk
     repeat
     drop ;
+
 
 \ tools.fs ends here
