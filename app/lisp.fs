@@ -119,14 +119,14 @@ create-symbol if     ::unbound , ::unbound ,
 \ Lisp basic conditional. It runs the true-branch if the top of the
 \ stack is non-nil. It is compatible with `else' and `then' words.
 : #if
-    nil postpone literal
+    postpone nil
     postpone =
     postpone not
     postpone if
 ; immediate compile-only
 
 : #while
-    nil postpone literal
+    postpone nil
     postpone =
     postpone not
     postpone while
