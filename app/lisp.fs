@@ -111,11 +111,11 @@ create-symbol if ::unbound , ::unbound ,
     dup ::unbound = if void-function endif ;
 
 : #set ( symb value -- )
-    swap check-symbol untag cell + ! ;
+    tuck swap check-symbol untag cell + ! ;
 
 : #fset ( symbol definition -- )
-    swap check-symbol untag 2 cells + ! ;
-    
+    tuck swap check-symbol untag 2 cells + ! ;
+
 \ Lisp basic conditional. It runs the true-branch if the top of the
 \ stack is non-nil. It is compatible with `else' and `then' words.
 : #if
@@ -145,7 +145,7 @@ create-symbol if ::unbound , ::unbound ,
 \ Parse a word and intern a symbol for it, with a function value which
 \ accepts N arguments and calls to XT.
 : register-func ( n xt parse:name -- )
-    parse-cname intern-symbol -rot trampoline #fset ;
+    parse-cname intern-symbol -rot trampoline #fset drop ;
 
 1 ' #symbolp         register-func symbolp
 1 ' #symbol-function register-func symbol-function
