@@ -25,6 +25,8 @@ also eulex
 also lisp definitions
 
 ' postpone alias `` immediate
+' compile-only alias c/o
+: imm-c/o immediate compile-only ;
 
 3 constant tag-bits
 1 tag-bits lshift 1 - constant tag-mask
@@ -120,20 +122,11 @@ create-symbol if     ::unbound , ::unbound ,
 
 \ Lisp basic conditional. It runs the true-branch if the top of the
 \ stack is non-nil. It is compatible with `else' and `then' words.
-: #if
-    `` nil
-    `` =
-    `` not
-    `` if
-; immediate compile-only
 
-: #while
-    `` nil
-    `` =
-    `` not
-    `` while
-; immediate compile-only
-
+: nil/= nil = not ;
+: #if    `` nil/= `` if    ; imm-c/o
+: #while `` nil/= `` while ; imm-c/o
+: #until `` nil/= `` until ; imm-c/o
 
 \ Subrs (primitive functions)
 
@@ -227,17 +220,8 @@ variable allocated-conses
 : assert-cdr
     #cdr dup nil = if parse-error endif ;
 
-: #dolist
-    `` begin
-    `` dup
-    `` #while
-; immediate compile-only
-
-: #repeat
-    `` #cdr
-    `` repeat
-    `` drop
-; immediate compile-only
+: #dolist `` begin `` dup `` #while ; imm-c/o
+: #repeat `` #cdr `` repeat `` drop ; imm-c/o
 
 : list ( x1 x2 ... xn n -- list )
     nil swap 0 ?do #cons loop ;
@@ -517,7 +501,7 @@ previous previous set-current
 latestxt alias run-lisp
 
 \ Local Variables:
-\ forth-local-words: ((("#if" "#while" "#dolist" "#repeat" "``") compile-only (font-lock-keyword-face . 2)))
+\ forth-local-words: ((("#if" "#while" "#dolist" "#repeat" "``") compile-only (font-lock-keyword-face . 2))(("c/o" "imm-c/o") immediate (font-lock-keyword-face . 2)))
 \ End:
 
 \ lisp.fs ends here
