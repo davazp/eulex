@@ -24,6 +24,8 @@ get-current
 also eulex
 also lisp definitions
 
+' postpone alias `` immediate
+
 3 constant tag-bits
 1 tag-bits lshift 1 - constant tag-mask
 
@@ -84,7 +86,7 @@ create-symbol if     ::unbound , ::unbound ,
     then ;
 
 : '' parse-cname find-symbol ;
-: [''] '' postpone literal ; immediate
+: [''] '' `` literal ; immediate
 
 '' t constant t
 '' nil constant nil
@@ -119,17 +121,17 @@ create-symbol if     ::unbound , ::unbound ,
 \ Lisp basic conditional. It runs the true-branch if the top of the
 \ stack is non-nil. It is compatible with `else' and `then' words.
 : #if
-    postpone nil
-    postpone =
-    postpone not
-    postpone if
+    `` nil
+    `` =
+    `` not
+    `` if
 ; immediate compile-only
 
 : #while
-    postpone nil
-    postpone =
-    postpone not
-    postpone while
+    `` nil
+    `` =
+    `` not
+    `` while
 ; immediate compile-only
 
 
@@ -143,10 +145,11 @@ create-symbol if     ::unbound , ::unbound ,
 \ correct and then call to the execution token XT.
 : trampoline ( n xt -- subr )
     2align here >r
-    swap postpone literal
-    postpone check-number-of-arguments
-    postpone literal
-    postpone execute
+    swap
+    `` literal
+    `` check-number-of-arguments
+    `` literal
+    `` execute
     return
     r> subr-tag tagged ;
 
@@ -225,15 +228,15 @@ variable allocated-conses
     #cdr dup nil = if parse-error endif ;
 
 : #dolist
-    postpone begin
-    postpone dup
-    postpone #while
+    `` begin
+    `` dup
+    `` #while
 ; immediate compile-only
 
 : #repeat
-    postpone #cdr
-    postpone repeat
-    postpone drop
+    `` #cdr
+    `` repeat
+    `` drop
 ; immediate compile-only
 
 : list ( x1 x2 ... xn n -- list )
@@ -514,7 +517,7 @@ previous previous set-current
 latestxt alias run-lisp
 
 \ Local Variables:
-\ forth-local-words: ((("#if #while" "#dolist" "#repeat") compile-only (font-lock-keyword-face . 2)))
+\ forth-local-words: ((("#if" "#while" "#dolist" "#repeat" "``") compile-only (font-lock-keyword-face . 2)))
 \ End:
 
 \ lisp.fs ends here
