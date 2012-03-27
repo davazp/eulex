@@ -248,6 +248,9 @@ variable allocated-conses
 
 : #eq = >bool ; 2 FUNC eq
 
+: #not #if nil else t endif ; 1 FUNC not
+' #not alias #null 1 FUNC null
+
 : #quit quit-condition ;
 0 FUNC quit
 
