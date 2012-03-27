@@ -129,7 +129,7 @@ heap-end chunk% - constant sentinel-chunk-end
     chunk-size ! ;
 
 : chunk-header ( start end -- chunk )
-    CR over - chunk-alloc% - swap tuck adjust-chunk-size ;
+    over - chunk-alloc% - swap tuck adjust-chunk-size ;
 
 : create-chunk ( start end -- )
     chunk-header
