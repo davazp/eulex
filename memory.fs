@@ -28,7 +28,7 @@ require @kernel/multiboot.fs
 \ to the end of the upper memory as provided by the
 \ multiboot-compliant bootloader.
 dp-limit 2aligned constant heap-start
-mem-upper-limit 2 cells - 2aligned constant heap-end
+mem-upper-limit 1- 2 cells - 2aligned constant heap-end
 
 heap-start heap-end - constant heap-size
 
@@ -125,16 +125,16 @@ heap-end chunk% - constant sentinel-chunk-end
 : delete-chunk ( chunk -- )
     chunk-neighbours link-chunks ;
 
+: adjust-chunk-size ( u chunk -- )
+    chunk-size ! ;
+
 : chunk-header ( start end -- chunk )
-    over - chunk-alloc% - swap tuck chunk-size ! ;
+    CR over - chunk-alloc% - swap tuck adjust-chunk-size ;
 
 : create-chunk ( start end -- )
     chunk-header
     dup find-preceding-chunk
     swap tuck insert-chunk ;
-
-: adjust-chunk-size ( u chunk -- )
-    chunk-size ! ;
 
 : expand-chunk ( u chunk -- )
     tuck chunk>size + swap adjust-chunk-size ;
@@ -145,20 +145,20 @@ heap-end chunk% - constant sentinel-chunk-end
 : too-large-chunk? ( n chunk -- flag )
     chunk>size swap chunk% + 2* u>= ;
 
-: split-chunk ( u chunk -- new-chunk )
-    dup chunk>end >r
-    tuck adjust-chunk-size
-    chunk>end r> create-chunk ;
-
 \ Resize CHUNK to U and return a new available new-chunk.
 : split-allocated-chunk ( u chunk -- new-chunk )
     dup chunk>end >r
     tuck adjust-chunk-size
     chunk>end r> create-chunk ;
 
-: reserve-chunk ( u chunk -- )
-    2dup too-large-chunk? if tuck split-chunk drop else nip endif
-    delete-chunk ;
+: reserve-chunk ( u chunk -- new-chunk )
+    2dup too-large-chunk? if
+        dup chunk>end >r
+        tuck reduce-chunk
+        chunk>end r> chunk-header
+    else
+        nip dup delete-chunk
+    endif ;
 
 
 \ Coalescing
@@ -206,7 +206,7 @@ heap-end chunk% - constant sentinel-chunk-end
     dup null-chunk? if
         2drop 0 -1
     else
-        tuck reserve-chunk chunk>addr 0
+        reserve-chunk chunk>addr 0
     endif ;
 
 : free ( a-addr -- error )
