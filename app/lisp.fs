@@ -70,9 +70,9 @@ wordlist constant lisp-package
 
 create-symbol t   latestxt execute , ::unbound ,
 create-symbol nil latestxt execute , ::unbound ,
-
-create-symbol quote ::unbound , ::unbound ,
-create-symbol if ::unbound , ::unbound ,
+create-symbol quote  ::unbound , ::unbound ,
+create-symbol progn  ::unbound , ::unbound ,
+create-symbol if     ::unbound , ::unbound ,
 
 : find-symbol ( c-addr -- symbol|0 )
     find-cname-in-lisp-package dup if nt>xt execute endif ;
@@ -212,8 +212,22 @@ variable allocated-conses
 : #cdr dup #if check-cons untag cell + @ endif ;
 1 FUNC cdr
 
+\ Return the cdr of a cons. If the result is NIL, signals an error.
+: assert-cdr
+    #cdr dup nil = if parse-error endif ;
+
 : list ( x1 x2 ... xn n -- list )
     nil swap 0 ?do #cons loop ;
+
+: #length ( list -- n )
+    0 swap
+    begin
+    dup nil = invert while
+        swap 1+ swap #cdr
+    repeat
+    drop >fixnum
+; 1 FUNC length
+    
 
 \ Misc
 
@@ -221,6 +235,24 @@ variable allocated-conses
 
 : #quit quit-condition ;
 0 FUNC quit
+
+
+\ Lambdas
+
+: lambda-args assert-cdr #car ;
+: lambda-nargs lambda-args #length fixnum> ;
+: lambda-body assert-cdr #cdr ;
+
+\ : funcall-lambda-bind-args ( arg1 arg2 ... argn n args-list -- )
+\     swap 0 ?do
+        
+\     loop ;
+
+\ : funcall-lambda ( arg1 arg2 ... argn n lambda -- x )
+\     \ Check number of arguments
+\     2dup lambda-nargs = if else wrong-number-of-arguments then
+\     dup >r lambda-args funcall-lambda-bind-args
+\ ;
 
 \ Reader
 
@@ -388,10 +420,6 @@ defer eval-lisp-obj
     #cdr eval-funcall-args
     r> funcall-subr ;
 
-\ Return the cdr of a cons. If it is NIL, signals an error.
-: assert-cdr
-    #cdr dup nil = if parse-error endif  ;
-
 : eval-if
     assert-cdr
     dup #car eval-lisp-obj #if
@@ -400,10 +428,21 @@ defer eval-lisp-obj
         assert-cdr #cdr #car eval-lisp-obj
     endif ;
 
+: eval-progn-list ( list -- x )
+    nil swap
+    begin
+        nip dup #car eval-lisp-obj swap
+    #cdr dup nil = until
+    drop ;
+
+: eval-progn
+    #cdr eval-progn-list ;
+
 : eval-list
     dup #car case
         [''] quote of #cdr #car endof
         ['']    if of eval-if endof
+        [''] progn of eval-progn endof    
         drop eval-funcall 0
     endcase ;
 
