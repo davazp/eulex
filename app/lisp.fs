@@ -72,6 +72,7 @@ create-symbol t   latestxt execute , ::unbound ,
 create-symbol nil latestxt execute , ::unbound ,
 
 create-symbol quote ::unbound , ::unbound ,
+create-symbol if ::unbound , ::unbound ,
 
 : find-symbol ( c-addr -- symbol|0 )
     find-cname-in-lisp-package dup if nt>xt execute endif ;
@@ -82,7 +83,7 @@ create-symbol quote ::unbound , ::unbound ,
         latestxt execute 
     then ;
 
-: '' parse-cname intern-symbol ;
+: '' parse-cname find-symbol ;
 : [''] '' postpone literal ; immediate
 
 '' t constant t
@@ -177,17 +178,17 @@ create-symbol quote ::unbound , ::unbound ,
 : 2-check-integers
     check-integer swap check-integer swap ;
 
-: #= 2-check-integers >bool ; \ 2 FUNC =
-: #< 2-check-integers >bool ; \ 2 FUNC <
-: #> 2-check-integers >bool ; \ 2 FUNC >
-: #<= 2-check-integers <= >bool ; \ 2 FUNC <=
-: #>= 2-check-integers >= >bool ; \ 2 FUNC >=
-: #/= 2-check-integers = not >bool ; \ 2 FUNC >=
+: #= 2-check-integers >bool ; 2 FUNC =
+: #< 2-check-integers >bool ; 2 FUNC <
+: #> 2-check-integers >bool ; 2 FUNC >
+: #<= 2-check-integers <= >bool ; 2 FUNC <=
+: #>= 2-check-integers >= >bool ; 2 FUNC >=
+: #/= 2-check-integers = not >bool ; 2 FUNC >=
 
-: #+ 2-check-integers + ; \ 2 FUNC +
-: #- 2-check-integers - ; \ 2 FUNC -
-: #* 2-check-integers fixnum> * ; \ 2 FUNC *
-: #/ 2-check-integers / >fixnum ; \ 2 FUNC / 
+: #+ 2-check-integers + ; 2 FUNC +
+: #- 2-check-integers - ; 2 FUNC -
+: #* 2-check-integers fixnum> * ; 2 FUNC *
+: #/ 2-check-integers / >fixnum ; 2 FUNC / 
 
 \ CONSes
 
@@ -387,9 +388,22 @@ defer eval-lisp-obj
     #cdr eval-funcall-args
     r> funcall-subr ;
 
-: eval-list ( cons -- x )
+\ Return the cdr of a cons. If it is NIL, signals an error.
+: assert-cdr
+    #cdr dup nil = if parse-error endif  ;
+
+: eval-if
+    assert-cdr
+    dup #car eval-lisp-obj #if
+        assert-cdr #car eval-lisp-obj
+    else
+        assert-cdr #cdr #car eval-lisp-obj
+    endif ;
+
+: eval-list
     dup #car case
         [''] quote of #cdr #car endof
+        ['']    if of eval-if endof
         drop eval-funcall 0
     endcase ;
 
