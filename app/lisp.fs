@@ -300,10 +300,9 @@ defer read-lisp-obj
     endcase ;
 
 : read-(
-    discard-char peek-conforming-char [char] ) = if nil else
+    discard-char peek-conforming-char [char] ) = if discard-char nil else
         read-lisp-obj read-(... #cons
     endif ;
-
 
 32 constant token-buffer-size
 create token-buffer token-buffer-size allot
