@@ -439,6 +439,9 @@
     drop r>
 ;
 
+: ndrop ( xn .. x1 x0 n --- )
+    1+ cells sp + sp! ;
+
 : 2over 3 pick 3 pick ;
 : 2tuck 2swap 2over ;
 : 2rot 5 roll 5 roll ;
