@@ -500,22 +500,11 @@ defer eval-lisp-obj
     refill-silent? off
     CR ." GOOD BYE!" CR CR ;
 
-2 ' #= register-func =
-2 ' #< register-func <
-2 ' #> register-func >
-2 ' #<= register-func <=
-2 ' #>= register-func >=
-2 ' #/= register-func /=
-
-2 ' #+ register-func +
-2 ' #- register-func -
-2 ' #* register-func *
-2 ' #/ register-func /
-
-previous previous set-current
-
 \ Provide RUN-LISP in the system vocabulary
-latestxt alias run-lisp
+set-current
+' run-lisp alias run-lisp
+previous previous
+
 
 \ Local Variables:
 \ forth-local-words: ((("#if" "#while" "#until" "#dolist" "#repeat" "``") compile-only (font-lock-keyword-face . 2))(("c/o" "imm-c/o") immediate (font-lock-keyword-face . 2)))
