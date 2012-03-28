@@ -184,9 +184,9 @@ create-symbol if     ::unbound , ::unbound ,
 : 2-check-integers
     check-integer swap check-integer swap ;
 
-: #= 2-check-integers >bool ; 2 FUNC =
-: #< 2-check-integers >bool ; 2 FUNC <
-: #> 2-check-integers >bool ; 2 FUNC >
+: #= 2-check-integers = >bool ; 2 FUNC =
+: #< 2-check-integers < >bool ; 2 FUNC <
+: #> 2-check-integers > >bool ; 2 FUNC >
 : #<= 2-check-integers <= >bool ; 2 FUNC <=
 : #>= 2-check-integers >= >bool ; 2 FUNC >=
 : #/= 2-check-integers = not >bool ; 2 FUNC >=
