@@ -220,14 +220,24 @@ variable allocated-conses
 : assert-cdr
     #cdr dup nil = if parse-error endif ;
 
-: #dolist `` begin `` dup `` #while ; imm-c/o
-: #repeat `` #cdr `` repeat `` drop ; imm-c/o
+: #dolist
+    `` begin
+        `` dup `` #while
+        `` dup `` >r
+        `` #car
+; imm-c/o
+: #repeat
+        `` r>
+        `` #cdr
+    `` repeat
+    `` drop
+; imm-c/o
 
 : list ( x1 x2 ... xn n -- list )
     nil swap 0 ?do #cons loop ;
 
 : #length ( list -- n )
-    0 swap #dolist swap 1+ swap #repeat >fixnum ;
+    0 swap #dolist drop 1+ #repeat >fixnum ;
 1 FUNC length
     
 
@@ -253,11 +263,19 @@ variable allocated-conses
         
 \     loop ;
 
+: map-symbol-values ( list-of-symbols --- value1 value2 .. valuen n )
+    0 swap #dolist #car #symbol-value swap 1+ #repeat ;
+
+: set-symbol-values ( value1 value2 ... valuen n list-of-symbols --- )
+;
+
 \ : funcall-lambda ( arg1 arg2 ... argn n lambda -- x )
 \     \ Check number of arguments
 \     2dup lambda-nargs = if else wrong-number-of-arguments then
 \     dup >r lambda-args funcall-lambda-bind-args
 \ ;
+
+
 
 \ Reader
 
@@ -411,11 +429,7 @@ defer print-lisp-obj
 defer eval-lisp-obj
 
 : eval-funcall-args ( list -- )
-    0 swap
-    #dolist
-        dup #car eval-lisp-obj -rot
-        swap 1+ swap 
-    #repeat ;
+    0 swap #dolist eval-lisp-obj swap 1+ #repeat ;
 
 : eval-funcall ( list -- x )
     dup #car #symbol-function >r
