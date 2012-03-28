@@ -153,9 +153,7 @@ heap-end chunk% - constant sentinel-chunk-end
 
 : reserve-chunk ( u chunk -- new-chunk )
     2dup too-large-chunk? if
-        dup chunk>end >r
-        tuck reduce-chunk
-        chunk>end r> chunk-header
+        dup delete-chunk tuck split-allocated-chunk drop
     else
         nip dup delete-chunk
     endif ;
