@@ -76,6 +76,7 @@ create-symbol t   latestxt execute , ::unbound ,
 create-symbol nil latestxt execute , ::unbound ,
 create-symbol quote  ::unbound , ::unbound ,
 create-symbol progn  ::unbound , ::unbound ,
+create-symbol lambda ::unbound , ::unbound ,
 create-symbol if     ::unbound , ::unbound ,
 
 : find-symbol ( c-addr -- symbol|0 )
@@ -106,13 +107,14 @@ create-symbol if     ::unbound , ::unbound ,
 : symbol-name ( symbol -- caddr )
     check-symbol untag @ ;
 
+: safe-symbol-value check-symbol untag cell + @ ;
+: safe-symbol-function check-symbol untag 2 cells + @ ;
+
 : #symbol-value ( symbol -- value )
-    check-symbol untag cell + @
-    dup ::unbound = if void-variable endif ;
+    safe-symbol-value dup ::unbound = if void-variable endif ;
 
 : #symbol-function ( symbol -- value )
-    check-symbol untag 2 cells + @
-    dup ::unbound = if void-function endif ;
+    safe-symbol-function dup ::unbound = if void-function endif ;
 
 : #set ( symb value -- )
     tuck swap check-symbol untag cell + ! ;
@@ -250,31 +252,6 @@ variable allocated-conses
 
 : #quit quit-condition ;
 0 FUNC quit
-
-
-\ Lambdas
-
-: lambda-args assert-cdr #car ;
-: lambda-nargs lambda-args #length fixnum> ;
-: lambda-body assert-cdr #cdr ;
-
-\ : funcall-lambda-bind-args ( arg1 arg2 ... argn n args-list -- )
-\     swap 0 ?do
-        
-\     loop ;
-
-: map-symbol-values ( list-of-symbols --- value1 value2 .. valuen n )
-    0 swap #dolist #car #symbol-value swap 1+ #repeat ;
-
-: set-symbol-values ( value1 value2 ... valuen n list-of-symbols --- )
-;
-
-\ : funcall-lambda ( arg1 arg2 ... argn n lambda -- x )
-\     \ Check number of arguments
-\     2dup lambda-nargs = if else wrong-number-of-arguments then
-\     dup >r lambda-args funcall-lambda-bind-args
-\ ;
-
 
 
 \ Reader
@@ -428,14 +405,6 @@ defer print-lisp-obj
 
 defer eval-lisp-obj
 
-: eval-funcall-args ( list -- )
-    0 swap #dolist eval-lisp-obj swap 1+ #repeat ;
-
-: eval-funcall ( list -- x )
-    dup #car #symbol-function >r
-    #cdr eval-funcall-args
-    r> funcall-subr ;
-
 : eval-if
     assert-cdr
     dup #car eval-lisp-obj #if
@@ -453,6 +422,40 @@ defer eval-lisp-obj
 
 : eval-progn
     #cdr eval-progn-list ;
+
+\ Funcalls
+
+: eval-funcall-args ( list -- )
+    0 swap #dolist eval-lisp-obj swap 1+ #repeat ;
+
+: lambda-args assert-cdr #car ;
+: lambda-nargs lambda-args #length fixnum> ;
+: lambda-body assert-cdr #cdr ;
+
+\ Swap the values of the cell pointed by ADDR and the value of SYMBOL.
+: cell<->symbol ( addr symbol -- )
+    dup safe-symbol-value -rot over @ #set drop ! ;
+
+\ Iterate on the arguments of the lambda, swapping the argument in the
+\ stack by the value slot of the symbol.
+: stack<->symbols ( a1 a2 ... an n symbs -- v1 v2 ... vn n symbs )
+    2dup 2>r swap 1+ cells sp + swap
+    #dolist 2dup cell<->symbol drop cell - #repeat
+    drop 2r> ;
+
+: funcall-lambda ( arg1 arg2 ... argn n lambda -- x )
+    2dup lambda-nargs = not if wrong-number-of-arguments then
+    dup >r lambda-args stack<->symbols
+    r> lambda-body eval-progn-list >r
+    stack<->symbols drop ndrop r> ;
+
+: eval-funcall ( list -- x )
+    dup >r #cdr eval-funcall-args r>
+    #car #symbol-function
+    dup #subrp #if funcall-subr else funcall-lambda endif ;
+
+
+\ Non-atoms
 
 : eval-list
     dup #car case
