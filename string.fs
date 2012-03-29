@@ -17,30 +17,6 @@
 \ You should have received a copy of the GNU General Public License
 \ along with Eulex.  If not, see <http://www.gnu.org/licenses/>.
 
-: ++ ( a b n -- a+n b+n )
-    tuck + >r + r> ;
-
-: -- negate ++ ;
-
-: 1++ ( a b -- a+1 b+1 )
-    1+ swap 1+ swap ;
-
-: 1-- ( a b -- a-1 b-1 )
-    1- swap 1- swap ;
-
-: 1cmove ( c-from c-to )
-    over c@ over c! ;
-
-: cmove ( c-from c-to u )
-    0 ?do 1cmove 1++ loop 2drop ;
-
-: cmove> ( c-from c-to u )
-    dup >r 1- ++ r>
-    0 ?do 1cmove 1-- loop 2drop ;
-
-: move ( c-from c-to u )
-    >r 2dup < if r> cmove> else r> cmove then ;
-
 create read-string-buffer 256 allot
 variable read-string-index
 

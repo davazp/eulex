@@ -33,26 +33,19 @@
 
 : map-nt ( xt -- )
     >r
-    context @ @
-    begin
-    dup 0<> while
-        dup r> dup >r execute
-        previous-word
-    repeat
-    r>
-    2drop ;
+    context @ dowords
+        dup r@ execute
+    endwords
+    r> drop ;
 
 : id. nt>name type space ;
 : words ['] id. map-nt ;
 
-variable count_words
-
-:noname drop count_words 1+! ;
+: room-count ( -- n )
+    0 context @ dowords swap 1+ swap endwords ;
 : room
-    cr
-    count_words 0!
-    literal map-nt
-    ." Words in the context: " count_words @ . cr
+    CR
+    ." Words in the context: " room-count . CR
     ." Dictionary space allocated: " dp dp-base - . ." bytes" cr
 ;
 
@@ -75,19 +68,14 @@ variable count_words
 
 
 : unfind-in-wordlist ( xt wordlist -- addr c )
-    wid>latest
-    begin
-        dup 0<> while
-            2dup nt>xt = if
-                nip nt>name
-                exit
-            else
-                previous-word
-            then
-    repeat
-    2drop
-    0 0
-;
+    dowords
+        2dup nt>xt = if
+            nip nt>name
+            exit
+        then
+    endwords
+    drop
+    0 0 ;
 
 \ Find the first avalaible word whose CFA is XT, pushing the name to
 \ the stack or two zeros if it is not found.

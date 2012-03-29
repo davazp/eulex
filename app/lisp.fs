@@ -17,8 +17,6 @@
 \ You should have received a copy of the GNU General Public License
 \ along with Eulex.  If not, see <http://www.gnu.org/licenses/>.
 
-\ TODO: Implement a basic GC!
-
 vocabulary lisp
 get-current
 also eulex
@@ -32,14 +30,93 @@ also lisp definitions
 1 tag-bits lshift 1 - constant tag-mask
 
 %000 constant even-fixnum-tag
-%100 constant odd-fixnum-tag
 %001 constant cons-tag
-%011 constant symbol-tag
-%101 constant subr-tag
+%010 constant symbol-tag
+%011 constant subr-tag
+%100 constant odd-fixnum-tag
+\ %101 constant reserved
+\ %110 constant reserved
+%111 constant forward-tag
 
+: tag tag-mask and ;
 : tagged or ;
 : ?tagged swap dup 0= if nip else swap tagged then ;
 : untag tag-mask invert and ;
+
+\ Memory management and garbage collection
+\ ( Simple conservative Cheney's algorithm )
+80 constant dynamic-space
+
+: initvar variable latestxt execute ! ;
+
+\ From space
+dynamic-space allocate throw  initvar fromsp-base
+fromsp-base @ dynamic-space + initvar fromsp-limit
+\ To space
+dynamic-space allocate throw  initvar tosp-base
+tosp-base @ dynamic-space +   initvar tosp-limit
+
+variable &alloc
+variable &scan
+
+\ These functions receive a Lisp object and return a reference to the
+\ new object in the to space. It allocates the object if it is
+\ required, marking it with a forward pointer.
+create copy-functions 1 tag-bits lshift cells zallot
+
+: copy-method! ( xt tag -- )
+    cells copy-functions + ! ;
+: copy-method ( obj -- xt )
+    tag cells copy-functions + @ ;
+
+: swap-cells ( addr1 addr2 -- )
+    dup @ -rot >r dup @ r> ! ! ;
+
+: swap-spaces
+    fromsp-base tosp-base swap-cells
+    fromsp-limit tosp-limit swap-cells
+    tosp-base @ dup &alloc ! &scan ! ; latestxt execute
+
+: >tosp ( addr n -- addr* )
+    tuck &alloc @ swap move
+    &alloc @ swap &alloc +! ;
+
+: forward-reference ( old -- new|0 )
+    dup tag swap untag @ ( tag cell )
+    dup tag forward-tag = if untag tagged else 2drop 0 endif ;
+
+: markgc! ( old new -- )
+    untag forward-tag tagged swap untag ! ;
+
+: valid-obj? ( obj -- )
+    fromsp-base @ swap untag fromsp-limit @ between ;
+    
+: copy ( x -- x* )
+    dup copy-method over valid-obj? and if
+        dup forward-reference ?dup if
+        else
+            dup dup copy-method execute tuck markgc!
+        endif
+    endif ;
+
+: alloc-obj ( n -- obj f )
+    &alloc @ swap &alloc +! 0 ;
+
+defer copy-root-symbols
+
+: stop-and-copy
+    copy-root-symbols ;
+
+: .debug
+    CR
+    ." From space: "
+    fromsp-base @ dynamic-space dump CR
+    ." ALLOC = " &alloc @ print-hex-number CR
+    ." SCAN  = " &scan @ print-hex-number CR
+    ." To space: "
+    tosp-base @ dynamic-space dump CR ;
+
+
 
 \ Errors
 : void-variable 1 throw ;
@@ -91,14 +168,30 @@ create-symbol if     ::unbound , ::unbound ,
 : '' parse-cname find-symbol ;
 : [''] '' `` literal ; immediate
 
+\ #DOSYMBOLS...#ENDSYMBOLS
+\ 
+\ Iterate across the symbols in the package. The body is executed with
+\ a symbol in the TOS each time. The body must drop the symbol from
+\ the stack.
+: #dosymbols
+    `` lisp-package
+    `` DOWORDS
+        `` dup `` >r
+        `` nt>xt `` execute
+; imm-c/o
+
+: #endsymbols
+    `` r>
+    `` ENDWORDS
+; imm-c/o
+ 
 '' t constant t
 '' nil constant nil
 
 : >bool if t else nil then ;
 : bool> nil = if 0 else -1 then ;
 
-: #symbolp
-    tag-mask and symbol-tag = >bool ;
+: #symbolp tag symbol-tag = >bool ;
 
 \ Check if X is a symbol object. If not, it signals an error.
 : check-symbol ( x -- x )
@@ -107,7 +200,7 @@ create-symbol if     ::unbound , ::unbound ,
 : symbol-name ( symbol -- caddr )
     check-symbol untag @ ;
 
-: safe-symbol-value check-symbol untag cell + @ ;
+: safe-symbol-value check-symbol untag cell+ @ ;
 : safe-symbol-function check-symbol untag 2 cells + @ ;
 
 : #symbol-value ( symbol -- value )
@@ -116,15 +209,25 @@ create-symbol if     ::unbound , ::unbound ,
 : #symbol-function ( symbol -- value )
     safe-symbol-function dup ::unbound = if void-function endif ;
 
-: #set ( symb value -- )
-    tuck swap check-symbol untag cell + ! ;
+\ Don't forget that #SET and #FSET words return the newly assigned
+\ value, so if you are not going to use that value, drop it.
+: #set ( symb value -- value )
+    tuck swap check-symbol untag cell+ ! ;
 
-: #fset ( symbol definition -- )
+: #fset ( symbol definition -- definition )
     tuck swap check-symbol untag 2 cells + ! ;
+
+:noname
+    #dosymbols
+        dup
+        dup safe-symbol-value copy #set drop
+        dup safe-symbol-function copy #fset drop
+    #endsymbols
+; is copy-root-symbols    
+
 
 \ Lisp basic conditional. It runs the true-branch if the top of the
 \ stack is non-nil. It is compatible with `else' and `then' words.
-
 : nil/= nil = not ;
 : #if    `` nil/= `` if    ; imm-c/o
 : #while `` nil/= `` while ; imm-c/o
@@ -154,16 +257,15 @@ create-symbol if     ::unbound , ::unbound ,
     parse-cname intern-symbol -rot trampoline #fset drop ;
 
 1 ' #symbolp         register-func symbolp
-1 ' #symbol-function register-func symbol-function
 1 ' #symbol-value    register-func symbol-value
+1 ' #symbol-function register-func symbol-function
 2 ' #set             register-func set
 2 ' #fset            register-func fset
 
 : FUNC ( n parse:name -- )
     latestxt register-func ;
 
-: #subrp
-    tag-mask and subr-tag = >bool ;
+: #subrp tag subr-tag = >bool ;
 1 FUNC subrp
 
 : funcall-subr ( arg1 arg2 .. argn n subr -- ... )
@@ -175,7 +277,7 @@ create-symbol if     ::unbound , ::unbound ,
 : >fixnum 2* 2* ;
 : fixnum> 2/ 2/ ;
 
-: #fixnump 1 and 0= >bool ; 1 FUNC fixnump
+: #fixnump 3 and 0= >bool ; 1 FUNC fixnump
 ' #fixnump alias #integerp  1 FUNC integerp
 
 : check-integer ( x -- x )
@@ -200,13 +302,17 @@ create-symbol if     ::unbound , ::unbound ,
 
 variable allocated-conses
 
+:noname
+    untag 2 cells >tosp cons-tag tagged
+; cons-tag copy-method!
+
 : #cons ( x y -- cons )
-    2 cells allocate throw
+    2 cells alloc-obj throw
     tuck cell+ ! tuck ! cons-tag tagged
     allocated-conses 1+! ;
 2 FUNC cons
 
-: #consp tag-mask and cons-tag = >bool ;
+: #consp tag cons-tag = >bool ;
 1 FUNC consp
 
 : check-cons
@@ -470,7 +576,7 @@ defer eval-lisp-obj
     dup #consp    #if eval-list exit endif
     wrong-type-argument
 ; ' #eval is eval-lisp-obj
-
+1 FUNC eval
 
 : toplevel-repl-interaction
     ." * " query #read CR #eval #print CR ;
@@ -499,14 +605,10 @@ defer eval-lisp-obj
     refill-silent? off
     CR ." GOOD BYE!" CR CR ;
 
+
 \ Provide RUN-LISP in the system vocabulary
 set-current
 ' run-lisp alias run-lisp
 previous previous
-
-
-\ Local Variables:
-\ forth-local-words: ((("#if" "#while" "#until" "#dolist" "#repeat" "``") compile-only (font-lock-keyword-face . 2))(("c/o" "imm-c/o") immediate (font-lock-keyword-face . 2)))
-\ End:
 
 \ lisp.fs ends here
