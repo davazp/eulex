@@ -92,13 +92,12 @@ end-struct wid%
 : dowords
     postpone wid>latest
     postpone begin
-    postpone dup
+    postpone ?dup
     postpone while
 ; immediate compile-only
 : endwords
     postpone previous-word
     postpone repeat
-    postpone drop
 ; immediate compile-only
 
 
