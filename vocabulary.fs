@@ -84,6 +84,24 @@ end-struct wid%
 : >order ( wid -- )
     also context ! ;
 
+\ <wordlist> DOWORDS ... ENDWORDS
+\
+\ A loop construction to iterate on the words in a wordlist. The body
+\ is executed with a NT on the TOS each time. You MUST NOT remove this
+\ element from the stack.
+: dowords
+    postpone wid>latest
+    postpone begin
+    postpone dup
+    postpone while
+; immediate compile-only
+: endwords
+    postpone previous-word
+    postpone repeat
+    postpone drop
+; immediate compile-only
+
+
 \ In order to implement VOCS word, we need a kind of introspection for
 \ vocabularies. This is provided storing a single-linked list of the
 \ available vocabularies in the system.
