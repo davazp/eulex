@@ -393,6 +393,44 @@ BUILTIN_WORD_NAME(c_fetch, "c@")
 END_WORD(c_fetch)
 
 
+BUILTIN_WORD_NAME(cmove, "cmove")
+        /* from to u -- */
+        pushl %esi
+        pushl %edi
+	movl (%esi), %ecx
+	movl 4(%esi), %edi
+	movl 8(%esi), %esi
+        cld
+        rep
+        movsb
+        popl %edi
+        popl %esi
+        addl $12, %esi
+        ret
+END_WORD(cmove)
+
+        
+BUILTIN_WORD_NAME(cmove_to, "cmove>")
+        /* from to u -- */
+        pushl %esi
+        pushl %edi
+	movl (%esi), %ecx
+	movl 4(%esi), %edi
+	movl 8(%esi), %esi
+        addl %ecx, %edi
+        addl %ecx, %esi
+        decl %esi
+        decl %edi
+        std
+        rep
+        movsb
+        popl %edi
+        popl %esi
+        addl $12, %esi
+        ret
+END_WORD(cmove_to)
+
+
 /* port -- n */
 BUILTIN_WORD(inputb)
         xorl %eax, %eax
