@@ -456,6 +456,9 @@
         0 fill
     endif ;
 
+: move ( c-from c-to u )
+    >r 2dup < if r> cmove> else r> cmove then ;
+
 create pad 1024 allot
 
 : low-byte 255 and ;
