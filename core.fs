@@ -525,6 +525,8 @@ create pad 1024 allot
 : [char]
     char postpone literal ; immediate
 
+32 constant bl
+
 \ Push the amount of free memory in the dictionary.
 : unused
     dp-base dp - ;
