@@ -78,4 +78,10 @@ variable refill-silent?
     input_source_id 0!
     refill drop ;
 
+: parse
+    source drop >in @ + >r
+    0 swap
+    begin dup parse-char <> while swap 1+ swap repeat
+    drop r> swap ;
+
 \ input.fs ends here
