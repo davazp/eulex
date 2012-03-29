@@ -41,14 +41,11 @@
 : id. nt>name type space ;
 : words ['] id. map-nt ;
 
-variable count_words
-
-:noname drop count_words 1+! ;
+: room-count ( -- n )
+    0 context @ dowords swap 1+ swap endwords ;
 : room
-    cr
-    count_words 0!
-    literal map-nt
-    ." Words in the context: " count_words @ . cr
+    CR
+    ." Words in the context: " room-count . CR
     ." Dictionary space allocated: " dp dp-base - . ." bytes" cr
 ;
 
