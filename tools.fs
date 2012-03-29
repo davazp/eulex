@@ -33,14 +33,10 @@
 
 : map-nt ( xt -- )
     >r
-    context @ @
-    begin
-    dup 0<> while
-        dup r> dup >r execute
-        previous-word
-    repeat
-    r>
-    2drop ;
+    context @ dowords
+        dup r@ execute
+    endwords
+    r> drop ;
 
 : id. nt>name type space ;
 : words ['] id. map-nt ;
@@ -75,19 +71,14 @@ variable count_words
 
 
 : unfind-in-wordlist ( xt wordlist -- addr c )
-    wid>latest
-    begin
-        dup 0<> while
-            2dup nt>xt = if
-                nip nt>name
-                exit
-            else
-                previous-word
-            then
-    repeat
-    2drop
-    0 0
-;
+    dowords
+        2dup nt>xt = if
+            nip nt>name
+            exit
+        then
+    endwords
+    drop
+    0 0 ;
 
 \ Find the first avalaible word whose CFA is XT, pushing the name to
 \ the stack or two zeros if it is not found.
