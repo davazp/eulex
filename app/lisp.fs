@@ -22,6 +22,8 @@ get-current
 also eulex
 also lisp definitions
 
+\ : DEBUG ;
+
 ' postpone alias `` immediate
 ' compile-only alias c/o
 : imm-c/o immediate compile-only ;
@@ -44,8 +46,27 @@ also lisp definitions
 : untag tag-mask invert and ;
 
 \ Memory management and garbage collection
-\ ( Simple conservative Cheney's algorithm )
-80 constant dynamic-space
+\ ( Cheney's algorithm )
+
+\ A stack of pinned objects. Use it to protect shadown symbol values
+\ and other Lisp objects which could not to be accesible from Lisp
+\ temporarly.
+4096 constant pinned-size
+create pinned pinned-size zallot
+variable pinned-count
+
+: >p
+    pinned-count @ pinned-size = if abort" Too depth recursion." endif
+    pinned pinned-count @ cells + ! pinned-count 1+! ;
+: pdrop pinned-count 1-! ;
+
+: pinargs ( arg1 ... argn n -- arg1 ... argn n )
+    dup 0 ?do i 1+ pick >p loop ;
+
+: unpinargs ( n -- )
+    0 ?do pdrop loop ;
+
+65536 constant dynamic-space
 
 : initvar variable latestxt execute ! ;
 
@@ -99,14 +120,30 @@ create copy-functions 1 tag-bits lshift cells zallot
         endif
     endif ;
 
-: alloc-obj ( n -- obj f )
-    &alloc @ swap &alloc +! 0 ;
-
 defer copy-root-symbols
 
-: stop-and-copy
-    copy-root-symbols ;
+: copy-pinned
+    pinned-count @ 0 ?do
+        pinned i cells +
+        dup @ copy swap !
+    loop ;
 
+: gc
+    [IFDEF] DEBUG CR ." Garbage collecting..." [ENDIF]
+    swap-spaces
+    copy-root-symbols copy-pinned
+    begin
+    &scan @ &alloc @ u< while
+        &scan @ dup @ copy swap !
+        &scan @ cell+ &scan !
+    repeat ;
+
+: alloc-obj ( n -- obj f )
+    dup &alloc @ + tosp-limit @ >= if gc endif
+    dup &alloc @ + tosp-limit @ >= if abort" Out of memory" endif
+    &alloc @ swap &alloc +! 0 ;
+
+[IFDEF] DEBUG
 : .debug
     CR
     ." From space: "
@@ -115,6 +152,7 @@ defer copy-root-symbols
     ." SCAN  = " &scan @ print-hex-number CR
     ." To space: "
     tosp-base @ dynamic-space dump CR ;
+[ENDIF]
 
 
 
@@ -125,7 +163,7 @@ defer copy-root-symbols
 : wrong-number-of-arguments 4 throw ;
 : parse-error 5 throw ;
 : quit-condition 6 throw ;
-    
+
 \ Symbols
 
 \ We write the lisp package system upon wordlists. The PF of the words
@@ -555,9 +593,10 @@ defer eval-lisp-obj
     stack<->symbols drop ndrop r> ;
 
 : eval-funcall ( list -- x )
-    dup >r #cdr eval-funcall-args r>
+    dup >r #cdr eval-funcall-args pinargs r> over >r
     #car #symbol-function
-    dup #subrp #if funcall-subr else funcall-lambda endif ;
+    dup #subrp #if funcall-subr else funcall-lambda endif
+    r> unpinargs ;
 
 
 \ Non-atoms
