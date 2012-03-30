@@ -41,7 +41,8 @@ FORTH_SRC= \
 	user.fs \
         assembler.fs \
 	eulexrc.fs \
-	app/lisp.fs
+	app/lisp.fs \
+	app/sokoban.fs
 
 TESTING_SRC=tests/tests.fs \
 	    tests/tsuite.fs \

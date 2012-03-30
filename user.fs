@@ -17,10 +17,6 @@
 \ You should have received a copy of the GNU General Public License
 \ along with Eulex.  If not, see <http://www.gnu.org/licenses/>.
 
-
-\ Applications
-require @app/lisp.fs
-
 page
 ." Welcome to Eulex!" cr
 cr
