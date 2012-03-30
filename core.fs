@@ -697,6 +697,7 @@ require @kernel/serial.fs
 require @kernel/speaker.fs
 require @tests/tests.fs
 require @kernel/cpuid.fs
+require @input.fs
 
 
 \ Rebooting the machine
@@ -729,4 +730,5 @@ require @kernel/cpuid.fs
 :noname -14 throw ; compile_only_err_routine !
 
 enable-interrupts
+
 require @user.fs

@@ -17,8 +17,6 @@
 \ You should have received a copy of the GNU General Public License
 \ along with Eulex.  If not, see <http://www.gnu.org/licenses/>.
 
-require @kernel/timer.fs
-require @input.fs
 
 \ Applications
 require @app/lisp.fs
