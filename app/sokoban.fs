@@ -159,7 +159,7 @@ Variable score     0 score !  \ total number of scores
 	    level# @ 1+ level  0= IF  EXIT  THEN
 	THEN
 	.maze
-	key
+        ekey drop
 	CASE
 	    [char] ? OF  print-help false  ENDOF
 	    
@@ -174,8 +174,14 @@ Variable score     0 score !  \ total number of scores
 	    [char] B OF  soko-down  false  ENDOF
 	    [char] A OF  soko-up    false  ENDOF
 	    [char] C OF  soko-right false  ENDOF
-
 	    [char] q OF  true              ENDOF
+
+            \ Eulex cursors
+	    LEFT  OF soko-left  false  ENDOF
+	    DOWN  OF soko-down  false  ENDOF
+	    UP    OF soko-up    false  ENDOF
+	    RIGHT OF soko-right false  ENDOF
+            
 	false swap  ENDCASE
     UNTIL ;
 
