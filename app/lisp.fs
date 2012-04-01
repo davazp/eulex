@@ -399,8 +399,9 @@ variable allocated-conses
     `` drop
 ; imm-c/o
 
-: list ( x1 x2 ... xn n -- list )
-    nil swap 0 ?do #cons loop ;
+: #list ( x1 x2 ... xn n -- list )
+    nil swap 0 ?do #cons loop 
+; 0 VARIADIC-FUNC list
 
 : #length ( list -- n )
     0 swap #dolist drop 1+ #repeat >fixnum ;
@@ -451,7 +452,7 @@ defer read-lisp-obj
     parse-char = invert if parse-error endif ;
 
 : read-'
-    discard-char [''] quote read-lisp-obj 2 list ;
+    discard-char [''] quote read-lisp-obj 2 #list ;
 
 : read-(... recursive
     peek-conforming-char case
@@ -613,16 +614,38 @@ defer eval-lisp-obj
     stack<->symbols drop ndrop r> ;
 
 : funcall ( arg1 ... argn n function -- x)
+    >r pinargs r> over >r
     dup #symbolp #if #symbol-function endif
-    dup #subrp #if funcall-subr else funcall-lambda endif ;
+    dup #subrp #if funcall-subr else funcall-lambda endif
+    r> unpinargs ;
 
 : eval-funcall ( list -- x )
-    dup >r #cdr eval-funcall-args pinargs r> over >r
-    #car funcall r> unpinargs ;
+    dup >r #cdr eval-funcall-args r> #car funcall ;
 
 : #funcall ( function arg1 arg2 ... argn n+1 --- x )
     1- dup >r roll r> swap funcall ;
 1 VARIADIC-FUNC funcall
+
+\ is X a symbol which designates a macro?
+: macro? ( x -- bool)
+    dup #symbolp #not #if drop false exit endif
+    safe-symbol-function
+    dup #consp #not #if drop false exit endif
+    #car [''] macro = ;
+
+: non-eval-macrocall-args ( list -- )
+    0 swap #dolist swap 1+ #repeat ;
+
+: macroexpand-1*
+    dup >r #cdr non-eval-macrocall-args r>
+    #car #symbol-function #cdr funcall ;
+
+: #macroexpand-1 ( list -- x )
+    dup #consp #not #if exit endif
+    dup #car macro? if
+        macroexpand-1*
+    endif ;
+1 FUNC macroexpand-1
 
 \ Non-atoms
 
@@ -630,8 +653,9 @@ defer eval-lisp-obj
     dup #car case
         [''] quote of #cdr #car endof
         ['']    if of eval-if endof
-        [''] progn of eval-progn endof    
-        drop eval-funcall 0
+        [''] progn of eval-progn endof
+        macro? if #macroexpand-1 eval-lisp-obj else eval-funcall endif
+        0 \ any element here
     endcase ;
 
 : #eval ( x -- y )
