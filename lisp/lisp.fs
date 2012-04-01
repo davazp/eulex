@@ -475,6 +475,13 @@ defer read-lisp-obj
         read-lisp-obj read-(... #cons
     endif ;
 
+: discard-line
+    begin parse-char 10 = until ;
+
+: read-;
+    begin peek-conforming-char [char] ; = while discard-line repeat
+    read-lisp-obj ;
+
 32 constant token-buffer-size
 create token-buffer token-buffer-size allot
 
@@ -534,6 +541,7 @@ create token-buffer token-buffer-size allot
         [char] ' of read-' endof
         [char] ` of read-` endof
         [char] , of read-, endof
+        [char] ; of read-; endof
         [char] . of parse-error endof
                0 of eof-condition endof
         drop read-token >sym/num 0
