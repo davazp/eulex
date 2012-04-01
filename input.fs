@@ -34,10 +34,12 @@ require @linedit.fs
     input_buffer_size @
     input_source_line @
     input_source_column @
-    5 ;
+    input_source_id @
+    6 ;
 
 : restore-input
     drop
+    input_source_id !
     input_source_column !
     input_source_line !
     input_buffer_size !
@@ -83,5 +85,21 @@ variable refill-silent?
     0 swap
     begin dup parse-char <> while swap 1+ swap repeat
     drop r> swap ;
+
+: set-input-string ( addr u -- )
+    input_buffer_size !
+    input_buffer !
+    input_buffer_in 0!
+    -1 input_source_id !
+    1 input_source_line !
+    0 input_source_column ! ;
+    
+: execute-parsing ( ... addr u xt -- ... )
+    \ Save the input source to the control stack
+    save-input dup begin dup 0 > while 1- rot >r repeat drop >r
+    -rot set-input-string execute
+    \ Restore the input source from the control stack
+    r> dup begin dup 0 > while 1- r> -rot repeat drop
+    restore-input ;
 
 \ input.fs ends here
