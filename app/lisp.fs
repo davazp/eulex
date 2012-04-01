@@ -195,6 +195,10 @@ create-symbol lambda ::unbound , ::unbound ,
 create-symbol macro  ::unbound , ::unbound ,
 create-symbol if     ::unbound , ::unbound ,
 
+create-symbol backquote ::unbound , ::unbound ,
+create-symbol comma     ::unbound , ::unbound ,
+
+    
 : find-symbol ( c-addr -- symbol|0 )
     find-cname-in-lisp-package dup if nt>xt execute endif ;
 
@@ -451,8 +455,9 @@ defer read-lisp-obj
 : assert-char
     parse-char = invert if parse-error endif ;
 
-: read-'
-    discard-char [''] quote read-lisp-obj 2 #list ;
+: read-' discard-char [''] quote     read-lisp-obj 2 #list ;
+: read-` discard-char [''] backquote read-lisp-obj 2 #list ;
+: read-, discard-char [''] comma     read-lisp-obj 2 #list ;
 
 : read-(... recursive
     peek-conforming-char case
@@ -526,6 +531,8 @@ create token-buffer token-buffer-size allot
     peek-conforming-char case
         [char] ( of read-( endof
         [char] ' of read-' endof
+        [char] ` of read-` endof
+        [char] , of read-, endof
         [char] . of parse-error endof
         drop read-token >sym/num 0
     endcase ;
