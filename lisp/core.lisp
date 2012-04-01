@@ -18,3 +18,6 @@
         (list 'fset (list 'quote name)
               (list 'quote (list 'lambda args body)))
         (list 'quote name)))
+
+(defmacro defvar (name value)
+  (list 'setq name value))
