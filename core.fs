@@ -174,6 +174,8 @@
     $c3 c,                            \ ret
 ; compile-only
 
+: return, $c3 c, ;
+
 : nop
     $90 c,                            \ nop
 ; compile-only
