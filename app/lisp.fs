@@ -1,4 +1,4 @@
-\ lisp.fs --- A straighforward dynamically-scoped Lisp
+\ lisp.fs --- A straighforward dynamically-scoped Lisp interpreter
 
 \ Copyright 2012 (C) David Vazquez
 
@@ -192,6 +192,7 @@ create-symbol nil latestxt execute , ::unbound ,
 create-symbol quote  ::unbound , ::unbound ,
 create-symbol progn  ::unbound , ::unbound ,
 create-symbol lambda ::unbound , ::unbound ,
+create-symbol macro  ::unbound , ::unbound ,
 create-symbol if     ::unbound , ::unbound ,
 
 : find-symbol ( c-addr -- symbol|0 )
@@ -276,6 +277,9 @@ create-symbol if     ::unbound , ::unbound ,
 : check-number-of-arguments
     = not if wrong-number-of-arguments endif ;
 
+: check-minimum-number-of-arguments ( arg1 ... argn n m -- arg1 ... argn n )
+    over <= not if wrong-number-of-arguments endif ;
+
 \ Create a subr object (a primitive function to the Lisp system),
 \ which accepts N arguments, checks that the number of arguments is
 \ correct and then call to the execution token XT.
@@ -289,10 +293,23 @@ create-symbol if     ::unbound , ::unbound ,
     return
     r> subr-tag tagged ;
 
+: variadic-trampoline ( n xt -- subr )
+    2align here >r
+    swap
+    `` literal
+    `` check-minimum-number-of-arguments
+    `` literal
+    `` execute
+    return
+    r> subr-tag tagged ;
+
 \ Parse a word and intern a symbol for it, with a function value which
 \ accepts N arguments and calls to XT.
 : register-func ( n xt parse:name -- )
     parse-cname intern-symbol -rot trampoline #fset drop ;
+
+: register-variadic-func ( n xt parse:name -- )
+    parse-cname intern-symbol -rot variadic-trampoline #fset drop ;
 
 1 ' #symbolp         register-func symbolp
 1 ' #symbol-value    register-func symbol-value
@@ -302,6 +319,9 @@ create-symbol if     ::unbound , ::unbound ,
 
 : FUNC ( n parse:name -- )
     latestxt register-func ;
+
+: VARIADIC-FUNC ( n parse:name -- )
+    latestxt register-variadic-func ;
 
 : #subrp tag subr-tag = >bool ;
 1 FUNC subrp
@@ -592,12 +612,17 @@ defer eval-lisp-obj
     r> lambda-body eval-progn-list >r
     stack<->symbols drop ndrop r> ;
 
+: funcall ( arg1 ... argn n function -- x)
+    dup #symbolp #if #symbol-function endif
+    dup #subrp #if funcall-subr else funcall-lambda endif ;
+
 : eval-funcall ( list -- x )
     dup >r #cdr eval-funcall-args pinargs r> over >r
-    #car #symbol-function
-    dup #subrp #if funcall-subr else funcall-lambda endif
-    r> unpinargs ;
+    #car funcall r> unpinargs ;
 
+: #funcall ( function arg1 arg2 ... argn n+1 --- x )
+    1- dup >r roll r> swap funcall ;
+1 VARIADIC-FUNC funcall
 
 \ Non-atoms
 
