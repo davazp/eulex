@@ -25,6 +25,9 @@ require @kernel/keyboard.fs
 
 true value visible-bell
 
+\ Include a newline feedkback in the screen?
+variable end-newline-p
+
 variable buffer
 variable buffer-size
 variable gap-start
@@ -389,7 +392,8 @@ variable completing?
 : edit-line ( addr n1 n2 -- n3 )
     >r init r> gap-start !
     looping
-    finalize ;
+    finalize
+    end-newline-p @ if cr endif ;
 
 : accept ( addr n1 -- n2 )
     0 edit-line ;

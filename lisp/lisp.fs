@@ -689,7 +689,7 @@ defer eval-lisp-obj
 defer repl-function
 
 : repl-iteration #read #eval ;
-: user-repl-iteration ." * " query #read CR #eval #print CR ;
+: user-repl-iteration ." * " query #read #eval #print CR ;
 
 : process-toplevels
     begin repl-function again ;
@@ -733,7 +733,9 @@ defer repl-function
     refill-silent? on
     get-order get-current
     in-lisp-package: definitions
+    end-newline-p on
     toplevel
+    end-newline-p off
     set-current set-order
     refill-silent? off
     CR ." GOOD BYE!" CR CR ;

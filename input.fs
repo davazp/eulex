@@ -19,6 +19,9 @@
 
 require @linedit.fs
 
+\ Will we write " ok" or " compiled" after refilling?
+variable refill-silent?
+
 ' input_buffer_in alias >IN
 
 : source-id ( -- n )
@@ -52,7 +55,8 @@ CREATE TIB video-width allot
 
 : refill ( -- flag )
     interactive? if
-        TIB video-width accept space
+        TIB video-width accept
+        refill-silent? @ not if space endif
         input_buffer_size !
         TIB input_buffer !
         >IN 0!
@@ -61,8 +65,6 @@ CREATE TIB video-width allot
         false
     endif
 ;
-
-variable refill-silent?
 
 :noname
     refill-silent? @ not if
