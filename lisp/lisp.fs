@@ -730,9 +730,6 @@ defer repl-function
     refill-silent? off
     CR ." GOOD BYE!" CR CR ;
 
-\ Load core.lisp builtin file
-\ @lisp/core.lisp buffer>string ' toplevel-repl execute-parsing ;
-
 \ Provide RUN-LISP in the system vocabulary
 set-current
 ' run-lisp alias run-lisp
