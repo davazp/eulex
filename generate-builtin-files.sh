@@ -15,9 +15,9 @@ OUTPUT=BUILTIN-FILES.S
 
 echo "/* This file was generated automatically. Don't modify it. */" > $OUTPUT
 for file in $*; do
-    BN=`echo $file | sed 's/\//_/g' | sed 's/\..\{,3\}$//g'`
-    SYMBOL_START="_binary_${BN}_fs_start"
-    SYMBOL_SIZE="_binary_${BN}_fs_size"
+    BN=`echo $file | sed 's/\//_/g' | sed 's/\./_/g'`
+    SYMBOL_START="_binary_${BN}_start"
+    SYMBOL_SIZE="_binary_${BN}_size"
     echo ""                                                     >> $OUTPUT
     echo "BUILTIN_WORD_NAME(__$BN, \"@$file\")"                 >> $OUTPUT
     echo "     movl \$__${BN}_data, -4(%esi)"                   >> $OUTPUT

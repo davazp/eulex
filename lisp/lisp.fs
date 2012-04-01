@@ -163,6 +163,7 @@ defer copy-root-symbols
 : wrong-number-of-arguments 4 throw ;
 : parse-error 5 throw ;
 : quit-condition 6 throw ;
+: eof-condition 7 throw ;
 
 \ Symbols
 
@@ -534,6 +535,7 @@ create token-buffer token-buffer-size allot
         [char] ` of read-` endof
         [char] , of read-, endof
         [char] . of parse-error endof
+               0 of eof-condition endof
         drop read-token >sym/num 0
     endcase ;
 
@@ -673,33 +675,63 @@ defer eval-lisp-obj
 ; ' #eval is eval-lisp-obj
 1 FUNC eval
 
-: toplevel-repl-interaction
-    ." * " query #read CR #eval #print CR ;
-    
-: toplevel-repl
-    begin
-        ['] toplevel-repl-interaction catch case
+
+\ REPL
+
+defer repl-function
+
+: repl-iteration #read #eval ;
+: user-repl-iteration ." * " query #read CR #eval #print CR ;
+
+: process-toplevels
+    begin repl-function again ;
+
+\ Process Lisp forms until an error is signaled.
+: repl-loop ( repl-iteration-word -- )
+    ['] process-toplevels catch case
             0 of endof
             1 of ." ERROR: void variable" CR endof
             2 of ." ERROR: void function" CR endof
             3 of ." ERROR: wrong type of argument" CR endof
             4 of ." ERROR: wrong number of arguments" CR endof
             5 of ." ERROR: parsing error" CR endof
-            6 of exit endof
+            \ 6 of endof EXIT
+            \ 7 of endof EOF
             throw
+        endcase ;
+
+\ Process forms until EXIT or EOF conditions.
+: toplevel
+    ['] user-repl-iteration is repl-function
+    begin
+        ['] repl-loop catch case
+            6 of exit endof
+            7 of exit endof
         endcase
     again ;
+
+.( Loading core.lisp...) CR
+@lisp/core.lisp buffer>string
+:noname
+    ['] repl-iteration is repl-function
+    ['] repl-loop catch case
+        6 of endof
+        7 of endof
+    endcase
+; execute-parsing
 
 : run-lisp
     page 0 0 at-xy ." RUNNING EULEX LISP." CR CR
     refill-silent? on
     get-order get-current
     in-lisp-package: definitions
-    toplevel-repl
+    toplevel
     set-current set-order
     refill-silent? off
     CR ." GOOD BYE!" CR CR ;
 
+\ Load core.lisp builtin file
+\ @lisp/core.lisp buffer>string ' toplevel-repl execute-parsing ;
 
 \ Provide RUN-LISP in the system vocabulary
 set-current

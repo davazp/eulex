@@ -541,6 +541,9 @@ create pad 1024 allot
 : buffer>size ( addr -- size )
     cell + @ ;
 
+: buffer>string ( addr -- addr u )
+    dup buffer>start swap buffer>size ;
+
 : buffer>loaded ( addr -- load-var )
     2 cells + ;
 
@@ -552,10 +555,7 @@ create pad 1024 allot
 @core.fs mark-buffer-as-loaded
 
 : load-buffer ( addr -- )
-    dup mark-buffer-as-loaded
-    dup buffer>start
-    swap buffer>size
-    evaluate ;
+    dup mark-buffer-as-loaded buffer>string evaluate ;
 
 : require-buffer ( addr -- )
     dup buffer-loaded? if drop else load-buffer then ;
