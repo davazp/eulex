@@ -57,9 +57,9 @@ require @kernel/interrupts.fs
     fatal-exception
 ; 2 ISR
 
-: breakpoint-exception
-    fatal-exception
-; 3 ISR
+\ : breakpoint-exception
+\     fatal-exception
+\ ; 3 ISR
 
 : overflow-exception
     fatal-exception
