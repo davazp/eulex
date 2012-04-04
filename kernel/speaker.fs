@@ -37,7 +37,7 @@ require @kernel/timer.fs
 : play ( freq ms )
     swap sound ms nosound ;
 
-: beep 1000 10 play ;
+: beep 1000 150 play ;
 
 
 vocabulary music
