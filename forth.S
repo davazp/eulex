@@ -1178,7 +1178,7 @@ read_word:
    an anonymous word. */
 create_uninterned_word:
         /* We need a lock here, because we change the meaning of the
-           %esi register. So, if a interruption is signaled here, the
+           %esi register. So, if an interruption is signaled here, the
            interrupt service routine will use a wrong memory as data stack
            and memory will be corrupted. */
         pushf
