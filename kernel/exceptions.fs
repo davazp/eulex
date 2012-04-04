@@ -49,9 +49,9 @@ require @kernel/interrupts.fs
     -10 throw
 ; 0 ISR
 
-: debug-exception
-    fatal-exception
-; 1 ISR
+\ : debug-exception
+\     fatal-exception
+\ ; 1 ISR
 
 : non-maskable-interrupt-exception
     fatal-exception

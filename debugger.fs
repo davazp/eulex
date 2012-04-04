@@ -76,7 +76,7 @@ end-struct breakpoint%
 
 : uninstall-breakpoint ( addr )
     find-breakpoint ?dup if
-        dup breakpoint-byte @ over breakpoint-addr @ c!
+        dup disable-breakpoint
         delete-breakpoint
     endif ;
 
@@ -87,14 +87,31 @@ end-struct breakpoint%
     repeat
     drop ;
 
+
+variable reseting-breakpoing
+
+: debug-exception ( isrinfo -- )
+    [ $100 invert ]L over isrinfo-eflags and!
+    reseting-breakpoing @ ?dup if enable-breakpoint endif
+; 1 ISR
+
+: traced-function-hook ( nt -- )
+    CR ." TRACE: The word " id. ." was called." ;
+
 : breakpoint-exception ( isrinfo -- )
+    \ Set trap flag (single-step mode). It will generate ISR#1
+    \ interruption to be called, so we can replace the original byte
+    \ with the breakpoint instruction again.
+    $100 over isrinfo-eflags or!
+    \ Replace the break instruction with the original byte.
     dup isrinfo-eip @ 1- find-breakpoint
     dup disable-breakpoint
-    dup CR ." TRACE: The word " breakpoint-nt @  id. ." was called."
+    dup reseting-breakpoing !
+    dup breakpoint-nt @ traced-function-hook
     breakpoint-addr @ swap isrinfo-eip !
 ; 3 ISR
 
 : trace nt' dup nt>xt install-breakpoint ;
-: untrace ' delete-breakpoint ;
+: untrace ' uninstall-breakpoint ;
 
 \ debugger.fs ends here
