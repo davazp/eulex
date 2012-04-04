@@ -21,3 +21,6 @@
 
 (defmacro defvar (name value)
   (list 'setq name value))
+
+(defun atom (x)
+  (not (consp x)))
