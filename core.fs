@@ -711,9 +711,6 @@ require @debugger.fs
     kdb-reset kbd-io outputb
     halt ;
 
-: 3dup 2 pick 2 pick 2 pick ;
-
-
 ( run-tests )
 
 \ DEBUGGING. This is useful to run the QEMU on emacs, and use Eulex
