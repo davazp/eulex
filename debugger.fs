@@ -28,6 +28,7 @@ struct
     cell field breakpoint-byte
     cell field breakpoint-previous
     cell field breakpoint-next
+    cell field breakpoint-oneshot?
 end-struct breakpoint%
 
 : breakpoint-enable? ( breakpoint -- )
@@ -52,16 +53,15 @@ end-struct breakpoint%
     repeat
     nip ;
 
-: install-breakpoint ( nt addr -- )
-    dup find-breakpoint if 2drop
-    else
+: install-breakpoint ( nt addr -- breakpoint%|0 )
+    dup find-breakpoint if 2drop 0 else
         breakpoint% allocate throw
         tuck breakpoint-addr !
         tuck breakpoint-nt !
         last-breakpoint @ over breakpoint-next !
         0 over breakpoint-previous !
         dup last-breakpoint !
-        enable-breakpoint
+        dup enable-breakpoint
     endif ;
 
 : delete-breakpoint ( breakpoint% -- )
@@ -73,12 +73,6 @@ end-struct breakpoint%
     endif
     dup disable-breakpoint
     free throw ;
-
-: uninstall-breakpoint ( addr )
-    find-breakpoint ?dup if
-        dup disable-breakpoint
-        delete-breakpoint
-    endif ;
 
 : breakpoints
     last-breakpoint @
@@ -92,7 +86,13 @@ variable reseting-breakpoing
 
 : debug-exception ( isrinfo -- )
     [ $100 invert ]L over isrinfo-eflags and!
-    reseting-breakpoing @ ?dup if enable-breakpoint endif
+    reseting-breakpoing @ ?dup if
+        dup breakpoint-oneshot? @ if
+            reseting-breakpoing 0!
+        else
+            enable-breakpoint
+        endif
+    endif
 ; 1 ISR
 
 : traced-function-hook ( nt -- )
@@ -111,7 +111,17 @@ variable reseting-breakpoing
     breakpoint-addr @ swap isrinfo-eip !
 ; 3 ISR
 
-: trace nt' dup nt>xt install-breakpoint ;
-: untrace ' uninstall-breakpoint ;
+
+: parse-and-trace
+    nt' dup nt>xt install-breakpoint
+    dup 0= if ." This word is being traced." CR endif ;
+
+: trace parse-and-trace drop ;
+: trace1 parse-and-trace breakpoint-oneshot? on ;
+
+: untrace '
+    find-breakpoint ?dup if
+        delete-breakpoint
+    else ." This word is not traced." CR endif ;
 
 \ debugger.fs ends here
