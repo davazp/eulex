@@ -128,18 +128,15 @@ CREATE isr-stub
     ' isr-dispatcher call
     popa
     8 unwind-rstack
-    sti
     iret
 
 : ISR-ERRCODE ( n -- n addr )
     here over
-    cli
     push-rstack
     isr-stub jmp ;
 
 : ISR-NOERRCODE ( n -- n addr )
     here over
-    cli
     0 push-rstack
     push-rstack
     isr-stub jmp ;
