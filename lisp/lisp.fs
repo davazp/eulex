@@ -379,6 +379,20 @@ variable allocated-conses
 : execute-subr ( arg1 arg2 .. argn n subr -- ... )
     untag subr>xt execute ;
 
+: #eq = >bool ; 2 FUNC eq
+
+: #functionp ( x -- bool )
+    dup #symbolp #if safe-symbol-function endif
+    dup #subrp #if
+        special-subr? not >bool
+    else
+        dup #consp #if
+            #car [''] lambda #eq
+        else
+            nil
+        endif
+    endif
+; 1 FUNC functionp
 
 \ Integers
 
@@ -418,8 +432,6 @@ variable allocated-conses
     
 
 \ Misc
-
-: #eq = >bool ; 2 FUNC eq
 
 : #not #if nil else t endif ; 1 FUNC not
 ' #not alias #null 1 FUNC null
