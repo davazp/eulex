@@ -395,6 +395,8 @@ END_WORD(c_fetch)
 
 BUILTIN_WORD_NAME(cmove, "cmove")
         /* from to u -- */
+        pushf
+        cli
         pushl %esi
         pushl %edi
 	movl (%esi), %ecx
@@ -406,12 +408,15 @@ BUILTIN_WORD_NAME(cmove, "cmove")
         popl %edi
         popl %esi
         addl $12, %esi
+        popf
         ret
 END_WORD(cmove)
 
         
 BUILTIN_WORD_NAME(cmove_to, "cmove>")
         /* from to u -- */
+        pushf
+        cli
         pushl %esi
         pushl %edi
 	movl (%esi), %ecx
@@ -427,6 +432,7 @@ BUILTIN_WORD_NAME(cmove_to, "cmove>")
         popl %edi
         popl %esi
         addl $12, %esi
+        popf
         ret
 END_WORD(cmove_to)
 
@@ -1171,6 +1177,12 @@ read_word:
    however. The word is not interned if it is empty, therefore it creates
    an anonymous word. */
 create_uninterned_word:
+        /* We need a lock here, because we change the meaning of the
+           %esi register. So, if an interruption is signaled here, the
+           interrupt service routine will use a wrong memory as data stack
+           and memory will be corrupted. */
+        pushf
+        cli
         /* Address of the previous entry */
         movl current, %ebp
         movl (%ebp), %ecx
@@ -1194,6 +1206,7 @@ create_uninterned_word:
         addl $4, %edi
         popl %eax
         movl %eax, latest_word
+        popf
         ret
 
 /* Create a new entry in the wordlist, EAX is a counted string, EDX is the address of

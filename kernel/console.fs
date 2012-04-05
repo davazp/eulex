@@ -17,7 +17,6 @@
 \ You should have received a copy of the GNU General Public License
 \ along with Eulex.  If not, see <http://www.gnu.org/licenses/>.
 
-require @kernel/timer.fs
 require @kernel/video.fs
 
 variable cursor-x
@@ -122,9 +121,6 @@ variable cursor-y
             i j v-attr@ invert i j v-attr!
         loop
     loop ;
-
-: flash
-    invert-screen 50 ms invert-screen ;
 
 PAGE
 

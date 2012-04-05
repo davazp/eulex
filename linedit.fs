@@ -35,6 +35,7 @@ variable gap-end
 
 variable finishp
 
+: flash invert-screen 50 ms invert-screen ;
 : alert visible-bell if flash else beep endif ;
 
 : point gap-start @ ;
