@@ -675,9 +675,12 @@ unary function: macroexpand-1
     rot eval-lisp-obj #if drop else nip endif eval-lisp-obj
 ; 2 3 special: if
     
+: #progn ( expr1 expr2 expr3 ... exprn n -- )
+    #list nil swap #dolist nip eval-lisp-obj #repeat
+; 0 or-more special: progn
+
 : eval-list
     dup #car case
-        [''] progn of eval-progn endof
         macro? if
             #macroexpand-1 eval-lisp-obj
         else
