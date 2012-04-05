@@ -165,6 +165,10 @@ defer copy-root-symbols
 : quit-condition 6 throw ;
 : eof-condition 7 throw ;
 
+\ Defered words
+defer eval-lisp-obj
+defer read-lisp-obj
+
 \ Symbols
 
 \ We write the lisp package system upon wordlists. The PF of the words
@@ -277,13 +281,56 @@ create-symbol comma     ::unbound , ::unbound ,
 : #while `` nil/= `` while ; imm-c/o
 : #until `` nil/= `` until ; imm-c/o
 
-\ Subrs (primitive functions)
+
+\ CONSes
+
+variable allocated-conses
+
+:noname
+    untag 2 cells >tosp cons-tag tagged
+; cons-tag copy-method!
+
+: #cons ( x y -- cons )
+    2 cells alloc-obj throw
+    tuck cell+ ! tuck ! cons-tag tagged
+    allocated-conses 1+! ;
+
+: #consp tag cons-tag = >bool ;
+
+: check-cons
+    dup #consp nil = if wrong-type-argument endif ;
+
+: #car dup #if check-cons untag @ endif ;
+: #cdr dup #if check-cons untag cell + @ endif ;
+
+\ Return the cdr of a cons. If the result is NIL, signals an error.
+: assert-cdr
+    #cdr dup nil = if parse-error endif ;
+
+: #dolist
+    `` begin
+        `` dup `` #while
+        `` dup `` >r
+        `` #car
+; imm-c/o
+: #repeat
+        `` r>
+        `` #cdr
+    `` repeat
+    `` drop
+; imm-c/o
+
+
+\ SUBRS (primitive functions)
 
 : check-number-of-arguments
     = not if wrong-number-of-arguments endif ;
 
 : check-minimum-number-of-arguments ( arg1 ... argn n m -- arg1 ... argn n )
     over <= not if wrong-number-of-arguments endif ;
+
+: eval-funcall-args ( list -- )
+    0 swap #dolist eval-lisp-obj swap 1+ #repeat ;
 
 \ Create a subr object (a primitive function to the Lisp system),
 \ which accepts N arguments, checks that the number of arguments is
@@ -315,6 +362,11 @@ create-symbol comma     ::unbound , ::unbound ,
 
 : register-variadic-func ( n xt parse:name -- )
     parse-cname intern-symbol -rot variadic-trampoline #fset drop ;
+
+2 ' #cons            register-func cons
+1 ' #consp           register-func consp
+1 ' #car             register-func car
+1 ' #cdr             register-func cdr
 
 1 ' #symbolp         register-func symbolp
 1 ' #symbol-value    register-func symbol-value
@@ -361,48 +413,7 @@ create-symbol comma     ::unbound , ::unbound ,
 : #* 2-check-integers fixnum> * ; 2 FUNC *
 : #/ 2-check-integers / >fixnum ; 2 FUNC / 
 
-\ CONSes
-
-variable allocated-conses
-
-:noname
-    untag 2 cells >tosp cons-tag tagged
-; cons-tag copy-method!
-
-: #cons ( x y -- cons )
-    2 cells alloc-obj throw
-    tuck cell+ ! tuck ! cons-tag tagged
-    allocated-conses 1+! ;
-2 FUNC cons
-
-: #consp tag cons-tag = >bool ;
-1 FUNC consp
-
-: check-cons
-    dup #consp nil = if wrong-type-argument endif ;
-
-: #car dup #if check-cons untag @ endif ;
-1 FUNC car
-
-: #cdr dup #if check-cons untag cell + @ endif ;
-1 FUNC cdr
-
-\ Return the cdr of a cons. If the result is NIL, signals an error.
-: assert-cdr
-    #cdr dup nil = if parse-error endif ;
-
-: #dolist
-    `` begin
-        `` dup `` #while
-        `` dup `` >r
-        `` #car
-; imm-c/o
-: #repeat
-        `` r>
-        `` #cdr
-    `` repeat
-    `` drop
-; imm-c/o
+
 
 : #list ( x1 x2 ... xn n -- list )
     nil swap 0 ?do #cons loop 
@@ -442,8 +453,6 @@ variable allocated-conses
 
 : close-parent? [char] ) = ;
 
-defer read-lisp-obj
-
 : discard-char
     parse-char drop ;
 
@@ -481,6 +490,7 @@ defer read-lisp-obj
 : read-;
     begin peek-conforming-char [char] ; = while discard-line repeat
     read-lisp-obj ;
+
 
 32 constant token-buffer-size
 create token-buffer token-buffer-size allot
@@ -584,8 +594,6 @@ defer print-lisp-obj
 
 \ Interpreter
 
-defer eval-lisp-obj
-
 : eval-if
     assert-cdr
     dup #car eval-lisp-obj #if
@@ -605,9 +613,6 @@ defer eval-lisp-obj
     #cdr eval-progn-list ;
 
 \ Funcalls
-
-: eval-funcall-args ( list -- )
-    0 swap #dolist eval-lisp-obj swap 1+ #repeat ;
 
 : lambda-args assert-cdr #car ;
 : lambda-nargs lambda-args #length fixnum> ;
