@@ -323,11 +323,13 @@ variable allocated-conses
 
 \ SUBRS (primitive functions)
 
-: check-number-of-arguments
-    = not if wrong-number-of-arguments endif ;
+: special-subr? @ 0= ;
+: subr>xt cell+ ;
 
-: check-minimum-number-of-arguments ( arg1 ... argn n m -- arg1 ... argn n )
-    over <= not if wrong-number-of-arguments endif ;
+  -1 constant infinite
+
+: check-number-of-arguments ( n min max )
+    >r over r> between if else wrong-type-argument endif ;
 
 : non-eval-args ( list -- )
     0 swap #dolist swap 1+ #repeat ;
@@ -336,33 +338,22 @@ variable allocated-conses
     0 swap #dolist eval-lisp-obj swap 1+ #repeat ;
 
 \ Create a subr object (a primitive function to the Lisp system),
-\ which accepts N arguments, checks that the number of arguments is
-\ correct and then call to the execution token XT.
-: trampoline ( n xt -- subr )
+\ which accepts between MIN and MAX arguments, checks that the number
+\ of arguments is correct and then call to the execution token XT.
+: create-subr ( min max evaluated xt -- subr )
     2align here >r
-    swap
-    `` literal
-    `` check-number-of-arguments
-    `` literal
-    `` execute
+    swap ,
+    -rot swap 2dup `` literal `` literal `` check-number-of-arguments
+    ( min max ) = if `` drop endif
+    `` literal `` execute
     return
     r> subr-tag tagged ;
 
-: variadic-trampoline ( n xt -- subr )
-    2align here >r
-    swap
-    `` literal
-    `` check-minimum-number-of-arguments
-    `` literal
-    `` execute
-    return
-    r> subr-tag tagged ;
+: trampoline >r dup true r> create-subr ;
+: variadic-trampoline >r infinite true r> create-subr ;
 
-\ Parse a word and intern a symbol for it, with a function value which
-\ accepts N arguments and calls to XT.
 : register-func ( n xt parse:name -- )
     parse-cname intern-symbol -rot trampoline #fset drop ;
-
 : register-variadic-func ( n xt parse:name -- )
     parse-cname intern-symbol -rot variadic-trampoline #fset drop ;
 
@@ -386,8 +377,8 @@ variable allocated-conses
 : #subrp tag subr-tag = >bool ;
 1 FUNC subrp
 
-: funcall-subr ( arg1 arg2 .. argn n subr -- ... )
-    untag execute ;
+: execute-subr ( arg1 arg2 .. argn n subr -- ... )
+    untag subr>xt execute ;
 
 
 \ Integers
@@ -641,7 +632,7 @@ defer print-lisp-obj
 : funcall ( arg1 ... argn n function -- x)
     >r pinargs r> over >r
     dup #symbolp #if #symbol-function endif
-    dup #subrp #if funcall-subr else funcall-lambda endif
+    dup #subrp #if execute-subr else funcall-lambda endif
     r> unpinargs ;
 
 : eval-funcall ( list -- x )
@@ -676,7 +667,11 @@ defer print-lisp-obj
         [''] quote of #cdr #car endof
         ['']    if of eval-if endof
         [''] progn of eval-progn endof
-        macro? if #macroexpand-1 eval-lisp-obj else eval-funcall endif
+        macro? if
+            #macroexpand-1 eval-lisp-obj
+        else
+            eval-funcall
+        endif
         0 \ any element here
     endcase ;
 
