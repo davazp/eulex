@@ -202,7 +202,6 @@ create-symbol if     ::unbound , ::unbound ,
 
 create-symbol backquote ::unbound , ::unbound ,
 create-symbol comma     ::unbound , ::unbound ,
-
     
 : find-symbol ( c-addr -- symbol|0 )
     find-cname-in-lisp-package dup if nt>xt execute endif ;
@@ -323,10 +322,10 @@ variable allocated-conses
 
 \ SUBRS (primitive functions)
 
-: special-subr? @ 0= ;
+: special-subr? untag @ 0= ;
 : subr>xt cell+ ;
 
-  -1 constant infinite
+-1 constant infinite
 
 : check-number-of-arguments ( n min max )
     >r over r> between if else wrong-type-argument endif ;
@@ -589,12 +588,7 @@ defer print-lisp-obj
 \ Interpreter
 
 : eval-if
-    assert-cdr
-    dup #car eval-lisp-obj #if
-        assert-cdr #car eval-lisp-obj
-    else
-        assert-cdr #cdr #car eval-lisp-obj
-    endif ;
+ ;
 
 : eval-progn-list ( list -- x )
     nil swap
@@ -635,9 +629,6 @@ defer print-lisp-obj
     dup #subrp #if execute-subr else funcall-lambda endif
     r> unpinargs ;
 
-: eval-funcall ( list -- x )
-    dup >r #cdr eval-funcall-args r> #car funcall ;
-
 : #funcall ( function arg1 arg2 ... argn n+1 --- x )
     1- dup >r roll r> swap funcall ;
 1 VARIADIC-FUNC funcall
@@ -662,15 +653,32 @@ defer print-lisp-obj
 
 \ Non-atoms
 
+: special-trampoline >r dup false r> create-subr ;
+: register-special-form ( n xt parse:name -- )
+    parse-cname intern-symbol -rot special-trampoline #fset drop ;
+: SPECIAL-FORM ( n parse:name -- )
+    latestxt register-special-form ;
+
+: #quote ( form -- form )
+; 1 SPECIAL-FORM quote
+
+: ##if ( cond true false -- form )
+    rot eval-lisp-obj #if drop else nip endif eval-lisp-obj
+; 3 SPECIAL-FORM if
+    
 : eval-list
     dup #car case
-        [''] quote of #cdr #car endof
-        ['']    if of eval-if endof
         [''] progn of eval-progn endof
         macro? if
             #macroexpand-1 eval-lisp-obj
         else
-            eval-funcall
+            dup #car
+            dup #symbolp if #symbol-function endif
+            dup special-subr? if
+                >r #cdr non-eval-args r> execute-subr
+            else
+                >r #cdr eval-funcall-args r> funcall
+            endif
         endif
         0 \ any element here
     endcase ;
