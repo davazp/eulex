@@ -190,18 +190,22 @@ wordlist constant lisp-package
 : create-symbol
     create-in-lisp-package latest 2align , does> 2aligned symbol-tag tagged ;
 
-: ::unbound [ here 2aligned symbol-tag tagged ]L ;
+: ::unbound
+    [ here 2aligned symbol-tag tagged ]L ;
+
+: declare-symbol
+    create-symbol ::unbound , ::unbound , ;
 
 create-symbol t   latestxt execute , ::unbound ,
 create-symbol nil latestxt execute , ::unbound ,
-create-symbol quote  ::unbound , ::unbound ,
-create-symbol progn  ::unbound , ::unbound ,
-create-symbol lambda ::unbound , ::unbound ,
-create-symbol macro  ::unbound , ::unbound ,
-create-symbol if     ::unbound , ::unbound ,
 
-create-symbol backquote ::unbound , ::unbound ,
-create-symbol comma     ::unbound , ::unbound ,
+declare-symbol quote
+declare-symbol progn
+declare-symbol lambda
+declare-symbol macro
+declare-symbol if
+declare-symbol backquote
+declare-symbol comma
     
 : find-symbol ( c-addr -- symbol|0 )
     find-cname-in-lisp-package dup if nt>xt execute endif ;
@@ -348,38 +352,34 @@ variable allocated-conses
     return
     r> subr-tag tagged ;
 
-: trampoline >r dup true r> create-subr ;
-: variadic-trampoline >r infinite true r> create-subr ;
+: register-subr ( min max evaluated xt parse:name -- )
+    create-subr parse-cname intern-symbol swap #fset drop ;
 
-: register-func ( n xt parse:name -- )
-    parse-cname intern-symbol -rot trampoline #fset drop ;
-: register-variadic-func ( n xt parse:name -- )
-    parse-cname intern-symbol -rot variadic-trampoline #fset drop ;
+2 2 true ' #cons  register-subr cons
+1 1 true ' #consp register-subr consp
+1 1 true ' #car register-subr car
+1 1 true ' #cdr register-subr cdr
+1 1 true ' #symbolp register-subr symbolp
+1 1 true ' #symbol-value register-subr symbol-value
+1 1 true ' #symbol-function register-subr symbol-function
+2 2 true ' #set register-subr set
+2 2 true ' #fset register-subr fset
 
-2 ' #cons            register-func cons
-1 ' #consp           register-func consp
-1 ' #car             register-func car
-1 ' #cdr             register-func cdr
-
-1 ' #symbolp         register-func symbolp
-1 ' #symbol-value    register-func symbol-value
-1 ' #symbol-function register-func symbol-function
-2 ' #set             register-func set
-2 ' #fset            register-func fset
-
-: FUNC ( n parse:name -- )
-    latestxt register-func ;
-
-: VARIADIC-FUNC ( n parse:name -- )
-    latestxt register-variadic-func ;
+: exactly dup ;
+: or-more infinite ;
+: noargs 0 exactly ;
+: unary 1 exactly ;
+: binary 2 exactly ;
+: function: true latestxt register-subr ;
 
 : #subrp tag subr-tag = >bool ;
-1 FUNC subrp
+unary function: subrp
 
 : execute-subr ( arg1 arg2 .. argn n subr -- ... )
     untag subr>xt execute ;
 
-: #eq = >bool ; 2 FUNC eq
+: #eq = >bool ;
+binary function: eq
 
 : #functionp ( x -- bool )
     dup #symbolp #if safe-symbol-function endif
@@ -391,16 +391,16 @@ variable allocated-conses
         else
             nil
         endif
-    endif
-; 1 FUNC functionp
+    endif ;
+unary function: functionp
 
 \ Integers
 
 : >fixnum 2* 2* ;
 : fixnum> 2/ 2/ ;
 
-: #fixnump 3 and 0= >bool ; 1 FUNC fixnump
-' #fixnump alias #integerp  1 FUNC integerp
+: #fixnump 3 and 0= >bool ; unary function: fixnump
+' #fixnump alias #integerp  unary function: integerp
 
 : check-integer ( x -- x )
     dup #integerp nil = if wrong-type-argument endif ;
@@ -408,36 +408,36 @@ variable allocated-conses
 : 2-check-integers
     check-integer swap check-integer swap ;
 
-: #= 2-check-integers = >bool ; 2 FUNC =
-: #< 2-check-integers < >bool ; 2 FUNC <
-: #> 2-check-integers > >bool ; 2 FUNC >
-: #<= 2-check-integers <= >bool ; 2 FUNC <=
-: #>= 2-check-integers >= >bool ; 2 FUNC >=
-: #/= 2-check-integers = not >bool ; 2 FUNC >=
+: #= 2-check-integers = >bool ; binary function: =
+: #< 2-check-integers < >bool ; binary function: <
+: #> 2-check-integers > >bool ; binary function: >
+: #<= 2-check-integers <= >bool ; binary function: <=
+: #>= 2-check-integers >= >bool ; binary function: >=
+: #/= 2-check-integers = not >bool ; binary function: >=
 
-: #+ 2-check-integers + ; 2 FUNC +
-: #- 2-check-integers - ; 2 FUNC -
-: #* 2-check-integers fixnum> * ; 2 FUNC *
-: #/ 2-check-integers / >fixnum ; 2 FUNC / 
+: #+ 2-check-integers + ; binary function: +
+: #- 2-check-integers - ; binary function: -
+: #* 2-check-integers fixnum> * ; binary function: *
+: #/ 2-check-integers / >fixnum ; binary function: / 
 
 
 
 : #list ( x1 x2 ... xn n -- list )
     nil swap 0 ?do #cons loop 
-; 0 VARIADIC-FUNC list
+; 0 or-more function: list
 
 : #length ( list -- n )
     0 swap #dolist drop 1+ #repeat >fixnum ;
-1 FUNC length
+unary function: length
     
 
 \ Misc
 
-: #not #if nil else t endif ; 1 FUNC not
-' #not alias #null 1 FUNC null
+: #not #if nil else t endif ; unary function: not
+' #not alias #null unary function: null
 
 : #quit quit-condition ;
-0 FUNC quit
+noargs function: quit
 
 
 \ Reader
@@ -563,7 +563,7 @@ create token-buffer token-buffer-size allot
     endcase ;
 
 ' #read is read-lisp-obj
-0 FUNC read
+noargs function: read
 
 
 \ Printer
@@ -594,7 +594,7 @@ defer print-lisp-obj
     dup #subrp    #if drop ." #<subr object>" exit endif
     drop wrong-type-argument ;
 ' #print is print-lisp-obj
-1 FUNC print
+unary function: print
 
 
 \ Interpreter
@@ -643,7 +643,7 @@ defer print-lisp-obj
 
 : #funcall ( function arg1 arg2 ... argn n+1 --- x )
     1- dup >r roll r> swap funcall ;
-1 VARIADIC-FUNC funcall
+1 or-more function: funcall
 
 \ is X a symbol which designates a macro?
 : macro? ( x -- bool)
@@ -661,22 +661,19 @@ defer print-lisp-obj
     dup #car macro? if
         macroexpand-1*
     endif ;
-1 FUNC macroexpand-1
+unary function: macroexpand-1
 
 \ Non-atoms
 
-: special-trampoline >r dup false r> create-subr ;
-: register-special-form ( n xt parse:name -- )
-    parse-cname intern-symbol -rot special-trampoline #fset drop ;
-: SPECIAL-FORM ( n parse:name -- )
-    latestxt register-special-form ;
+: special: ( n parse:name -- )
+    false latestxt register-subr ;
 
 : #quote ( form -- form )
-; 1 SPECIAL-FORM quote
+; unary special: quote
 
 : ##if ( cond true false -- form )
     rot eval-lisp-obj #if drop else nip endif eval-lisp-obj
-; 3 SPECIAL-FORM if
+; 2 3 special: if
     
 : eval-list
     dup #car case
@@ -701,7 +698,7 @@ defer print-lisp-obj
     dup #consp    #if eval-list exit endif
     wrong-type-argument
 ; ' #eval is eval-lisp-obj
-1 FUNC eval
+unary function: eval
 
 
 \ REPL
