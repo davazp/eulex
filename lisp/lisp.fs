@@ -680,20 +680,17 @@ unary function: macroexpand-1
 ; 0 or-more special: progn
 
 : eval-list
-    dup #car case
-        macro? if
-            #macroexpand-1 eval-lisp-obj
+    dup #car macro? if
+        #macroexpand-1 eval-lisp-obj
+    else
+        dup #car
+        dup #symbolp if #symbol-function endif
+        dup special-subr? if
+            >r #cdr non-eval-args r> execute-subr
         else
-            dup #car
-            dup #symbolp if #symbol-function endif
-            dup special-subr? if
-                >r #cdr non-eval-args r> execute-subr
-            else
-                >r #cdr eval-funcall-args r> funcall
-            endif
+            >r #cdr eval-funcall-args r> funcall
         endif
-        0 \ any element here
-    endcase ;
+    endif ;
 
 : #eval ( x -- y )
     dup #integerp #if exit endif
