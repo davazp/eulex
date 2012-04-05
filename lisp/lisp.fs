@@ -329,6 +329,9 @@ variable allocated-conses
 : check-minimum-number-of-arguments ( arg1 ... argn n m -- arg1 ... argn n )
     over <= not if wrong-number-of-arguments endif ;
 
+: non-eval-args ( list -- )
+    0 swap #dolist swap 1+ #repeat ;
+
 : eval-funcall-args ( list -- )
     0 swap #dolist eval-lisp-obj swap 1+ #repeat ;
 
@@ -655,11 +658,8 @@ defer print-lisp-obj
     dup #consp #not #if drop false exit endif
     #car [''] macro = ;
 
-: non-eval-macrocall-args ( list -- )
-    0 swap #dolist swap 1+ #repeat ;
-
 : macroexpand-1*
-    dup >r #cdr non-eval-macrocall-args r>
+    dup >r #cdr non-eval-args r>
     #car #symbol-function #cdr funcall ;
 
 : #macroexpand-1 ( list -- x )
