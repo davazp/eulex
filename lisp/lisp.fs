@@ -599,18 +599,12 @@ unary function: print
 
 \ Interpreter
 
-: eval-if
- ;
-
 : eval-progn-list ( list -- x )
     nil swap
     begin
         nip dup #car eval-lisp-obj swap
     #cdr dup #null #until
     drop ;
-
-: eval-progn
-    #cdr eval-progn-list ;
 
 \ Funcalls
 
