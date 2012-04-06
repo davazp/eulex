@@ -628,10 +628,10 @@ unary function: print
     #dolist 2dup cell<->symbol drop cell - #repeat
     drop 2r> ;
 
-: eval-with-bindings ( arg1 arg2 ... argn symbols body -- x )
-    2>r pinargs 2r>
-    >r stack<->symbols r> eval-progn-list >r stack<->symbols
-    drop unpinargs ndrop r> ;
+: eval-with-bindings ( arg1 arg2 ... argn n symbols body -- x )
+    >r stack<->symbols >r pinargs r>
+    r> eval-progn-list
+    >r stack<->symbols drop dup unpinargs ndrop r> ;
 
 : funcall-lambda ( arg1 arg2 ... argn n lambda -- x )
     2dup lambda-nargs = not if wrong-number-of-arguments then
@@ -672,9 +672,10 @@ unary function: macroexpand-1
 : #quote ( form -- form )
 ; unary special: quote
 
-: #%if ( cond true false -- form )
+: ##if ( cond true false n -- form )
+    2 = if nil endif
     rot eval-lisp-obj #if drop else nip endif eval-lisp-obj
-; 3 exactly special: %if
+; 2 3 special: if
     
 : #progn ( expr1 expr2 expr3 ... exprn n -- )
     #list eval-progn-list
