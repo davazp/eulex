@@ -595,15 +595,16 @@ defer print-lisp-obj
         drop [char] ) emit
     endif ;
 
-: #print ( x -- )
+: #print ( x -- x )
+    dup
     dup #symbolp  #if print-symbol  exit endif
     dup #integerp #if print-integer exit endif
     dup #consp    #if print-list    exit endif
 \   Unreadable objects
     dup #subrp    #if drop ." #<subr object>" exit endif
     drop wrong-type-argument ;
-' #print is print-lisp-obj
 unary function: print
+:noname #print drop ; is print-lisp-obj
 
 
 \ Interpreter
@@ -723,7 +724,7 @@ unary function: eval
 defer repl-function
 
 : repl-iteration #read #eval ;
-: user-repl-iteration ." * " query #read #eval #print CR ;
+: user-repl-iteration ." * " query #read #eval #print drop CR ;
 
 : process-toplevels
     begin repl-function again ;

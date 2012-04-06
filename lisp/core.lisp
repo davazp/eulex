@@ -37,8 +37,31 @@
 (defun cadr (x)
   (car (cdr x)))
 
+(defun %let-binding-name (binding)
+  (if (consp binding)
+      (car binding)
+      binding))
+(defun %let-binding-value (binding)
+  (if (consp binding)
+      (cadr binding)
+      nil))
+
 (defmacro let (bindings expr)
   (list '%let
-        (mapcar 'car bindings)
-        (mapcar 'cadr bindings)
+        (mapcar '%let-binding-name bindings)
+        (mapcar '%let-binding-value bindings)
         expr))
+
+(defun %time-call (function)
+  (let ((before (get-internal-run-time))
+        after
+        value)
+    (progn
+      (setq value (funcall function))
+      (setq after (get-internal-run-time))
+      (print 'MILISECONDS=)
+      (print (- after before))
+      value)))
+
+(defmacro time (expr)
+  (list '%time-call (list 'lambda () expr)))
