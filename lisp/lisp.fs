@@ -727,7 +727,7 @@ defer repl-function
 
 : repl-iteration #read #eval ;
 
-: user-repl-iteration ." * " query #read #eval >r attr red r> #print attr! CR ;
+: user-repl-iteration ." * " query #read #eval >r attr red r> print-lisp-obj attr! CR ;
 
 : process-toplevels
     begin repl-function again ;
