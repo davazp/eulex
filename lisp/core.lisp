@@ -24,3 +24,9 @@
 
 (defun atom (x)
   (not (consp x)))
+
+(defun mapcar (f list)
+  (if (null list)
+      nil
+      (cons (funcall f (car list))
+            (mapcar f (cdr list)))))
