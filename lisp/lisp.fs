@@ -445,6 +445,8 @@ unary function: length
     get-internal-run-time >fixnum
 ; noargs function: get-internal-run-time
 
+: #terpri cr nil ; noargs function: terpri
+
 : #quit quit-condition ;
 noargs function: quit
 

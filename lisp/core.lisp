@@ -61,6 +61,7 @@
       (setq after (get-internal-run-time))
       (print 'MILISECONDS=)
       (print (- after before))
+      (terpri)
       value)))
 
 (defmacro time (expr)
