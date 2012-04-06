@@ -687,6 +687,7 @@ require @vocabulary.fs
 require @kernel/console.fs
 require @colors.fs
 require @output.fs
+LIGHT GRAY UPON BLACK
 .( Loading...) CR
 require @kernel/multiboot.fs
 require @memory.fs

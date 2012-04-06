@@ -18,7 +18,7 @@
 \ along with Eulex.  If not, see <http://www.gnu.org/licenses/>.
 
 : addr-column
-    print-hex-number [char] : emit space ;
+    attr gray swap print-hex-number [char] : emit space attr! ;
 
 \ Dump n bytes of the memory from ADDR, in a readable way.
 : dump ( addr n -- )

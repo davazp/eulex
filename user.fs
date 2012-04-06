@@ -18,13 +18,14 @@
 \ along with Eulex.  If not, see <http://www.gnu.org/licenses/>.
 
 page
-." Welcome to Eulex!" cr
+attr white ." Welcome to Eulex!" attr! cr
 cr
 ." Copyright (C) 2011,2012 David Vazquez" cr
 ." This is free software; see the source for copying conditions.  There is NO"  cr
 ." warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE." cr cr
 
 : license
+    cr
     ." This program is free software; you can redistribute it and/or modify" cr
     ." it under the terms of the GNU General Public License as published by" cr
     ." the Free Software Foundation; either version 3 of the License, or" cr
@@ -60,7 +61,8 @@ variable error-message-size
 
 : catch-errors ( xt -- )
     %catch-without-unwind ?dup 0<> if
-        CR ." ERROR: "
+        cr attr red ." ERROR: " attr!
+        attr white swap
         case
             -1 of ." Aborted" cr endof
             -2 of exception-message type CR endof
@@ -71,7 +73,8 @@ variable error-message-size
             -14 of ." Compile-only word" cr endof
             ." Ocurred an unexpected error of code " dup . cr
         endcase
-        ." >>>" read_word_buffer count type ." <<<" cr
+        white ." >>>" read_word_buffer count type ." <<<" cr
+        attr!
         backtrace
         state 0!
         clearstack

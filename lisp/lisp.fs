@@ -700,7 +700,7 @@ unary function: eval
 defer repl-function
 
 : repl-iteration #read #eval ;
-: user-repl-iteration ." * " query #read #eval #print CR ;
+: user-repl-iteration ." * " query #read #eval >r attr red r> #print attr! CR ;
 
 : process-toplevels
     begin repl-function again ;
@@ -740,7 +740,7 @@ defer repl-function
 ; execute-parsing
 
 : run-lisp
-    page 0 0 at-xy ." RUNNING EULEX LISP." CR CR
+    attr page 0 0 at-xy white ." RUNNING EULEX LISP." attr! CR CR
     refill-silent? on
     get-order get-current
     in-lisp-package: definitions

@@ -26,7 +26,6 @@ variable color-attr
 
 : attr  color-attr @ ;
 : attr! color-attr ! ;
-10 attr!
 
 : newline? ( ch -- flag )
     case

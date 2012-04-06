@@ -90,8 +90,7 @@ variable .index
 ;
 
 : print-hex-number ( n -- )
-    [char] 0 emit
-    [char] x emit
+    [char] $ emit
     dup 28 rshift 15 and emit-hex-digit
     dup 24 rshift 15 and emit-hex-digit
     dup 20 rshift 15 and emit-hex-digit

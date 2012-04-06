@@ -27,12 +27,14 @@
 create distable 256 cells allot
 
 : unknown-opcode
+    attr >r light red
     ." [unkown opcode "
     dup c@ print-number
     ."  '"
     dup c@ emit
     ." ']"
-    1+ ;
+    1+
+    r> attr! ;
 
 \ Initialize the entries with the unknown-opcode controller
 : init-distable
