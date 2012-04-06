@@ -25,15 +25,17 @@
 : fg! attr [ $0f invert ]L and or attr! ;
 : bg! 4 lshift attr [ $70 invert ]L and or attr! ;
 
-: blinking attr $80 or attr! ;
+: blink attr $80 or attr! ;
+: noblink attr [ $80 invert ]L and attr! ;
 
-variable masks
+variable light-level
 variable background?
 
-: color create , does> @ masks @ or
+: color create , does> @
+    light-level @ 0 > if 8 or endif
     background? @ if bg! else fg! endif
     background? off
-    0 masks ! ;
+    light-level 0! ;
 
 : upon background? on ;
 
@@ -44,13 +46,16 @@ variable background?
 4 color red
 5 color purple
 6 color brown
-7 color gray
+7 color gray*
 
-: light 8 masks ! ;
-: dark 0 masks ! ;
+: light light-level 1+! ;
+: dark light-level 1-! ;
+
+: gray
+    0 light-level @ < if dark gray* else light black then ;
 
 : yellow light brown ;
-: white light gray ;
+: white light gray* ;
 : magenta light purple ;
 
 \ colors.fs ends here
