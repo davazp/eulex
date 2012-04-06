@@ -34,14 +34,12 @@ $40 constant pit-channel0
 \ Setup the PIT frequency to 1000 Hz (roughly)
 latch set-channel0-reload
 
+variable internal-run-time
 variable countdown
 
 : irq-timer ( isrinfo ) drop
-    countdown @ dup if
-        1- countdown !
-    else
-        drop
-    then
+    internal-run-time 1+!
+    countdown @ dup if 1- countdown ! else drop then
 ; 0 IRQ
 
 : enable-timer  0 irq-enable ;
@@ -49,6 +47,8 @@ variable countdown
 
 : set-countdown countdown ! ;
 : wait-for-countdown begin countdown @ while halt repeat ;
+
+: get-internal-run-time internal-run-time @ ;
 
 \ Wait for (rougly) N milliseconds.
 : ms ( n -- )

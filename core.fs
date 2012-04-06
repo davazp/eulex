@@ -713,6 +713,17 @@ require @debugger.fs
     kdb-reset kbd-io outputb
     halt ;
 
+\ Timing
+
+variable execute-timing-start
+: execute-timing ( xt -- ms )
+    \ TODO: Replace . by u. when it exists.
+    get-internal-run-time execute-timing-start !
+    execute
+    get-internal-run-time execute-timing-start @ -
+    CR ." Execution took " . ." miliseconds of run time." ;
+
+
 ( run-tests )
 
 \ DEBUGGING. This is useful to run the QEMU on emacs, and use Eulex

@@ -331,14 +331,19 @@ variable allocated-conses
 
 -1 constant infinite
 
-: check-number-of-arguments ( n min max )
-    >r over r> between if else wrong-type-argument endif ;
-
-: non-eval-args ( list -- )
+: unlist ( list -- arg1 arg2 .. argn n )
     0 swap #dolist swap 1+ #repeat ;
 
-: eval-funcall-args ( list -- )
+: check-number-of-arguments ( n min max )
+    >r over r> between if else wrong-number-of-arguments endif ;
+
+' unlist alias non-eval-args
+
+: eval-and-unlist ( list -- )
     0 swap #dolist eval-lisp-obj swap 1+ #repeat ;
+
+: eval-funcall-args
+    eval-and-unlist ;
 
 \ Create a subr object (a primitive function to the Lisp system),
 \ which accepts between MIN and MAX arguments, checks that the number
@@ -435,6 +440,12 @@ unary function: length
 
 : #not #if nil else t endif ; unary function: not
 ' #not alias #null unary function: null
+
+: #get-internal-run-time
+    get-internal-run-time >fixnum
+; noargs function: get-internal-run-time
+
+: #terpri cr nil ; noargs function: terpri
 
 : #quit quit-condition ;
 noargs function: quit
@@ -586,25 +597,22 @@ defer print-lisp-obj
         drop [char] ) emit
     endif ;
 
-: #print ( x -- )
+: #print ( x -- x )
+    dup
     dup #symbolp  #if print-symbol  exit endif
     dup #integerp #if print-integer exit endif
     dup #consp    #if print-list    exit endif
 \   Unreadable objects
     dup #subrp    #if drop ." #<subr object>" exit endif
     drop wrong-type-argument ;
-' #print is print-lisp-obj
 unary function: print
+:noname #print drop ; is print-lisp-obj
 
 
 \ Interpreter
 
 : eval-progn-list ( list -- x )
-    nil swap
-    begin
-        nip dup #car eval-lisp-obj swap
-    #cdr dup #null #until
-    drop ;
+    nil swap #dolist nip eval-lisp-obj #repeat ;
 
 \ Funcalls
 
@@ -623,11 +631,14 @@ unary function: print
     #dolist 2dup cell<->symbol drop cell - #repeat
     drop 2r> ;
 
+: eval-with-bindings ( arg1 arg2 ... argn n symbols body -- x )
+    >r stack<->symbols >r pinargs r>
+    r> eval-progn-list
+    >r stack<->symbols drop dup unpinargs ndrop r> ;
+
 : funcall-lambda ( arg1 arg2 ... argn n lambda -- x )
     2dup lambda-nargs = not if wrong-number-of-arguments then
-    dup >r lambda-args stack<->symbols
-    r> lambda-body eval-progn-list >r
-    stack<->symbols drop ndrop r> ;
+    dup lambda-args swap lambda-body eval-with-bindings ;
 
 : funcall ( arg1 ... argn n function -- x)
     >r pinargs r> over >r
@@ -639,10 +650,9 @@ unary function: print
     1- dup >r roll r> swap funcall ;
 1 or-more function: funcall
 
-\ is X a symbol which designates a macro?
+\ is X a macro?
 : macro? ( x -- bool)
-    dup #symbolp #not #if drop false exit endif
-    safe-symbol-function
+    dup #symbolp #if safe-symbol-function endif
     dup #consp #not #if drop false exit endif
     #car [''] macro = ;
 
@@ -665,20 +675,25 @@ unary function: macroexpand-1
 : #quote ( form -- form )
 ; unary special: quote
 
-: ##if ( cond true false -- form )
+: ##if ( cond true false n -- form )
+    2 = if nil endif
     rot eval-lisp-obj #if drop else nip endif eval-lisp-obj
 ; 2 3 special: if
     
 : #progn ( expr1 expr2 expr3 ... exprn n -- )
-    #list nil swap #dolist nip eval-lisp-obj #repeat
+    #list eval-progn-list
 ; 0 or-more special: progn
 
-: eval-list
+: #%let ( symbols values expr1 ... exprn n+2 -- )
+    2- #list swap -rot 2>r eval-and-unlist 2r> eval-with-bindings
+; 2 or-more special: %let
+
+: eval-list-form
     dup #car macro? if
         #macroexpand-1 eval-lisp-obj
     else
         dup #car
-        dup #symbolp if #symbol-function endif
+        dup #symbolp #if #symbol-function endif
         dup special-subr? if
             >r #cdr non-eval-args r> execute-subr
         else
@@ -686,11 +701,22 @@ unary function: macroexpand-1
         endif
     endif ;
 
-: #eval ( x -- y )
+variable eval-depth
+-1 eval-depth !
+: eval-indent eval-depth @ 3 * spaces ;
+
+: eval-form ( x -- y )
     dup #integerp #if exit endif
     dup #symbolp  #if #symbol-value exit endif
-    dup #consp    #if eval-list exit endif
-    wrong-type-argument
+    dup #consp    #if eval-list-form exit endif
+    wrong-type-argument ;
+
+: #eval ( x -- y )
+    \ eval-depth 1+!
+    \ ." ;; " eval-indent ." Evaluating " dup #print CR
+    eval-form
+    \ ." ;; " eval-indent ." => " dup #print CR
+    \ eval-depth 1-!
 ; ' #eval is eval-lisp-obj
 unary function: eval
 
@@ -700,6 +726,7 @@ unary function: eval
 defer repl-function
 
 : repl-iteration #read #eval ;
+
 : user-repl-iteration ." * " query #read #eval >r attr red r> #print attr! CR ;
 
 : process-toplevels
