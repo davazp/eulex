@@ -339,8 +339,11 @@ variable allocated-conses
 
 ' unlist alias non-eval-args
 
-: eval-funcall-args ( list -- )
+: eval-and-unlist ( list -- )
     0 swap #dolist eval-lisp-obj swap 1+ #repeat ;
+
+: eval-funcall-args
+    eval-and-unlist ;
 
 \ Create a subr object (a primitive function to the Lisp system),
 \ which accepts between MIN and MAX arguments, checks that the number
@@ -625,11 +628,14 @@ unary function: print
     #dolist 2dup cell<->symbol drop cell - #repeat
     drop 2r> ;
 
+: eval-with-bindings ( arg1 arg2 ... argn symbols body -- x )
+    2>r pinargs 2r>
+    >r stack<->symbols r> eval-progn-list >r stack<->symbols
+    drop unpinargs ndrop r> ;
+
 : funcall-lambda ( arg1 arg2 ... argn n lambda -- x )
     2dup lambda-nargs = not if wrong-number-of-arguments then
-    dup >r lambda-args stack<->symbols
-    r> lambda-body eval-progn-list >r
-    stack<->symbols drop ndrop r> ;
+    dup lambda-args swap lambda-body eval-with-bindings ;
 
 : funcall ( arg1 ... argn n function -- x)
     >r pinargs r> over >r
@@ -674,6 +680,10 @@ unary function: macroexpand-1
 : #progn ( expr1 expr2 expr3 ... exprn n -- )
     #list eval-progn-list
 ; 0 or-more special: progn
+
+: #%let ( symbols values expr1 ... exprn n+2 -- )
+    2- #list swap -rot 2>r eval-and-unlist 2r> eval-with-bindings
+; 2 or-more special: %let
 
 : eval-list-form
     dup #car macro? if
