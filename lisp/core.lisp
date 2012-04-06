@@ -10,6 +10,9 @@
 (defmacro setq (symbol value)
   (list 'set (list 'quote symbol) value))
 
+(defmacro si (condition true false)
+  (list 'if condition true false))
+
 (defmacro lambda (args body)
   (list 'quote (list 'lambda args body)))
 
@@ -30,3 +33,12 @@
       nil
       (cons (funcall f (car list))
             (mapcar f (cdr list)))))
+
+(defun cadr (x)
+  (car (cdr x)))
+
+(defmacro let (bindings expr)
+  (list '%let
+        (mapcar 'car bindings)
+        (mapcar 'cadr bindings)
+        expr))
