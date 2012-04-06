@@ -331,11 +331,13 @@ variable allocated-conses
 
 -1 constant infinite
 
+: unlist ( list -- arg1 arg2 .. argn n )
+    0 swap #dolist swap 1+ #repeat ;
+
 : check-number-of-arguments ( n min max )
     >r over r> between if else wrong-type-argument endif ;
 
-: non-eval-args ( list -- )
-    0 swap #dolist swap 1+ #repeat ;
+' unlist alias non-eval-args
 
 : eval-funcall-args ( list -- )
     0 swap #dolist eval-lisp-obj swap 1+ #repeat ;
@@ -604,11 +606,7 @@ unary function: print
 \ Interpreter
 
 : eval-progn-list ( list -- x )
-    nil swap
-    begin
-        nip dup #car eval-lisp-obj swap
-    #cdr dup #null #until
-    drop ;
+    nil swap #dolist nip eval-lisp-obj #repeat ;
 
 \ Funcalls
 
@@ -674,10 +672,10 @@ unary function: macroexpand-1
 ; 2 3 special: if
     
 : #progn ( expr1 expr2 expr3 ... exprn n -- )
-    #list nil swap #dolist nip eval-lisp-obj #repeat
+    #list eval-progn-list
 ; 0 or-more special: progn
 
-: eval-list
+: eval-list-form
     dup #car macro? if
         #macroexpand-1 eval-lisp-obj
     else
@@ -693,7 +691,7 @@ unary function: macroexpand-1
 : #eval ( x -- y )
     dup #integerp #if exit endif
     dup #symbolp  #if #symbol-value exit endif
-    dup #consp    #if eval-list exit endif
+    dup #consp    #if eval-list-form exit endif
     wrong-type-argument
 ; ' #eval is eval-lisp-obj
 unary function: eval
