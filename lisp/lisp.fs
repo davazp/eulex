@@ -335,7 +335,7 @@ variable allocated-conses
     0 swap #dolist swap 1+ #repeat ;
 
 : check-number-of-arguments ( n min max )
-    >r over r> between if else wrong-type-argument endif ;
+    >r over r> between if else wrong-number-of-arguments endif ;
 
 ' unlist alias non-eval-args
 
@@ -673,9 +673,9 @@ unary function: macroexpand-1
 : #quote ( form -- form )
 ; unary special: quote
 
-: ##if ( cond true false -- form )
+: #%if ( cond true false -- form )
     rot eval-lisp-obj #if drop else nip endif eval-lisp-obj
-; 2 3 special: if
+; 3 exactly special: %if
     
 : #progn ( expr1 expr2 expr3 ... exprn n -- )
     #list eval-progn-list
