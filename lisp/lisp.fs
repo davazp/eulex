@@ -436,6 +436,10 @@ unary function: length
 : #not #if nil else t endif ; unary function: not
 ' #not alias #null unary function: null
 
+: #get-internal-run-time
+    get-internal-run-time >fixnum
+; noargs function: get-internal-run-time
+
 : #quit quit-condition ;
 noargs function: quit
 
