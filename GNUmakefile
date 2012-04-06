@@ -28,6 +28,7 @@ FORTH_SRC= \
         kernel/cpuid.fs \
 	kernel/video.fs \
         kernel/console.fs \
+        colors.fs \
         kernel/interrupts.fs \
         kernel/exceptions.fs \
         kernel/irq.fs \
