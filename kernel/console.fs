@@ -22,6 +22,12 @@ require @kernel/video.fs
 variable cursor-x
 variable cursor-y
 
+variable color-attr
+
+: attr  color-attr @ ;
+: attr! color-attr ! ;
+10 attr!
+
 : newline? ( ch -- flag )
     case
         10 of true endof
@@ -46,7 +52,7 @@ variable cursor-y
 : clear-char ( i j -- )
     2dup
     32 -rot v-glyph!
-    10 -rot v-attr! ;
+    attr -rot v-attr! ;
 
 : clear-line ( i -- )
     video-width 0 ?do
@@ -75,6 +81,7 @@ variable cursor-y
         emit-newline
     else
         cursor-y @ cursor-x @ v-glyph!
+        attr cursor-y @ cursor-x @ v-attr!
         cursor-x 1+!
         at-end-on-line? if emit-newline endif
     endif ;
