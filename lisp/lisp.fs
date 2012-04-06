@@ -647,10 +647,9 @@ unary function: print
     1- dup >r roll r> swap funcall ;
 1 or-more function: funcall
 
-\ is X a symbol which designates a macro?
+\ is X a macro?
 : macro? ( x -- bool)
-    dup #symbolp #not #if drop false exit endif
-    safe-symbol-function
+    dup #symbolp #if safe-symbol-function endif
     dup #consp #not #if drop false exit endif
     #car [''] macro = ;
 
@@ -690,7 +689,7 @@ unary function: macroexpand-1
         #macroexpand-1 eval-lisp-obj
     else
         dup #car
-        dup #symbolp if #symbol-function endif
+        dup #symbolp #if #symbol-function endif
         dup special-subr? if
             >r #cdr non-eval-args r> execute-subr
         else
@@ -698,11 +697,22 @@ unary function: macroexpand-1
         endif
     endif ;
 
-: #eval ( x -- y )
+variable eval-depth
+-1 eval-depth !
+: eval-indent eval-depth @ 3 * spaces ;
+
+: eval-form ( x -- y )
     dup #integerp #if exit endif
     dup #symbolp  #if #symbol-value exit endif
     dup #consp    #if eval-list-form exit endif
-    wrong-type-argument
+    wrong-type-argument ;
+
+: #eval ( x -- y )
+    \ eval-depth 1+!
+    \ ." ;; " eval-indent ." Evaluating " dup #print CR
+    eval-form
+    \ ." ;; " eval-indent ." => " dup #print CR
+    \ eval-depth 1-!
 ; ' #eval is eval-lisp-obj
 unary function: eval
 
