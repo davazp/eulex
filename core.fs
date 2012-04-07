@@ -696,6 +696,7 @@ require @kernel/interrupts.fs
 require @kernel/exceptions.fs
 require @kernel/irq.fs
 require @kernel/timer.fs
+require @kernel/floppy.fs
 require @kernel/keyboard.fs
 require @kernel/serial.fs
 require @kernel/speaker.fs
