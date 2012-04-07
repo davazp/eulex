@@ -723,6 +723,40 @@ variable execute-timing-start
     get-internal-run-time execute-timing-start @ -
     CR ." Execution took " . ." miliseconds of run time." ;
 
+\ Date & Time
+\ TODO: Move this to a better place
+
+: cmos $70 outputb $71 ( 1 ms ) inputb ;
+: cmos! $70 outputb $71 ( 1 ms ) outputb ;
+
+variable bcd?
+: ?bcd>bin bcd? @ if dup 4 rshift 10 * swap $f and + endif ;
+
+: cmos-time-updating?
+    $0b cmos $80 and ;
+: wait-cmos-time-updating
+    begin cmos-time-updating? not until ;
+
+: decode-cmos-time  ( -- second minute hour date month year )
+    wait-cmos-time-updating
+    $0b cmos $04 and if bcd? off else bcd? on endif
+    $00 cmos ?bcd>bin                   \ seconds
+    $02 cmos ?bcd>bin                   \ minute
+    $04 cmos ?bcd>bin                   \ hour
+    $07 cmos ?bcd>bin                   \ date
+    $08 cmos ?bcd>bin                   \ month
+    $09 cmos ?bcd>bin                   \ year
+;
+: .date
+    decode-cmos-time -rot swap
+    print-number [char] / emit
+    print-number [char] / emit
+    print-number
+    space
+    print-number [char] : emit
+    print-number [char] : emit
+    print-number ;
+
 
 ( run-tests )
 
