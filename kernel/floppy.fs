@@ -35,64 +35,62 @@
 : turn-off DOR [ $10 invert ]L and DOR! ;
 
 \ Commands
+512 constant BPS                        \ bytes per sector
+18  constant SPT                        \ sectors per track
+BPS SPT * 2 * constant BPC              \ bytes per cylinder
+
+true  constant device>memory
+false constant memory>device
+
 variable irq6-received
 
-: detect-drive
-    $10 $70 outputb $71 inputb 4 rshift
-    4 = if exit else -100 throw then ;
+: wait-ready
+    128 0 ?do RQM if unloop exit endif 10 ms loop ;
 
-: wait-until-ready
-    128 0 ?do RQM if unloop exit endif 10 ms loop
-    -100 throw ;
+: read-data  wait-ready FIFO ;
+: write-data wait-ready FIFO! ;
 
-: read-data wait-until-ready FIFO ;
-: write-data wait-until-ready FIFO! ;
-: write-command irq6-received off write-data ;
+: command irq6-received off write-data ;
+' write-data alias >>
+' read-data  alias <<
 
-: wait-for-irq begin irq6-received @ until ;
+: wait-irq
+    begin irq6-received @ until ;
 
 : specify ( -- )
-    $03 write-command $df write-data $02 write-data ;
+    $03 command $df >> $02 >> ;
 
 : version ( -- x )
-    $10 write-command read-data dup . ;
+    $10 command << ;
 
 : sense-interrupt ( -- st0 cyl )
-    $08 write-command read-data read-data ;
+    $08 command << << ;
 
 : seek ( head cylinder -- )
-    $0f write-command swap 2 lshift write-data write-data
-    wait-for-irq sense-interrupt 2drop ;
+    $0f command swap 2 lshift >> >> wait-irq  ;
 
 : recalibrate
-    $07 write-command $00 write-data
-    wait-for-irq sense-interrupt 2drop ;
+    $07 command $00 >> wait-irq  ;
 
-: transfer-ask ( s h c read? -- )
-    if $c6 else $c5 then write-command    
-    over 2 lshift write-data
-    write-data write-data write-data
-    2 write-data
-    18 write-data
-    $1b write-data
-    $ff write-data ;
+: xfer-ask ( s h c direction -- )
+    device>memory = if $c6 else $c5 then command
+    over 2 lshift  >>
+    ( c ) >> ( h ) >> ( s ) >>
+    2 >> 18 >> $1b >> $ff >> ;
 
-: transfer-vry ( -- st0 st1 st2 c h s )
-    read-data read-data read-data
-    read-data read-data read-data
-    read-data ( 2 ) drop ;
+: xfer-vry ( -- st0 st1 st2 c h s )
+    << << << << << << << ( 2 ) drop ;
     
-: transfer ( c h s read? -- st0 st1 st2 c h s )
-    >r -rot swap r>
-    transfer-ask wait-for-irq transfer-vry ;
+: read ( c h s --- st0 st1 c h s )
+    swap rot device>memory xfer-ask wait-irq xfer-vry ;
 
-: read true transfer ;
-: write false transfer ;
+: write ( c h s --- st0 st1 c h s )
+    swap rot memory>device xfer-ask wait-irq xfer-vry ;
 
 
-\ DMA Stuff
+\ ISA-DMA
 
-1024 constant dma-buffer-size
+BPC constant dma-buffer-size
 
 \ Align the dictionary to get a good buffer to do ISA DMA. The
 \ conditions are: below 64MB and not to cross a 64KB boundary.
@@ -107,44 +105,107 @@ $01000000 here u<= [if]
 
 here dma-buffer-size allot constant dma-buffer
 
-: flip-flop $ff $0c outputb ;
+: flip-flop
+    $ff $0c outputb ;
 
-: dma-init
-    disable-interrupts
-    $06 $0a outputb                     \ mask channel 2
-    \ Send buffer address
+: dma-setup ( size -- )
     flip-flop
     dma-buffer ( 0 rshift ) $04 outputb
     dma-buffer   8 rshift   $04 outputb
     dma-buffer  16 rshift   $81 outputb
-    \ Send buffer size
     flip-flop
-    dma-buffer-size 1- ( 0 rshift ) $05 outputb
-    dma-buffer-size 1-   8 rshift   $05 outputb ;
-: dma-read
+    1- dup   $05 outputb
+    8 rshift $05 outputb ;
+
+\ Setup DMA-BUFFER to a operation of reading of U bytes. Note that a
+\ value of zero means $FFFF bytes.
+: dma-read ( u -- )
+    disable-interrupts
+    $06 $0a outputb    
+    dma-setup
     $46 $0b outputb
     $02 $0a outputb
-    enable-interrupts ;                   \ unmask
-: dma-write
+    enable-interrupts ;
+
+\ Setup DMA-BUFFER to a operation of writing of U bytes. Note that a
+\ value of zero means $FFFF bytes.
+: dma-write ( u -- )
+    disable-interrupts
+    $06 $0a outputb    
+    dma-setup
     $4a $0b outputb
     $02 $0a outputb
-    enable-interrupts ;                   \ unmask 
+    enable-interrupts ;
 
-: disable-fdc $00 DOR! ;
-: setup-fdc $00 CCR! ;
-: enable-fdc $0C DOR! ;
 
-: irq-floppy irq6-received on ; 6 IRQ
+\ Transfers
+
+: dma>addr ( addr u -- )
+    dma-buffer -rot move ;
+
+: addr>dma ( addr u -- )
+    dma-buffer swap move ;
+
+: read-cylinder ( c h s -- )
+    turn-on 300 ms
+    BPC dma-read
+    -rot 2dup seek rot 300 ms
+    sense-interrupt 2drop
+    read 2drop 2drop 2drop ;
+
+: write-cylinder ( c h s -- )
+    turn-on 300 ms
+    BPC dma-write
+    -rot 2dup seek rot 300 ms
+    sense-interrupt 2drop
+    write 2drop 2drop 2drop ;
+
+
+
+: detect-drive
+    $10 $70 outputb $71 inputb 4 rshift
+    4 = if exit else -100 throw then ;
+
+: setup-floppy
+    $00 CCR! ;
+
+: reset-floppy
+    $00 DOR! $0C DOR! ;
+
+: irq-floppy
+    irq6-received on
+; 6 IRQ
 
 : initialize-floppy
     detect-drive
     irq6-received off
-    disable-fdc
-    enable-fdc
-    wait-for-irq
+    reset-floppy
+    wait-irq
     sense-interrupt 2drop
-    setup-fdc
+    setup-floppy
     specify
-    turn-on 200 ms recalibrate turn-off ;
+    turn-on 200 ms
+    recalibrate
+    sense-interrupt 2drop
+    turn-off ;
+
+\ : floppy-read-sectors ( u c h s -- )
+\ ;
+
+\ : floppy-write-sectors ( addr u c h s -- )
+\ ;
+
+\ : floppy-read-cylinder ( c -- )
+\ ;
+
+\ : floppy-write-cylinder ( addr c -- )
+\ ;
+
+
+: lba ( lba -- c h s )
+    dup SPT 2* /
+    over SPT 2* mod SPT /
+    rot SPT mod 1+ ;
+
 
 \ floppy.fs ends here
