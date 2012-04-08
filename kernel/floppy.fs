@@ -52,56 +52,39 @@ variable irq6-received
 : wait-for-irq begin irq6-received @ until ;
 
 : specify ( -- )
-    ." specify..." cr
-    $03 write-command
-    $df write-data
-    $02 write-data ;
+    $03 write-command $df write-data $02 write-data ;
 
 : version ( -- x )
-    ." Version.." cr
-    $10 write-command
-    read-data dup . ;
+    $10 write-command read-data dup . ;
 
 : sense-interrupt ( -- st0 cyl )
-    ." Sense interrupt..." cr
-    $08 write-command
-    read-data ." st0=" dup . cr
-    read-data ." cylinder=" dup . cr ;
+    $08 write-command read-data read-data ;
 
 : seek ( head cylinder -- )
-    ." Seeking..." cr
-    $0f write-command
-    swap 2 lshift write-data
-    write-data
-    wait-for-irq
-    sense-interrupt 2drop ;
+    $0f write-command swap 2 lshift write-data write-data
+    wait-for-irq sense-interrupt 2drop ;
 
 : recalibrate
-    ." Recalibrate..." cr
-    $07 write-command
-    $00 write-data
-    wait-for-irq
-    sense-interrupt 2drop ;
+    $07 write-command $00 write-data
+    wait-for-irq sense-interrupt 2drop ;
 
-: transfer ( c h s read? -- st0 st1 st2 c h s )
-    if $c6 ." Reading..." cr else $c5 ." Writing..." cr then
-    write-command
+: transfer-ask ( s h c read? -- )
+    if $c6 else $c5 then write-command    
     over 2 lshift write-data
-    rot write-data
-    swap write-data
-    write-data
+    write-data write-data write-data
     2 write-data
     18 write-data
     $1b write-data
-    $ff write-data
-    wait-for-irq
-    read-data
-    read-data
-    read-data
-    read-data
-    read-data
-    read-data
+    $ff write-data ;
+
+: transfer-vry ( -- st0 st1 st2 c h s )
+    read-data read-data read-data
+    read-data read-data read-data
     read-data ( 2 ) drop ;
+    
+: transfer ( c h s read? -- st0 st1 st2 c h s )
+    >r -rot swap r>
+    transfer-ask wait-for-irq transfer-vry ;
 
 : read true transfer ;
 : write false transfer ;
@@ -128,7 +111,6 @@ here dma-buffer-size allot constant dma-buffer
 
 : dma-init
     disable-interrupts
-    ." Initializing DMA..."
     $06 $0a outputb                     \ mask channel 2
     \ Send buffer address
     flip-flop
@@ -148,14 +130,11 @@ here dma-buffer-size allot constant dma-buffer
     $02 $0a outputb
     enable-interrupts ;                   \ unmask 
 
-
-: irq-floppy
-    irq6-received on ." [IRQ6!]" CR
-; 6 IRQ
-
 : disable-fdc $00 DOR! ;
 : setup-fdc $00 CCR! ;
 : enable-fdc $0C DOR! ;
+
+: irq-floppy irq6-received on ; 6 IRQ
 
 : initialize-floppy
     detect-drive
@@ -167,6 +146,5 @@ here dma-buffer-size allot constant dma-buffer
     setup-fdc
     specify
     turn-on 200 ms recalibrate turn-off ;
-
 
 \ floppy.fs ends here
