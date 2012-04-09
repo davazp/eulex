@@ -33,6 +33,7 @@ FORTH_SRC= \
         kernel/exceptions.fs \
         kernel/irq.fs \
         kernel/timer.fs \
+        kernel/floppy.fs \
         kernel/keyboard.fs \
         kernel/speaker.fs \
 	kernel/serial.fs \

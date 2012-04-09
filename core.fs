@@ -696,6 +696,7 @@ require @kernel/interrupts.fs
 require @kernel/exceptions.fs
 require @kernel/irq.fs
 require @kernel/timer.fs
+require @kernel/floppy.fs
 require @kernel/keyboard.fs
 require @kernel/serial.fs
 require @kernel/speaker.fs
@@ -776,5 +777,6 @@ variable bcd?
 :noname -14 throw ; compile_only_err_routine !
 
 enable-interrupts
+initialize-floppy
 
 require @user.fs
