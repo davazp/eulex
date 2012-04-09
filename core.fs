@@ -1,6 +1,6 @@
 ( core.fs --- Basic definitions )
 
-\ Copyright 2011 (C) David Vazquez
+\ Copyright 2011, 2012 (C) David Vazquez
 
 \ This file is part of Eulex.
 
@@ -700,96 +700,31 @@ require @kernel/multiboot.fs
 require @kernel/console.fs
 require @colors.fs
 require @output.fs
-LIGHT GRAY UPON BLACK
-.( Loading...) CR
-:noname ." Loading " buffer>nt id. ." ..." cr ; load-buffer-print-hook !
-require @memory.fs
-require @tools.fs
-require @kernel/interrupts.fs
-require @kernel/exceptions.fs
-require @kernel/irq.fs
-require @kernel/timer.fs
-require @kernel/floppy.fs
-require @kernel/keyboard.fs
-require @kernel/serial.fs
-require @kernel/speaker.fs
-require @tests/tests.fs
-require @kernel/cpuid.fs
-require @input.fs
-require @debugger.fs
 
-\ Rebooting the machine
+\ From here, we have both exceptions and a console, so we can catch
+\ and report errors in a more convenient. Exceptions will be fatal.
 
-: reboot
-    beep
-    disable-interrupts
-    clear-kbd-buffer
-    kdb-reset kbd-io outputb
-    halt ;
-
-\ Timing
-
-variable execute-timing-start
-: execute-timing ( xt -- ms )
-    \ TODO: Replace . by u. when it exists.
-    get-internal-run-time execute-timing-start !
-    execute
-    get-internal-run-time execute-timing-start @ -
-    CR ." Execution took " . ." miliseconds of run time." ;
-
-\ Date & Time
-\ TODO: Move this to a better place
-
-: cmos $70 outputb $71 ( 1 ms ) inputb ;
-: cmos! $70 outputb $71 ( 1 ms ) outputb ;
-
-variable bcd?
-: ?bcd>bin bcd? @ if dup 4 rshift 10 * swap $f and + endif ;
-
-: cmos-time-updating?
-    $0b cmos $80 and ;
-: wait-cmos-time-updating
-    begin cmos-time-updating? not until ;
-
-: decode-cmos-time  ( -- second minute hour date month year )
-    wait-cmos-time-updating
-    $0b cmos $04 and if bcd? off else bcd? on endif
-    $00 cmos ?bcd>bin                   \ seconds
-    $02 cmos ?bcd>bin                   \ minute
-    $04 cmos ?bcd>bin                   \ hour
-    $07 cmos ?bcd>bin                   \ date
-    $08 cmos ?bcd>bin                   \ month
-    $09 cmos ?bcd>bin                   \ year
-;
-: .date
-    decode-cmos-time -rot swap
-    print-number [char] / emit
-    print-number [char] / emit
-    print-number
-    space
-    print-number [char] : emit
-    print-number [char] : emit
-    print-number ;
-
-
-( run-tests )
-
-\ DEBUGGING. This is useful to run the QEMU on emacs, and use Eulex
-\ like anyother Forth implementation!
-
-\ : serial-loop
-\     ." Initializing serial port interface..." cr
-\     ['] read-byte input_routine ! ;
-
-\ serial-echo-on
-\ serial-loop
+: fatal-catch ( xt -- )
+     catch ?dup if
+         ." FATAL: "
+         case
+             -1 of ." Aborted" cr endof
+             -3 of ." Stack overflow" cr endof
+             -4 of ." Stack underflow" cr endof
+             -10 of ." Division by zero" cr endof
+             -13 of ." Unknown word" cr endof
+             -14 of ." Compile-only word" cr endof
+             ." Ocurred an unexpected error of code " dup . cr
+         endcase
+         ." >>>" read_word_buffer count type ." <<<" cr
+     endif
+     cli halt ;
 
 :noname  -3 throw ; stack_overflow_err_routine !
 :noname  -4 throw ; stack_underflow_err_routine !
 :noname -13 throw ; unknown_word_err_routine !
 :noname -14 throw ; compile_only_err_routine !
+ 
+@corestage2.fs ' require-buffer fatal-catch
 
-enable-interrupts
-initialize-floppy
-
-require @user.fs
+\ core.fs ends here
