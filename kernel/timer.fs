@@ -17,6 +17,7 @@
 \ You should have received a copy of the GNU General Public License
 \ along with Eulex.  If not, see <http://www.gnu.org/licenses/>.
 
+require @structures.fs
 require @kernel/irq.fs
 
 \ Yes, I know this could be more accurate. But I don't need
@@ -34,16 +35,47 @@ $40 constant pit-channel0
 \ Setup the PIT frequency to 1000 Hz (roughly)
 latch set-channel0-reload
 
+struct
+    cell field timer-routine
+    cell field timer-reset
+    cell field timer-countdown
+end-struct timer%
+
+create TIMER0 timer% zallot
+create TIMER1 timer% zallot
+create TIMER2 timer% zallot
+create TIMER3 timer% zallot
+
+: reset-timer ( timer -- )
+    dup timer-reset @ swap timer-countdown ! ;
+
+: set-timer ( miliseconds xt timer -- )
+    tuck timer-routine !
+    tuck timer-reset !
+    reset-timer ;
+
+\ Implementation
+
+: process-timer-tick ( timer -- )
+    dup timer-routine @ 0= if exit then
+    dup timer-countdown @ 0= if
+        timer-routine @ execute
+    else
+        timer-countdown 1-!
+    endif ;
+
+
 variable internal-run-time
 variable countdown
 
 : irq-timer ( isrinfo ) drop
     internal-run-time 1+!
     countdown @ dup if 1- countdown ! else drop then
+    TIMER0 process-timer-tick
+    TIMER1 process-timer-tick
+    TIMER2 process-timer-tick
+    TIMER3 process-timer-tick
 ; 0 IRQ
-
-: enable-timer  0 irq-enable ;
-: disable-timer 0 irq-disable ;
 
 : set-countdown countdown ! ;
 : wait-for-countdown begin countdown @ while halt repeat ;
