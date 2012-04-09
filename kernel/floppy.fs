@@ -21,6 +21,8 @@
 \ on real hardware however I have not a real machine with floppy drive
 \ to test it properly.
 
+.( Loading floppy.fs ...) CR
+
 require @structures.fs
 require @kernel/timer.fs
 
@@ -50,7 +52,7 @@ BPS SPT * 2 * constant BPC              \ bytes per cylinder
 true  constant device>memory
 false constant memory>device
 
-\ TODO: Implement a timeout here\ 
+\ TODO: Implement a timeout here
 variable irq6-received
 : wait-irq ( -- )
     begin irq6-received @ not while halt repeat ;
@@ -74,8 +76,8 @@ variable irq6-received
 : sense-interrupt ( -- st0 cyl )
     $08 command << << ;
 
-: seek ( head cylinder -- )
-    $0f command swap 2 lshift >> >> wait-irq  ;
+: seek ( cylinder -- )
+    $0f command 0 >> >> wait-irq  ;
 
 : recalibrate
     $07 command $00 >> wait-irq  ;
@@ -88,7 +90,7 @@ variable irq6-received
 
 : xfer-vry ( -- st0 st1 st2 c h s )
     << << << << << << << ( 2 ) drop ;
-    
+
 : read ( c h s --- st0 st1 c h s )
     swap rot device>memory xfer-ask wait-irq xfer-vry ;
 
@@ -154,19 +156,25 @@ here dma-buffer-size allot constant dma-buffer
 : addr>dma ( addr u -- )
     dma-buffer swap move ;
 
-: read-cylinder ( c h s -- )
+: read-sectors ( c h s u -- )
     turn-on
-    BPC dma-read
-    -rot 2dup seek rot
+    BPS * dma-read
+    -rot dup seek rot
     sense-interrupt 2drop
     read 2drop 2drop 2drop ;
 
-: write-cylinder ( c h s -- )
+: write-sectors ( c h s u -- )
     turn-on
-    BPC dma-write
-    -rot 2dup seek rot
+    BPS * dma-write
+    -rot dup seek rot
     sense-interrupt 2drop
     write 2drop 2drop 2drop ;
+
+: read-cylinder ( c -- )
+    0 1 SPT 2* read-sectors ;
+
+: write-cylinder ( c -- )
+    0 1 SPT 2* write-sectors ;
 
 
 
