@@ -130,5 +130,6 @@ variable .index
     drop
 ; immediate
 
+: id. nt>name type space ;
 
 \ output.fs ends here

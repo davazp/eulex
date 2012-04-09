@@ -38,7 +38,6 @@
     endwords
     r> drop ;
 
-: id. nt>name type space ;
 : words ['] id. map-nt ;
 
 : room-count ( -- n )

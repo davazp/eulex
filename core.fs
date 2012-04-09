@@ -541,11 +541,14 @@ create pad 1024 allot
 : buffer>size ( addr -- size )
     cell + @ ;
 
-: buffer>string ( addr -- addr u )
-    dup buffer>start swap buffer>size ;
-
 : buffer>loaded ( addr -- load-var )
     2 cells + ;
+
+: buffer>nt ( addr -- nt )
+    3 cells + @ ;
+
+: buffer>string ( addr -- addr u )
+    dup buffer>start swap buffer>size ;
 
 : buffer-loaded? ( addr -- flag )
     buffer>loaded @ ;
@@ -554,8 +557,17 @@ create pad 1024 allot
     buffer>loaded true swap ! ;
 @core.fs mark-buffer-as-loaded
 
+variable load-buffer-print-hook
+variable load-buffer-print
+' drop load-buffer-print-hook !
+load-buffer-print on
+
 : load-buffer ( addr -- )
-    dup mark-buffer-as-loaded buffer>string evaluate ;
+    dup mark-buffer-as-loaded
+    load-buffer-print @ if
+        dup load-buffer-print-hook @ execute
+    endif
+    buffer>string evaluate ;
 
 : require-buffer ( addr -- )
     dup buffer-loaded? if drop else load-buffer then ;
@@ -684,12 +696,13 @@ create nextname-buffer 32 allot
     endif ;
 
 require @vocabulary.fs
+require @kernel/multiboot.fs
 require @kernel/console.fs
 require @colors.fs
 require @output.fs
 LIGHT GRAY UPON BLACK
 .( Loading...) CR
-require @kernel/multiboot.fs
+:noname ." Loading " buffer>nt id. ." ..." cr ; load-buffer-print-hook !
 require @memory.fs
 require @tools.fs
 require @kernel/interrupts.fs

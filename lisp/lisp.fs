@@ -756,7 +756,6 @@ defer repl-function
         endcase
     again ;
 
-.( Loading core.lisp...) CR
 @lisp/core.lisp buffer>string
 :noname
     ['] repl-iteration is repl-function

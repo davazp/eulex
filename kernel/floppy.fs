@@ -21,8 +21,6 @@
 \ on real hardware however I have not a real machine with floppy drive
 \ to test it properly.
 
-.( Loading floppy.fs ...) CR
-
 require @structures.fs
 require @kernel/timer.fs
 

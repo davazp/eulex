@@ -27,5 +27,6 @@ for file in $*; do
     echo "     .long $SYMBOL_START"                             >> $OUTPUT
     echo "     .long $SYMBOL_SIZE"                              >> $OUTPUT
     echo "     .long 0"                                         >> $OUTPUT
+    echo "     .long begin___$BN"                               >> $OUTPUT
     echo "END_WORD(__$BN)"                                      >> $OUTPUT
 done
