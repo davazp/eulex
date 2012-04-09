@@ -50,9 +50,7 @@ create TIMER3 timer% zallot
     dup timer-reset @ swap timer-countdown ! ;
 
 : set-timer ( miliseconds xt timer -- )
-    tuck timer-routine !
-    tuck timer-reset !
-    reset-timer ;
+    tuck timer-routine ! timer-reset ! ;
 
 \ Implementation
 
