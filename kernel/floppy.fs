@@ -21,6 +21,9 @@
 \ on real hardware however I have not a real machine with floppy drive
 \ to test it properly.
 
+require @structures.fs
+require @kernel/timer.fs
+
 \ Registers
 : MSR  $3F4 inputb ;
 : DOR  $3F2 inputb ;    : DOR!  $3F2 outputb ;
@@ -31,8 +34,13 @@
 : RQM MSR $80 and ;                             
 
 \ Motors
-: turn-on DOR $10 or DOR! ;
-: turn-off DOR [ $10 invert ]L and DOR! ;
+variable turn?
+: turn-on
+    turn? @ not if DOR $10 or DOR! 300 ms turn? on then
+    TIMER0 reset-timer ;
+
+: turn-off
+    turn? @ if DOR [ $10 invert ]L and DOR! turn? off then ;
 
 \ Commands
 512 constant BPS                        \ bytes per sector
@@ -42,7 +50,10 @@ BPS SPT * 2 * constant BPC              \ bytes per cylinder
 true  constant device>memory
 false constant memory>device
 
+\ TODO: Implement a timeout here\ 
 variable irq6-received
+: wait-irq ( -- )
+    begin irq6-received @ not while halt repeat ;
 
 : wait-ready
     128 0 ?do RQM if unloop exit endif 10 ms loop ;
@@ -53,9 +64,6 @@ variable irq6-received
 : command irq6-received off write-data ;
 ' write-data alias >>
 ' read-data  alias <<
-
-: wait-irq
-    begin irq6-received @ until ;
 
 : specify ( -- )
     $03 command $df >> $02 >> ;
@@ -147,20 +155,20 @@ here dma-buffer-size allot constant dma-buffer
     dma-buffer swap move ;
 
 : read-cylinder ( c h s -- )
-    turn-on 300 ms
+    turn-on
     BPC dma-read
-    -rot 2dup seek rot 300 ms
+    -rot 2dup seek rot
     sense-interrupt 2drop
     read 2drop 2drop 2drop ;
 
 : write-cylinder ( c h s -- )
-    turn-on 300 ms
+    turn-on
     BPC dma-write
-    -rot 2dup seek rot 300 ms
+    -rot 2dup seek rot
     sense-interrupt 2drop
     write 2drop 2drop 2drop ;
 
-
+
 
 : detect-drive
     $10 $70 outputb $71 inputb 4 rshift
@@ -178,13 +186,14 @@ here dma-buffer-size allot constant dma-buffer
 
 : initialize-floppy
     detect-drive
+    2000 ['] turn-off TIMER0 set-timer
     irq6-received off
     reset-floppy
     wait-irq
     sense-interrupt 2drop
     setup-floppy
     specify
-    turn-on 200 ms
+    turn-on
     recalibrate
     sense-interrupt 2drop
     turn-off ;
