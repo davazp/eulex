@@ -743,5 +743,6 @@ variable execute-timing-start
 :noname -14 throw ; compile_only_err_routine !
 
 enable-interrupts
+initialize-floppy
 
 require @user.fs
