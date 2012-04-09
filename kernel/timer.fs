@@ -57,12 +57,9 @@ create TIMER3 timer% zallot
 \ Implementation
 
 : process-timer-tick ( timer -- )
-    dup timer-routine @ 0= if exit then
-    dup timer-countdown @ 0= if
-        timer-routine @ execute
-    else
-        timer-countdown 1-!
-    endif ;
+    dup timer-countdown @ 0= if drop exit then
+    dup timer-countdown 1-!
+    dup timer-countdown @ 0= if timer-routine @ execute else drop then ;
 
 
 variable internal-run-time
