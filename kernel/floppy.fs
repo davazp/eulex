@@ -178,9 +178,8 @@ here dma-buffer-size allot constant dma-buffer
 
 
 
-: detect-drive
-    $10 $70 outputb $71 inputb 4 rshift
-    4 = if exit else -100 throw then ;
+: detect-drive ( -- flag ) 
+    $10 $70 outputb $71 inputb 4 rshift 4 = ;
 
 : setup-floppy
     $00 CCR! ;
@@ -193,7 +192,7 @@ here dma-buffer-size allot constant dma-buffer
 ; 6 IRQ
 
 : initialize-floppy
-    detect-drive
+    detect-drive not if exit then
     2000 ['] turn-off TIMER0 set-timer
     irq6-received off
     reset-floppy
