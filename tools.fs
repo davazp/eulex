@@ -106,24 +106,25 @@
 : retaddr>xt ( x -- )
     dup cell - upper@ + ;
 
-: backtrace-frame ( addr -- )
+: backtrace-frame ( addr -- flag )
     retaddr>xt unfind dup 0<> if
-        2 spaces type cr
+        2 spaces type cr true
     else
-        type
+        type false
     endif ;
 
 \ Display the current backtrace.
+variable backtrace-limit
+10 backtrace-limit !
 : backtrace
     ." Backtrace: " cr
+    backtrace-limit @
     rsp
-    begin
-    dup rsp-limit <= while
-        dup @ backtrace-frame
+    begin over 0<> over rsp-limit <= and while
+        dup @ backtrace-frame if swap 1- swap endif
         cell +
     repeat
-    drop
-;
+    drop ;
 
 
 ( Display the list of vocabularies in the system )
