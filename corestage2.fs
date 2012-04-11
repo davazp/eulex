@@ -92,6 +92,24 @@ variable bcd?
     print-number ;
 
 
+\ Markers
+
+: marker-restore-wordlist ( wid -- )
+    begin here over wid>latest u<= while
+        dup wid>latest previous-word over wid-latest !
+    repeat
+    drop ;
+
+: marker-restore-wordlists
+    last-wid @
+    begin ?dup while
+        dup marker-restore-wordlist
+        wid-previous @
+    repeat ;
+
+: marker here create , does> dp! marker-restore-wordlists ;
+
+
 ( run-tests )
 
 \ DEBUGGING. This is useful to run the QEMU on emacs, and use Eulex
