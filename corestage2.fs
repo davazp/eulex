@@ -107,7 +107,7 @@ variable bcd?
         wid-previous @
     repeat ;
 
-: marker here create , does> dp! marker-restore-wordlists ;
+: marker here create , does> @ dp! marker-restore-wordlists ;
 
 
 ( run-tests )
