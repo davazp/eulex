@@ -45,8 +45,7 @@
 : room
     CR
     ." Words in the context: " room-count . CR
-    ." Dictionary space allocated: " dp dp-base - . ." bytes" cr
-;
+    ." Dictionary space allocated: " dp dp-base - . ." bytes" cr ;
 
 
 \ Display the content of the variable ADDR.
@@ -127,47 +126,20 @@ variable backtrace-limit
     drop ;
 
 
-( Display the list of vocabularies in the system )
+( Display the list of vocabularies in the system and the search order stack )
 
-: vocs-print-vocentry ( ve -- )
-    vocentry>name type space ;
+: .wid ( wid -- )
+    wid>name ?dup if type space else ." ??? " drop then ;
 
 : vocs
-    vocentry-root @
-    begin
-    ?dup while
-        dup vocs-print-vocentry
-        vocentry-previous @
+    last-wid @
+    begin ?dup while
+        dup .wid
+        wid-previous @
     repeat ;
 
-
-( Display the order stack and the current word list )
-
-: wid>name ( wid -- addr n )
-    vocentry-root @
-    begin
-    ?dup while
-        2dup vocentry-wid @ = if
-            nip vocentry>name exit
-        else
-            vocentry-previous @
-        endif
-    repeat
-    drop 0 0 ;
-
-: anonymous-wid? ( wid -- )
-    wid>name nip 0= ;
-
-: print-wid ( wid -- )
-    dup anonymous-wid? if
-        drop ." ??? "
-    else
-        wid>name type space
-    endif ;
-
 : order
-    get-order 0 ?do print-wid loop
-    4 spaces current @ print-wid ;
+    get-order 0 ?do .wid loop 4 spaces current @ .wid ;
 
 Root definitions
 ' order alias order

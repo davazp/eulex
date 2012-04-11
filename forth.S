@@ -3,7 +3,7 @@
             Minimal on-the-metal Forth implementation for x86
 */
 
-/* Copyright (C) 2011 David Vázquez Púa */
+/* Copyright (C) 2011, 2012 David Vázquez Púa */
 /*
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -80,7 +80,7 @@ flush_gdt:
 .lcomm rstack, RSTACK_SIZE
 
 /* Pointer to the last word which was defined in the built-in wordlist. */
-.lcomm builtin_wordlist, 8
+.lcomm builtin_wordlist, 16
 
 .data
 
@@ -979,12 +979,14 @@ BUILTIN_VARIABLE(state, 0)
             +--------------+
             |    method    | <-- XT of a word which finding words in the wordlist
             +--------------+     relies on. It takes a counted-string from the
-                                 data stack and push associated NT, or 0 if it is
-                                 not found. It could also be zero to indicate that
-                                 the default search method will be used.
+            |   reserved   |     data stack and push associated NT, or 0 if it is
+            +--------------+     not found. It could also be zero to indicate that
+            |   reserved   |     the default search method will be used.
+            +--------------+
 
-   The wordlist's identifier (WID) is a pointer to that structure.
-*/
+   The wordlist's identifier (WID) is a pointer to that structure. The
+   two reserved cells are provided to implement VOCS and MARKER
+   words. But the core does not know anything about that. */
 
 BUILTIN_VARIABLE(current, 0)
 
@@ -1488,6 +1490,8 @@ nomultiboot:
         movl (dictionary_end-4), %eax
         movl %eax, builtin_wordlist
         movl $0, builtin_wordlist+4
+        movl $0, builtin_wordlist+8
+        movl $0, builtin_wordlist+12
         movl $builtin_wordlist, sorder_stack
         movl $builtin_wordlist, current
         /* Load core.fs */

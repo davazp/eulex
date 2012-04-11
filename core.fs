@@ -90,9 +90,11 @@
 
 \ Dictionary's entries (name token -- NT )
 
+: nt>cname ( nop ) ;
+
 \ Get the NT of the last-defined word.
 : nt>name ( nt -- addr u )
-    dup c@ swap 1+ swap ;
+    nt>cname dup c@ swap 1+ swap ;
 : previous-word
     cell - @ ;
 

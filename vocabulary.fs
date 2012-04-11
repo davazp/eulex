@@ -1,6 +1,6 @@
 \ vocabulary.fs --
 
-\ Copyright 2011 (C) David Vazquez
+\ Copyright 2011, 2012 (C) David Vazquez
 
 \ This file is part of Eulex.
 
@@ -19,20 +19,27 @@
 
 require @structures.fs
 
-\ Low-level search-order manipulation
+variable last-wid
 
 struct
     cell field wid-latest
     cell field wid-method
+    cell field wid-name
+    cell field wid-previous
 end-struct wid%
 
 : wid>latest wid-latest @ ;
 
+: wid>name ( wid -- addr n )
+    wid-name @ ?dup if count else 0 0 then ;
+
 : context
     sorder_stack sorder_tos @ cells + ;
 
+context @ constant forth-impl-wordlist
 : forth-impl
-    [ context @ ]L context ! ;
+    forth-impl-wordlist context ! ;
+forth-impl-wordlist last-wid !
 
 : get-order ( -- widn .. wid1 n )
     sorder_stack
@@ -40,8 +47,7 @@ end-struct wid%
         dup @ swap cell +
     loop
     drop
-    sorder_tos @ 1+
-;
+    sorder_tos @ 1+ ;
 
 : set-order ( widn .. wid1 n -- )
     dup 0= if
@@ -55,8 +61,7 @@ end-struct wid%
             dup -rot ! cell -
         loop
         drop
-    then
-;
+    then ;
 
 : get-current current @ ;
 : set-current current ! ;
@@ -67,8 +72,11 @@ end-struct wid%
 : definitions
     context @ current ! ;
 
-: wordlist ( -- wid)
+: allocate-wordlist ( -- wid )
     here wid% zallot ;
+
+: wordlist ( -- wid )
+    here allocate-wordlist last-wid @ over wid-previous ! last-wid ! ;
 
 : also
     sorder_tos @ sorder_size < if
@@ -100,60 +108,24 @@ end-struct wid%
     postpone repeat
 ; immediate compile-only
 
-
-\ In order to implement VOCS word, we need a kind of introspection for
-\ vocabularies. This is provided storing a single-linked list of the
-\ available vocabularies in the system.
-
-variable vocentry-root
-
-struct
-    1 cells field vocentry-previous
-    1 cells field vocentry-size
-    1 cells field vocentry-wid
-    0 cells field vocentry-name
-end-struct vocentry%
-
-: ,vocentry
-    vocentry-root @ , dup , 0 , s, ;
-
-: add-vocentry
-    here -rot ,vocentry vocentry-root ! ;
-
-: set-last-vocentry-wid ( wid -- )
-    vocentry-root @ vocentry-wid ! ;
-
-: vocentry>name ( vc -- addr n )
-    dup vocentry-name swap vocentry-size @ ;
-
-: create-vocabulary ( -- wid )
-    create wordlist does> context ! ;
+\ Vocabularies
 
 : vocabulary
-    create-vocabulary
-    latest nt>name add-vocentry
-    set-last-vocentry-wid ;
+    create latest nt>cname wordlist wid-name ! does> context ! ;
 
 \ Define Forth and Root vocabularies
-
 wordlist constant forth-wordlist
-: Forth forth-wordlist context ! ;
-latest nt>name add-vocentry
-forth-wordlist set-last-vocentry-wid
-
 wordlist constant root-wordlist
+
+: Forth forth-wordlist context ! ;
 : Root root-wordlist >order ;
-latest nt>name add-vocentry
-root-wordlist set-last-vocentry-wid
-
 : Eulex forth-impl ;
-latest nt>name add-vocentry
-context @ set-last-vocentry-wid
 
-: only
-    sorder_tos 0!
-    root-wordlist context !
-    also ;
+nt' Forth nt>cname forth-wordlist      wid-name !
+nt' Root  nt>cname root-wordlist       wid-name !
+nt' Eulex nt>cname forth-impl-wordlist wid-name !
+
+: only sorder_tos 0! root-wordlist context ! also ;
 
 Root definitions
 ' set-order alias set-order
