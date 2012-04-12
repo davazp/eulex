@@ -24,7 +24,6 @@ LIGHT GRAY UPON BLACK
     ." Loading " buffer>nt id. ." ..." cr
 ; load-buffer-print-hook !
 
-require @memory.fs
 require @tools.fs
 require @kernel/interrupts.fs
 require @kernel/exceptions.fs
