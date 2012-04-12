@@ -35,6 +35,7 @@ require @kernel/serial.fs
 require @kernel/speaker.fs
 require @tests/tests.fs
 require @kernel/cpuid.fs
+require @blocks.fs
 require @input.fs
 require @debugger.fs
 

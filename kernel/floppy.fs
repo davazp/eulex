@@ -112,6 +112,7 @@ $01000000 here u<= [if]
 [endif]
 
 here dma-buffer-size allot constant dma-buffer
+' dma-buffer alias floppy-buffer
 
 : flip-flop
     $ff $0c outputb ;
@@ -203,23 +204,16 @@ here dma-buffer-size allot constant dma-buffer
     sense-interrupt 2drop
     turn-off ;
 
-\ : floppy-read-sectors ( u c h s -- )
-\ ;
+: floppy-read-sectors ( addr u c h s -- )
+    3 pick read-sectors 512 * dma>addr ;
 
-\ : floppy-write-sectors ( addr u c h s -- )
-\ ;
-
-\ : floppy-read-cylinder ( c -- )
-\ ;
-
-\ : floppy-write-cylinder ( addr c -- )
-\ ;
-
+: floppy-write-sectors ( addr u c h s -- )
+    3 pick >r >r >r >r 512 * addr>dma
+    r> r> r> r> write-sectors ;
 
 : lba ( lba -- c h s )
     dup SPT 2* /
     over SPT 2* mod SPT /
     rot SPT mod 1+ ;
-
 
 \ floppy.fs ends here
