@@ -1,6 +1,6 @@
 \ console.fs --
 
-\ Copyright 2011 (C) David Vazquez
+\ Copyright 2011, 2012 (C) David Vazquez
 
 \ This file is part of Eulex.
 
@@ -17,6 +17,7 @@
 \ You should have received a copy of the GNU General Public License
 \ along with Eulex.  If not, see <http://www.gnu.org/licenses/>.
 
+require @structures.fs
 require @kernel/video.fs
 
 variable cursor-x
@@ -94,14 +95,10 @@ variable color-attr
     then ;
 
 : emit ( ch -- )
-    emit-char
-    scroll-if-required
-    update-hardware-cursor ;
+    emit-char scroll-if-required ;
 
 : at-xy ( column row )
-    cursor-y !
-    cursor-x !
-    update-hardware-cursor ;
+    cursor-y ! cursor-x ! ;
 
 : at-beginning
     0 0 at-xy ;
@@ -127,6 +124,32 @@ variable color-attr
             i j v-attr@ invert i j v-attr!
         loop
     loop ;
+
+
+
+struct
+    cell field screen-x
+    cell field screen-y
+    cell field screen-attr
+    video-memsize chars field screen-buffer
+end-struct screen%
+
+: set-screen ( sid -- )
+    dup screen-x @ cursor-x !
+    dup screen-y @ cursor-y !
+    dup screen-attr @ color-attr !
+    screen-buffer video-addr video-memsize move
+    update-hardware-cursor ;
+
+: save-screen ( -- sid )
+    screen% allocate throw
+    cursor-x @ over screen-x !
+    cursor-y @ over screen-y !
+    video-addr over screen-buffer video-memsize move
+    color-attr @ over screen-attr ! ;
+
+: restore-screen ( sid -- )
+    dup set-screen free throw ;
 
 PAGE
 

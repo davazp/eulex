@@ -39,6 +39,7 @@ FORTH_SRC= \
         kernel/speaker.fs \
 	kernel/serial.fs \
         blocks.fs \
+        editor.fs \
         debugger.fs \
 	linedit.fs \
         input.fs \

@@ -699,6 +699,7 @@ create nextname-buffer 32 allot
 
 require @vocabulary.fs
 require @kernel/multiboot.fs
+require @memory.fs
 require @kernel/console.fs
 require @colors.fs
 require @output.fs
