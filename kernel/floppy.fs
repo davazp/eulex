@@ -112,6 +112,7 @@ $01000000 here u<= [if]
 [endif]
 
 here dma-buffer-size allot constant dma-buffer
+' dma-buffer alias floppy-buffer
 
 : flip-flop
     $ff $0c outputb ;
