@@ -134,6 +134,13 @@ struct
     video-size chars field screen-buffer
 end-struct screen%
 
+: set-screen ( sid -- )
+    dup screen-x @ cursor-x !
+    dup screen-y @ cursor-y !
+    dup screen-attr @ color-attr !
+    screen-buffer video-addr video-size move
+    update-hardware-cursor ;
+
 : save-screen ( -- sid )
     screen% allocate throw
     cursor-x @ over screen-x !
@@ -142,12 +149,7 @@ end-struct screen%
     color-attr @ over screen-attr ! ;
 
 : restore-screen ( sid -- )
-    dup screen-x @ cursor-x !
-    dup screen-y @ cursor-y !
-    dup screen-attr @ color-attr !
-    dup screen-buffer video-addr video-size move
-    free throw
-    update-hardware-cursor ;
+    dup set-screen free throw ;
 
 PAGE
 
