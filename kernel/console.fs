@@ -131,21 +131,21 @@ struct
     cell field screen-x
     cell field screen-y
     cell field screen-attr
-    video-size chars field screen-buffer
+    video-memsize chars field screen-buffer
 end-struct screen%
 
 : set-screen ( sid -- )
     dup screen-x @ cursor-x !
     dup screen-y @ cursor-y !
     dup screen-attr @ color-attr !
-    screen-buffer video-addr video-size move
+    screen-buffer video-addr video-memsize move
     update-hardware-cursor ;
 
 : save-screen ( -- sid )
     screen% allocate throw
     cursor-x @ over screen-x !
     cursor-y @ over screen-y !
-    video-addr over screen-buffer video-size move
+    video-addr over screen-buffer video-memsize move
     color-attr @ over screen-attr ! ;
 
 : restore-screen ( sid -- )
