@@ -68,29 +68,36 @@ true value visible-bell
     update-cursor ;
 
 : insert-literally ( ch -- )
-    point @ 1023 = if drop alert else
+    point @ 1023 = if abort else
         buffer @ point @ + c! point 1+!
     endif ;
 
 : insert-newline
-    64 column - 0 ?do 32 insert-literally loop
-    render-text ;
+    64 column - 0 ?do 32 insert-literally loop render-text ;
 
 : insert ( ch -- )
-    dup 10 = if
-        drop insert-newline
-    else
-        insert-literally
-    endif ;
+    dup 10 = if drop insert-newline else insert-literally endif ;
+
+: previous-line -64 point +! ;
+: next-line 64 point +! ;
+: forward-char point 1+! ;
+: backward-char point 1-! ;
 
 variable editor-loop-quit
+: command-dispatch
+    drop case
+        ESC   of editor-loop-quit on endof
+        UP    of previous-line endof
+        DOWN  of next-line endof
+        LEFT  of backward-char endof
+        RIGHT of forward-char endof
+        dup insert line render-text-line
+    endcase ;
+
 : editor-loop
     editor-loop-quit off
     begin
-        ekey drop case
-            ESC of editor-loop-quit on endof
-            dup insert line render-text-line
-        endcase
+        ekey ['] command-dispatch catch if 2drop alert then
         update-cursor
     editor-loop-quit @ until ;
 
