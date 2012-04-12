@@ -74,7 +74,6 @@ variable color-attr
     cursor-x 0!
     cursor-y 1+! ;
 
-
 : emit-char ( ch -- )
     dup newline? if
         drop
@@ -85,7 +84,6 @@ variable color-attr
         cursor-x 1+!
         at-end-on-line? if emit-newline endif
     endif ;
-
 
 : scroll-if-required
     at-last-line? if
@@ -124,8 +122,6 @@ variable color-attr
             i j v-attr@ invert i j v-attr!
         loop
     loop ;
-
-
 
 struct
     cell field screen-x
