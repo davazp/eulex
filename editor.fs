@@ -26,21 +26,30 @@ require @colors.fs
 require @blocks.fs
 
 variable buffer
-variable point
+variable &point
+
+: point &point @ ;
+: point! &point ! ;
 
 true value visible-bell
 : flash invert-screen 50 ms invert-screen ;
 : alert visible-bell if flash else beep endif ;
 
-: line point @ 64 / ;
-: column point @ 64 mod ;
+: line point 64 / ;
+: column point 64 mod ;
+: right-column 63 column - ;
+: beginning-of-line point column - ;
+: end-of-line beginning-of-line 63 + ;
 
-: point>screen ( position -- x y )
+: offset>addr chars buffer @ + ;
+: char-at offset>addr c@ ;
+
+: point>addr point offset>addr ;
+
+: offset>screen ( position -- x y )
     64 /mod 4 + swap 7 + swap ;
 
-: update-cursor point @ point>screen at-xy update-hardware-cursor ;
-: render-text-line 64 * dup point>screen at-xy buffer @ + 64 type ;
-: render-text buffer @ 16 0 ?do 07 04 I + at-xy dup 64 type 64 + loop drop ;
+: update-cursor point offset>screen at-xy update-hardware-cursor ;
 
 : box-corners
     06 03 at-xy $da emit-char
@@ -59,52 +68,96 @@ true value visible-bell
     07 20 at-xy 64 ---
     box-corners ;
 
-: redraw
-    upon blue 80 spaces
+: render-application
+    page upon blue 80 spaces
     36 0 at-xy light cyan ." EDITOR "
     box
     00 23 at-xy upon blue 80 spaces
-    light gray upon black render-text
-    update-cursor ;
+    light gray upon black ;
+
+\ Bitmap of lines which need to be redrawn
+variable lines-to-render
+: render-line
+    64 * dup offset>screen at-xy offset>addr 64 type ;
+: render
+    lines-to-render @
+    16 0 ?do dup 1 and if i render-line endif 1 rshift loop
+    lines-to-render ! ;
+: redraw-line 1 line lshift lines-to-render or! ;
+: redraw-buffer -1 lines-to-render ! ;
+
+variable prefix
+
+: N prefix @ ;                  : N! prefix ! ;
+: -N! N negate N! ;             : *N! N * N! ;
+: 1N! 1 N! ;                    : N# N 1N! ;
+
+: in-range? 0 swap 1024 between ;
+
+: forward-char
+    point N &point +! point in-range? if drop else point! abort then ;
+
+: backward-char -N! forward-char ;
+: next-line 64 *N! forward-char ;
+: previous-line -N! next-line ;
+
+: last-char-is-empty?
+    end-of-line char-at 32 = ;
+
+: last-line-is-empty?
+    64 0 ?do
+        i 960 + char-at 32 <> if unloop false exit then
+    loop true ;
+
+\ Shift each byte in the region ADDR U1, U2 places to the right. U2
+\ bytes are lost.
+: memshift> ( addr u1 u2 -- )
+    swap >r 2dup + swap r> swap - cmove> ;
 
 : insert-literally ( ch -- )
-    point @ 1023 = if abort else
-        buffer @ point @ + c! point 1+!
-    endif ;
+    N# 0 ?do
+        last-char-is-empty? not if abort then
+        point>addr right-column 1+ 1 memshift>
+        point>addr c! forward-char
+    loop ;
 
 : insert-newline
-    64 column - 0 ?do 32 insert-literally loop render-text ;
+    N# 0 ?do
+        last-line-is-empty? not if abort then
+        end-of-line 1+ dup offset>addr swap 1024 swap - 64 memshift>
+        end-of-line 1+ offset>addr 64 32 fill
+        point>addr right-column 1+ 64 + right-column 1+ memshift>
+        point>addr right-column 1+ 32 fill
+        right-column 1+ N! forward-char
+    loop
+    redraw-buffer ;
 
 : insert ( ch -- )
     dup 10 = if drop insert-newline else insert-literally endif ;
 
-: previous-line point @   64  < if abort then -64 point +! ;
-: next-line     point @  960 >= if abort then  64 point +! ;
-: forward-char  point @ 1023  = if abort then point 1+! ;
-: backward-char point @      0= if abort then point 1-! ;
 
 variable editor-loop-quit
 : command-dispatch
-    drop case
+    1N! drop case
         ESC   of editor-loop-quit on endof
         UP    of previous-line endof
         DOWN  of next-line endof
         LEFT  of backward-char endof
         RIGHT of forward-char endof
-        dup insert line render-text-line
+        redraw-line dup insert redraw-line
     endcase ;
 
 : editor-loop
     editor-loop-quit off
     begin
+        render update-cursor
         ekey ['] command-dispatch catch if 2drop alert then
-        update-cursor
     editor-loop-quit @ until ;
 
 : edit ( u -- )
-    point 0! block buffer !
+    0 point! block buffer !
     save-screen
-    page redraw
+    render-application redraw-buffer
     editor-loop
     restore-screen ;
 
