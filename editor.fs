@@ -97,22 +97,22 @@ variable prefix
 : forward-char
     point N &point +! point in-range? if drop else point! abort then ;
 
-: backward-char -N! forward-char ;
-: next-line 64 *N! forward-char ;
-: previous-line -N! next-line ;
+: backward-char N -N! forward-char N! ;
+: next-line N 64 *N! forward-char N! ;
+: previous-line N -N! next-line N! ;
+
+: empty-line? ( u -- bool )
+    64 * dup 64 + swap ?do
+        i char-at 32 <> if unloop false exit then
+    loop true ;
 
 : last-char-is-empty?
     end-of-line char-at 32 = ;
 
-: last-line-is-empty?
-    64 0 ?do
-        i 960 + char-at 32 <> if unloop false exit then
-    loop true ;
-
-\ Shift each byte in the region ADDR U1, U2 places to the right. U2
-\ bytes are lost.
 : memshift> ( addr u1 u2 -- )
-    swap >r 2dup + swap r> swap - cmove> ;
+    swap >r 2dup + swap r> - abs cmove> ;
+: <memshift ( addr u1 u2 -- )
+    tuck - abs >r over + swap r> cmove ;
 
 : insert-literally ( ch -- )
     N# 0 ?do
@@ -123,7 +123,7 @@ variable prefix
 
 : insert-newline
     N# 0 ?do
-        last-line-is-empty? not if abort then
+        15 empty-line? not if abort then
         end-of-line 1+ dup offset>addr swap 1024 swap - 64 memshift>
         end-of-line 1+ offset>addr 64 32 fill
         point>addr right-column 1+ 64 + right-column 1+ memshift>
@@ -135,6 +135,19 @@ variable prefix
 : insert ( ch -- )
     dup 10 = if drop insert-newline else insert-literally endif ;
 
+: delete-char
+    N# 0 ?do
+        point>addr right-column 1+ 1 <memshift
+        32 end-of-line offset>addr c!
+    loop
+    redraw-line ;
+
+: delete-backward-char
+    N# 0 ?do
+        column 0= if abort then
+        backward-char delete-char
+    loop ;
+
 
 variable editor-loop-quit
 : command-dispatch
@@ -144,6 +157,7 @@ variable editor-loop-quit
         DOWN  of next-line endof
         LEFT  of backward-char endof
         RIGHT of forward-char endof
+        BACK  of delete-backward-char endof
         redraw-line dup insert redraw-line
     endcase ;
 
