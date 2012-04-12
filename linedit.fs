@@ -88,7 +88,7 @@ variable screen-y
 
 : le-insert ( ch -- )
     full? if
-        alert
+        drop alert
     else
         ( ch ) gap-start @ buffer @ + c!
         gap-start 1+!
