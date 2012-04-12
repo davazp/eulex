@@ -81,16 +81,24 @@ true value visible-bell
         insert-literally
     endif ;
 
+variable editor-loop-quit
 : editor-loop
-    ekey drop insert
-    line render-text-line
-    update-cursor ;
+    editor-loop-quit off
+    begin
+        ekey drop case
+            ESC of editor-loop-quit on endof
+            insert
+            line render-text-line
+        endcase
+        update-cursor
+    editor-loop-quit @ until ;
 
 : edit ( u -- )
     block buffer !
+    save-screen
     page redraw
-    begin editor-loop again
-    light gray upon black page ;
+    editor-loop
+    restore-screen ;
 
 ' EDIT
 PREVIOUS DEFINITIONS ALIAS EDIT
