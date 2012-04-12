@@ -68,15 +68,17 @@ true value visible-bell
     update-cursor ;
 
 : insert-literally ( ch -- )
-    point @ 1023 = if alert else
+    point @ 1023 = if drop alert else
         buffer @ point @ + c! point 1+!
     endif ;
 
+: insert-newline
+    64 column - 0 ?do 32 insert-literally loop
+    render-text ;
+
 : insert ( ch -- )
-    dup [char] a = if alert then
     dup 10 = if
-        64 column - 0 ?do 32 insert-literally loop
-        render-text
+        drop insert-newline
     else
         insert-literally
     endif ;
@@ -87,14 +89,13 @@ variable editor-loop-quit
     begin
         ekey drop case
             ESC of editor-loop-quit on endof
-            insert
-            line render-text-line
+            dup insert line render-text-line
         endcase
         update-cursor
     editor-loop-quit @ until ;
 
 : edit ( u -- )
-    block buffer !
+    point 0! block buffer !
     save-screen
     page redraw
     editor-loop
