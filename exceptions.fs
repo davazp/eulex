@@ -19,7 +19,7 @@
 
 \ NOTE ON THE IMPLEMENTATION:
 \    Exception handling relies on the couple of words CATCH...THROW.
-\    CATCH installs an exception handler and THROW signal an exception,
+\    CATCH installs an exception handler and THROW signals an exception,
 \    jumping to the innermost exception handler.  The stack is unwinded
 \    in CATCH time. Hence, we can access to the context of signal and
 \    display useful debugging information (e.g: backtraces).
@@ -36,7 +36,7 @@ variable exception-handler
     exception-handler-previous exception-handler ! ;
 
 : %throw ( n -- )
-    >r exception-handler-sp sp! r>
+    dup if >r exception-handler-sp sp! r> then
     exception-handler-target jump ;
 
 : %catch-without-unwind ( xt -- )
