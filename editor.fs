@@ -78,10 +78,10 @@ true value visible-bell
 : insert ( ch -- )
     dup 10 = if drop insert-newline else insert-literally endif ;
 
-: previous-line -64 point +! ;
-: next-line 64 point +! ;
-: forward-char point 1+! ;
-: backward-char point 1-! ;
+: previous-line point @   64  < if abort then -64 point +! ;
+: next-line     point @  960 >= if abort then  64 point +! ;
+: forward-char  point @ 1023  = if abort then point 1+! ;
+: backward-char point @      0= if abort then point 1-! ;
 
 variable editor-loop-quit
 : command-dispatch
