@@ -18,6 +18,7 @@
 \ along with Eulex.  If not, see <http://www.gnu.org/licenses/>.
 
 LIGHT GRAY UPON BLACK
+-1 -1 at-xy update-hardware-cursor
 .( Loading...) CR
 :noname
     ." Loading " buffer>nt id. ." ..." cr
@@ -36,6 +37,7 @@ require @kernel/speaker.fs
 require @tests/tests.fs
 require @kernel/cpuid.fs
 require @blocks.fs
+require @editor.fs
 require @input.fs
 require @debugger.fs
 

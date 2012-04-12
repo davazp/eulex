@@ -94,14 +94,10 @@ variable color-attr
     then ;
 
 : emit ( ch -- )
-    emit-char
-    scroll-if-required
-    update-hardware-cursor ;
+    emit-char scroll-if-required ;
 
 : at-xy ( column row )
-    cursor-y !
-    cursor-x !
-    update-hardware-cursor ;
+    cursor-y ! cursor-x ! ;
 
 : at-beginning
     0 0 at-xy ;

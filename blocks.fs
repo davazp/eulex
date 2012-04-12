@@ -44,6 +44,7 @@ variable updated?
     endif ;
 
 : block ( u -- addr )
+    dup -1 = if -100 throw then
     dup current-block @ = if drop else
         flush dup current-block !
         read-block-from-backend 
@@ -51,6 +52,7 @@ variable updated?
     block-buffer ;
 
 : buffer ( u -- addr )
+    dup -1 = if -100 throw then
     dup current-block @ = if drop else
         flush current-block !
     endif
