@@ -19,6 +19,7 @@
 
 VOCABULARY EDITOR
 VOCABULARY EDITOR-COMMANDS
+
 EULEX ALSO EDITOR DEFINITIONS
 
 require @kernel/console.fs
@@ -86,20 +87,19 @@ variable lines-to-render
 : redraw-line 1 line lshift lines-to-render or! ;
 : redraw-buffer -1 lines-to-render ! ;
 
-variable prefix
+\ Commands
 
-: N prefix @ ;                  : N! prefix ! ;
-: -N! N negate N! ;             : *N! N * N! ;
-: 1N! 1 N! ;                    : N# N 1N! ;
+variable editor-loop-quit
 
 : in-range? 0 swap 1024 between ;
 
-: forward-char
-    point N &point +! point in-range? if drop else point! abort then ;
+: move-char ( n -- )
+    point swap &point +! point in-range? if drop else point! abort then ;
 
-: backward-char N -N! forward-char N! ;
-: next-line N 64 *N! forward-char N! ;
-: previous-line N -N! next-line N! ;
+: forward-char 1 move-char ;
+: backward-char -1 move-char ;
+: next-line 64 move-char ;
+: previous-line -64 move-char ;
 
 : empty-line? ( u -- bool )
     64 * dup 64 + swap ?do
@@ -115,57 +115,76 @@ variable prefix
     tuck - abs >r over + swap r> cmove ;
 
 : insert-literally ( ch -- )
-    N# 0 ?do
-        last-char-is-empty? not if abort then
-        point>addr right-column 1+ 1 memshift>
-        point>addr c! forward-char
-    loop ;
+    last-char-is-empty? not if abort then
+    point>addr right-column 1+ 1 memshift>
+    point>addr c! forward-char ;
 
 : insert-newline
-    N# 0 ?do
-        15 empty-line? not if abort then
-        end-of-line 1+ dup offset>addr swap 1024 swap - 64 memshift>
-        end-of-line 1+ offset>addr 64 32 fill
-        point>addr right-column 1+ 64 + right-column 1+ memshift>
-        point>addr right-column 1+ 32 fill
-        right-column 1+ N! forward-char
-    loop
+    15 empty-line? not if abort then
+    end-of-line 1+ dup offset>addr swap 1024 swap - 64 memshift>
+    end-of-line 1+ offset>addr 64 32 fill
+    point>addr right-column 1+ 64 + right-column 1+ memshift>
+    point>addr right-column 1+ 32 fill
+    end-of-line 1+ &point !
     redraw-buffer ;
 
 : insert ( ch -- )
     dup 10 = if drop insert-newline else insert-literally endif ;
 
 : delete-char
-    N# 0 ?do
-        point>addr right-column 1+ 1 <memshift
-        32 end-of-line offset>addr c!
-    loop
+    point>addr right-column 1+ 1 <memshift
+    32 end-of-line offset>addr c!
     redraw-line ;
 
 : delete-backward-char
-    N# 0 ?do
-        column 0= if abort then
-        backward-char delete-char
-    loop ;
+    column 0= if abort then
+    backward-char delete-char ;
 
+: kill-editor
+    editor-loop-quit on ;
 
-variable editor-loop-quit
-: command-dispatch
-    1N! drop case
-        ESC   of editor-loop-quit on endof
-        UP    of previous-line endof
-        DOWN  of next-line endof
-        LEFT  of backward-char endof
-        RIGHT of forward-char endof
-        BACK  of delete-backward-char endof
-        redraw-line dup insert redraw-line
-    endcase ;
+
+\ Command dispatch
+
+create keymap 1024 cells zallot
+
+: ekey->kbd
+    dup alt-mod and if swap $100 + swap then
+    ctrl-mod and if $200 + then ;
+
+variable last-read-key
+: read-key ekey ekey->kbd dup last-read-key ! ;
+
+: self-insert-command
+    redraw-line last-read-key @ insert redraw-line ;
+:noname
+    127 32 ?do [nt'] self-insert-command i cells keymap + ! loop
+; execute
+
+: kbd-command cells keymap + @ ;
+
+: M- char $100 + ; : C- char $200 + ;
+: key-for: nt' swap cells keymap + ! ;
+
+ESC   key-for: kill-editor
+UP    key-for: previous-line
+DOWN  key-for: next-line
+LEFT  key-for: backward-char
+RIGHT key-for: forward-char
+BACK  key-for: delete-backward-char
+
+C- f  key-for: forward-char
+C- b  key-for: backward-char
+C- p  key-for: previous-line
+C- n  key-for: next-line
 
 : editor-loop
     editor-loop-quit off
     begin
         render update-cursor
-        ekey ['] command-dispatch catch if 2drop alert then
+        read-key kbd-command ?dup if
+            nt>xt ['] execute catch if 2drop alert then
+        then
     editor-loop-quit @ until ;
 
 : edit ( u -- )
