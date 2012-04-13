@@ -168,16 +168,16 @@ editor-cmds definitions
 : substring ( position1 position2 -- )
     over - >r position>addr r> ;
 
-: whole-line      <e bol point eol point substring rot e> ;
-: whole-paragraph <e bop point eop point substring rot e> ;
-: whole-buffer    <e bob point eob point substring rot e> ;
+: whole-line      <E bol point eol point substring 1+ rot E> ;
+: whole-paragraph <E bop point eop point substring 1+ rot E> ;
+: whole-buffer    <E bob point eob point substring 1+ rot E> ;
 
-: rest-of-line      <e dup eol point substring 1+ rot e> ;
-: rest-of-paragraph <e dup eop point substring 1+ rot e> ;
-: rest-of-buffer    <e dup eob point substring 1+ rot e> ;
+: rest-of-line      <E dup eol point substring 1+ rot E> ;
+: rest-of-paragraph <E dup eop point substring 1+ rot E> ;
+: rest-of-buffer    <E dup eob point substring 1+ rot E> ;
 [END]
 
-: erase-buffer whole-buffer 32 fill ;
+: erase-buffer whole-buffer 32 fill bob ;
 
 : newline
     15 empty-line? not if abort then
@@ -199,7 +199,6 @@ editor-cmds definitions
     redraw-buffer ;
 
 : delete-backward-char
-    column 0= if abort then
     backward-char delete-char ;
 
 : execute-extended-command
