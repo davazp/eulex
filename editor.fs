@@ -90,16 +90,22 @@ variable lines-to-render
 \ Commands
 
 variable editor-loop-quit
+variable last-read-key
+create keymap 1024 cells zallot
+
+: ekey->kbd
+    dup alt-mod and if swap $100 + swap then
+    ctrl-mod and if $200 + then ;
+
+: read-key ekey ekey->kbd dup last-read-key ! ;
+
+: kbd-command cells keymap + @ ;
 
 : in-range? 0 swap 1024 between ;
-
 : move-char ( n -- )
-    point swap &point +! point in-range? if drop else point! abort then ;
-
-: forward-char 1 move-char ;
-: backward-char -1 move-char ;
-: next-line 64 move-char ;
-: previous-line -64 move-char ;
+    point swap &point +! point in-range? if drop else
+        point! abort
+    then ;
 
 : empty-line? ( u -- bool )
     64 * dup 64 + swap ?do
@@ -114,10 +120,10 @@ variable editor-loop-quit
 : <memshift ( addr u1 u2 -- )
     tuck - abs >r over + swap r> cmove ;
 
-: insert-literally ( ch -- )
+: insert-char-literally ( ch -- )
     last-char-is-empty? not if abort then
     point>addr right-column 1+ 1 memshift>
-    point>addr c! forward-char ;
+    point>addr c! 1 move-char ;
 
 : insert-newline
     15 empty-line? not if abort then
@@ -128,8 +134,19 @@ variable editor-loop-quit
     end-of-line 1+ &point !
     redraw-buffer ;
 
-: insert ( ch -- )
-    dup 10 = if drop insert-newline else insert-literally endif ;
+: insert-char ( ch -- )
+    dup 10 = if drop insert-newline else insert-char-literally endif ;
+
+
+ALSO EDITOR-COMMANDS DEFINITIONS
+
+: forward-char 1 move-char ;
+: backward-char -1 move-char ;
+: next-line 64 move-char ;
+: previous-line -64 move-char ;
+
+: self-insert-command
+    redraw-line last-read-key @ insert-char redraw-line ;
 
 : delete-char
     point>addr right-column 1+ 1 <memshift
@@ -143,26 +160,8 @@ variable editor-loop-quit
 : kill-editor
     editor-loop-quit on ;
 
-
-\ Command dispatch
 
-create keymap 1024 cells zallot
-
-: ekey->kbd
-    dup alt-mod and if swap $100 + swap then
-    ctrl-mod and if $200 + then ;
-
-variable last-read-key
-: read-key ekey ekey->kbd dup last-read-key ! ;
-
-: self-insert-command
-    redraw-line last-read-key @ insert redraw-line ;
-:noname
-    127 32 ?do [nt'] self-insert-command i cells keymap + ! loop
-; execute
-
-: kbd-command cells keymap + @ ;
-
+ALSO EDITOR DEFINITIONS
 : M- char $100 + ; : C- char $200 + ;
 : key-for: nt' swap cells keymap + ! ;
 
@@ -177,6 +176,17 @@ C- f  key-for: forward-char
 C- b  key-for: backward-char
 C- p  key-for: previous-line
 C- n  key-for: next-line
+C- d  key-for: delete-char
+
+:noname
+    127 32 ?do [nt'] self-insert-command i cells keymap + ! loop
+; execute
+
+PREVIOUS EDITOR-COMMANDS
+PREVIOUS EDITOR
+DEFINITIONS
+
+\ Command dispatch
 
 : editor-loop
     editor-loop-quit off
