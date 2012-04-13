@@ -36,8 +36,8 @@ require @kernel/speaker.fs
 require @tests/tests.fs
 require @kernel/cpuid.fs
 require @blocks.fs
-require @editor.fs
 require @input.fs
+require @editor.fs
 require @debugger.fs
 
 \ Rebooting the machine
