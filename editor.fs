@@ -18,7 +18,7 @@
 \ along with Eulex.  If not, see <http://www.gnu.org/licenses/>.
 
 VOCABULARY EDITOR
-VOCABULARY EDITOR-COMMANDS
+VOCABULARY EDITOR-CMDS
 
 EULEX ALSO EDITOR DEFINITIONS
 
@@ -138,7 +138,7 @@ create keymap 1024 cells zallot
     dup 10 = if drop insert-newline else insert-char-literally endif ;
 
 
-ALSO EDITOR-COMMANDS DEFINITIONS
+ALSO EDITOR-CMDS DEFINITIONS
 
 : forward-char 1 move-char ;
 : backward-char -1 move-char ;
@@ -171,6 +171,7 @@ DOWN  key-for: next-line
 LEFT  key-for: backward-char
 RIGHT key-for: forward-char
 BACK  key-for: delete-backward-char
+ RET  key-for: self-insert-command
 
 C- f  key-for: forward-char
 C- b  key-for: backward-char
@@ -182,7 +183,7 @@ C- d  key-for: delete-char
     127 32 ?do [nt'] self-insert-command i cells keymap + ! loop
 ; execute
 
-PREVIOUS EDITOR-COMMANDS
+PREVIOUS EDITOR-CMDS
 PREVIOUS EDITOR
 DEFINITIONS
 
@@ -193,7 +194,7 @@ DEFINITIONS
     begin
         render update-cursor
         read-key kbd-command ?dup if
-            nt>xt ['] execute catch if 2drop alert then
+            nt>xt ['] execute catch if drop alert then
         then
     editor-loop-quit @ until ;
 
