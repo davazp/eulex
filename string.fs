@@ -65,23 +65,11 @@ variable read-string-index
 
 
 \ Count the number of spaces from ADDR backward.
-: <count-spaces ( addr )
-    0 swap
-    begin
-    dup c@ 32 = while
-        1-
-        swap 1+ swap
-    repeat
-    drop
-;
-
-
 : /string ( caddr1 u1 n - caddr2 u2 )
     tuck - >r + r> ;
 
 : -trailing ( caddr u1 - caddr u2 )
-    2dup 1- + <count-spaces - ;
-
+    begin 2dup 1- + c@ 32 = over 0<> and while 1- repeat ;
 
 : compare-integer ( m n -- p )
     2dup < if
