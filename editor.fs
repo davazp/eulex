@@ -124,8 +124,12 @@ create keymap 1024 cells zallot
         i char-at 32 <> if unloop false exit then
     loop true ;
 
-: memshift> swap >r 2dup + swap r> - abs cmove> ;
-: <memshift tuck - abs >r over + swap r> cmove ;
+: memshift> ( addr u c -- ) swap >r 2dup + swap r> - abs cmove> ;
+: <memshift ( addr u c -- ) tuck - abs >r over + swap r> cmove ;
+: shift> ( addr u c -- )
+    rot dup >r -rot dup >r memshift> r> r>  swap 32 fill ;
+: <shift ( addr u c -- )
+    2 pick 2 pick + over - >r dup >r <memshift r> r> swap 32 fill ;
 
 : [internal] also editor definitions ;
 : [end] previous definitions ;
@@ -181,11 +185,9 @@ editor-cmds definitions
 
 : newline
     15 empty-line? not if abort then
-    line-end-position 1+ dup position>addr swap 1024 swap - 64 memshift>
-    line-end-position 1+ position>addr 64 32 fill
-    point>addr right-column 1+ 64 + right-column 1+ memshift>
-    point>addr right-column 1+ 32 fill
-    line-end-position 1+ &point !
+    line-end-position 1+ dup position>addr swap 1024 swap - 64 shift>
+    point>addr right-column 1+ 64 + right-column 1+ shift>
+    eol forward-char
     redraw-buffer ;
 
 : self-insert-command
@@ -194,9 +196,7 @@ editor-cmds definitions
     forward-char redraw-buffer ;
 
 : delete-char
-    rest-of-paragraph 1 <memshift
-    point end-of-paragraph 32 point>addr c! goto-char
-    redraw-buffer ;
+    rest-of-paragraph 1 <shift redraw-buffer ;
 
 : delete-backward-char
     backward-char delete-char ;
