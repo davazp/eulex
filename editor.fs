@@ -17,9 +17,15 @@
 \ You should have received a copy of the GNU General Public License
 \ along with Eulex.  If not, see <http://www.gnu.org/licenses/>.
 
+\ TODO: Mark commands with a special flag to allow ordinary Forth
+\ words in the EDITOR-CMDS vocabulary.
+
 VOCABULARY EDITOR
-VOCABULARY EDITOR-COMMANDS
-EULEX ALSO EDITOR DEFINITIONS
+VOCABULARY EDITOR-CMDS
+
+EULEX
+ALSO EDITOR
+ALSO EDITOR DEFINITIONS
 
 require @kernel/console.fs
 require @colors.fs
@@ -29,27 +35,25 @@ variable buffer
 variable &point
 
 : point &point @ ;
-: point! &point ! ;
+: goto-char &point ! ;
 
 true value visible-bell
 : flash invert-screen 50 ms invert-screen ;
 : alert visible-bell if flash else beep endif ;
 
-: line point 64 / ;
-: column point 64 mod ;
+: line-number-at-pos 64 / ;
+: column-number-at-pos 64 mod ;
+: line point line-number-at-pos ;
+: column point column-number-at-pos ;
 : right-column 63 column - ;
-: beginning-of-line point column - ;
-: end-of-line beginning-of-line 63 + ;
+: line-beginning-position point column - ;
+: line-end-position line-beginning-position 63 + ;
+: position>addr chars buffer @ + ;
+: char-at position>addr c@ ;
+: point>addr point position>addr ;
 
-: offset>addr chars buffer @ + ;
-: char-at offset>addr c@ ;
-
-: point>addr point offset>addr ;
-
-: offset>screen ( position -- x y )
-    64 /mod 4 + swap 7 + swap ;
-
-: update-cursor point offset>screen at-xy update-hardware-cursor ;
+: position>screen 64 /mod 4 + swap 7 + swap ;
+: update-cursor point position>screen at-xy update-hardware-cursor ;
 
 : box-corners
     06 03 at-xy $da emit-char
@@ -68,109 +72,208 @@ true value visible-bell
     07 20 at-xy 64 ---
     box-corners ;
 
-: render-application
+: render-title 
     page upon blue 80 spaces
-    36 0 at-xy light cyan ." EDITOR "
-    box
+    36 0 at-xy light cyan ." EDITOR " ;
+
+: render-modeline-and-minibuffer
     00 23 at-xy upon blue 80 spaces
-    light gray upon black ;
+    light gray upon black 79 spaces ;
+
+: render-application
+    render-title box render-modeline-and-minibuffer ;
 
 \ Bitmap of lines which need to be redrawn
 variable lines-to-render
 : render-line
-    64 * dup offset>screen at-xy offset>addr 64 type ;
+    64 * dup position>screen at-xy position>addr 64 type ;
 : render
     lines-to-render @
     16 0 ?do dup 1 and if i render-line endif 1 rshift loop
-    lines-to-render ! ;
+    lines-to-render !
+    render-modeline-and-minibuffer ;
 : redraw-line 1 line lshift lines-to-render or! ;
 : redraw-buffer -1 lines-to-render ! ;
+: redraw-lines ( from to -- )
+    1 swap 1+ lshift 1- swap
+    1 swap    lshift 1- negate .s
+    lines-to-render or! ;
+    
+create command-name 80 chars allot
+: in-editor-cmds: also editor-cmds context @ 1 set-order ;
+: read-command
+    get-order in-editor-cmds:
+    0 24 at-xy ." M-x " command-name dup 74 accept
+    c-addr find-cname >r
+    set-order r> ;
 
-variable prefix
+\ Commands
 
-: N prefix @ ;                  : N! prefix ! ;
-: -N! N negate N! ;             : *N! N * N! ;
-: 1N! 1 N! ;                    : N# N 1N! ;
+variable editor-loop-quit
+variable last-read-key
+create keymap 1024 cells zallot
 
-: in-range? 0 swap 1024 between ;
+: out-of-range? 0 swap 1023 between not ;
+: at-end? point 1023 = ;
 
-: forward-char
-    point N &point +! point in-range? if drop else point! abort then ;
-
-: backward-char N -N! forward-char N! ;
-: next-line N 64 *N! forward-char N! ;
-: previous-line N -N! next-line N! ;
+: move-char ( n -- )
+    point + dup out-of-range? if abort else goto-char then ;
 
 : empty-line? ( u -- bool )
     64 * dup 64 + swap ?do
         i char-at 32 <> if unloop false exit then
     loop true ;
 
-: last-char-is-empty?
-    end-of-line char-at 32 = ;
+: memshift> swap >r 2dup + swap r> - abs cmove> ;
+: <memshift tuck - abs >r over + swap r> cmove ;
 
-: memshift> ( addr u1 u2 -- )
-    swap >r 2dup + swap r> - abs cmove> ;
-: <memshift ( addr u1 u2 -- )
-    tuck - abs >r over + swap r> cmove ;
+: [internal] also editor definitions ;
+: [end] previous definitions ;
 
-: insert-literally ( ch -- )
-    N# 0 ?do
-        last-char-is-empty? not if abort then
-        point>addr right-column 1+ 1 memshift>
-        point>addr c! forward-char
-    loop ;
+' point alias <e
+' goto-char alias e>
 
-: insert-newline
-    N# 0 ?do
-        15 empty-line? not if abort then
-        end-of-line 1+ dup offset>addr swap 1024 swap - 64 memshift>
-        end-of-line 1+ offset>addr 64 32 fill
-        point>addr right-column 1+ 64 + right-column 1+ memshift>
-        point>addr right-column 1+ 32 fill
-        right-column 1+ N! forward-char
-    loop
+editor-cmds definitions
+
+\ movements
+: forward-char 1 move-char ;            : backward-char -1 move-char ;
+: next-line 64 move-char ;              : previous-line -64 move-char ;
+
+: beginning-of-line line-beginning-position goto-char ;
+' beginning-of-line alias bol
+: end-of-line line-end-position goto-char ;
+' end-of-line alias eol
+
+: beginning-of-buffer 0 goto-char ;     : end-of-buffer 1023 goto-char ;
+' beginning-of-buffer alias bob         ' end-of-buffer alias eob
+
+: beginning-of-paragraph
+    bol begin
+        point 0= if exit then
+    point 1- char-at 32 <> while
+        previous-line
+    repeat ;
+' beginning-of-paragraph alias bop
+
+: end-of-paragraph
+    eol begin point char-at 32 <> at-end? not and while next-line repeat
+    begin point char-at 32 = column 0<> and while backward-char repeat
+    point char-at 32 <> if forward-char then ;
+' end-of-paragraph alias eop
+
+
+[INTERNAL]
+\ extraction of substrings of a buffer
+
+: substring ( position1 position2 -- )
+    over - >r position>addr r> ;
+
+: whole-line      <e bol point eol point substring rot e> ;
+: whole-paragraph <e bop point eop point substring rot e> ;
+: whole-buffer    <e bob point eob point substring rot e> ;
+
+: rest-of-line      <e dup eol point substring 1+ rot e> ;
+: rest-of-paragraph <e dup eop point substring 1+ rot e> ;
+: rest-of-buffer    <e dup eob point substring 1+ rot e> ;
+[END]
+
+: erase-buffer whole-buffer 32 fill ;
+
+: newline
+    15 empty-line? not if abort then
+    line-end-position 1+ dup position>addr swap 1024 swap - 64 memshift>
+    line-end-position 1+ position>addr 64 32 fill
+    point>addr right-column 1+ 64 + right-column 1+ memshift>
+    point>addr right-column 1+ 32 fill
+    line-end-position 1+ &point !
     redraw-buffer ;
 
-: insert ( ch -- )
-    dup 10 = if drop insert-newline else insert-literally endif ;
+: self-insert-command
+    rest-of-paragraph 1 memshift>
+    last-read-key @ point>addr c!
+    forward-char redraw-buffer ;
 
 : delete-char
-    N# 0 ?do
-        point>addr right-column 1+ 1 <memshift
-        32 end-of-line offset>addr c!
-    loop
-    redraw-line ;
+    rest-of-paragraph 1 <memshift
+    point end-of-paragraph 32 point>addr c! goto-char
+    redraw-buffer ;
 
 : delete-backward-char
-    N# 0 ?do
-        column 0= if abort then
-        backward-char delete-char
-    loop ;
+    column 0= if abort then
+    backward-char delete-char ;
+
+: execute-extended-command
+    read-command ?dup if nt>xt execute then ;
+
+: kill-editor editor-loop-quit on ;
 
 
-variable editor-loop-quit
-: command-dispatch
-    1N! drop case
-        ESC   of editor-loop-quit on endof
-        UP    of previous-line endof
-        DOWN  of next-line endof
-        LEFT  of backward-char endof
-        RIGHT of forward-char endof
-        BACK  of delete-backward-char endof
-        redraw-line dup insert redraw-line
+ALSO EDITOR DEFINITIONS
+
+: ekey->kbd
+    dup alt-mod and if swap $100 + swap then
+    ctrl-mod and if $200 + then ;
+
+: read-key ekey ekey->kbd dup last-read-key ! ;
+: kbd-command cells keymap + @ ;
+
+: M-   char $100 + ;
+: C-   char $200 + ;
+: C-M- char $300 + ;
+: key-for: nt' swap cells keymap + ! ;
+
+: C-X-dispatcher
+    read-key case
+        [ C- s ]L of update flush endof
+        [ C- c ]L of kill-editor endof
+        abort
     endcase ;
+
+UP    key-for: previous-line
+DOWN  key-for: next-line
+LEFT  key-for: backward-char
+RIGHT key-for: forward-char
+BACK  key-for: delete-backward-char
+RET   key-for: newline
+
+M- x  key-for: execute-extended-command
+M- <  key-for: beginning-of-buffer
+M- >  key-for: end-of-buffer
+
+C- x  key-for: C-X-dispatcher
+C- f  key-for: forward-char
+C- b  key-for: backward-char
+C- p  key-for: previous-line
+C- n  key-for: next-line
+C- d  key-for: delete-char
+C- a  key-for: beginning-of-paragraph
+C- e  key-for: end-of-paragraph
+
+
+:noname
+    127 32 ?do [nt'] self-insert-command i cells keymap + ! loop
+; execute
+
+PREVIOUS EDITOR-CMDS
+PREVIOUS EDITOR
+DEFINITIONS
+
+\ Command dispatch
 
 : editor-loop
     editor-loop-quit off
     begin
-        render update-cursor
-        ekey ['] command-dispatch catch if 2drop alert then
+        render update-cursor redraw-line
+        read-key kbd-command ?dup if
+            nt>xt ['] execute catch if drop alert then
+        else alert then
+        redraw-line
     editor-loop-quit @ until ;
 
 : edit ( u -- )
-    0 point! block buffer !
+    block buffer !
     save-screen
+    0 goto-char
     render-application redraw-buffer
     editor-loop
     restore-screen ;

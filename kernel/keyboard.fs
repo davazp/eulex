@@ -174,26 +174,15 @@ variable shift-level
 \ Retrieve a possibly prefixed scancode and yield two cells in the
 \ stack. If the scancode is not prefixed, prefix is 0.
 : pkey ( -- prefix sc )
-    scancode
-    dup $e0 = if
-        scancode
-    else
-        0 swap
-    endif ;
+    scancode dup $e0 = if scancode else 0 swap endif ;
 
 \ Decompound a scancode as a 'make' scancode more a flag which
 \ indicates if it is a make or a break scancode.
 : rkey ( -- prefix sc make? )
-    pkey
-    dup make?
-    swap ->make swap ;
+    pkey dup make? swap ->make swap ;
 
 : sc->ekey ( sc -- key )
-    shift? if
-        tblsc-shift + c@
-    else
-        tblsc + c@
-    endif ;
+    shift? if tblsc-shift + c@ else tblsc + c@ endif ;
 
 : bool->sign ( flag -- +1\-1 )
     if 1 else -1 endif ;
@@ -232,11 +221,6 @@ $4 constant alt-mod
 : ekey ( -- key modifier )
     ekey* modifier ;
 
-: key
-    begin
-        ekey*
-    $80 over <= while
-        drop
-repeat ;
+: key begin ekey* $80 over <= while drop repeat ;
 
 \ keyboard.fs ends here
