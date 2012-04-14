@@ -134,12 +134,12 @@ create keymap 1024 cells zallot
 : [internal] also editor definitions ;
 : [end] previous definitions ;
 
-' point alias <e
-' goto-char alias e>
+' point alias <E
+' goto-char alias E>
 
 editor-cmds definitions
 
-\ movements
+\ Movements
 : forward-char 1 move-char ;            : backward-char -1 move-char ;
 : next-line 64 move-char ;              : previous-line -64 move-char ;
 
@@ -185,10 +185,9 @@ editor-cmds definitions
 
 : newline
     15 empty-line? not if abort then
-    line-end-position 1+ dup position>addr swap 1024 swap - 64 shift>
-    point>addr right-column 1+ 64 + right-column 1+ shift>
-    eol forward-char
-    redraw-buffer ;
+    <E next-line bol rest-of-buffer 64 shift> E>
+    point>addr right-column 65 + right-column 1+ shift>
+    eol forward-char redraw-buffer ;
 
 : self-insert-command
     rest-of-paragraph 1 memshift>
