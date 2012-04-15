@@ -175,7 +175,7 @@ EDITOR-CMDS DEFINITIONS
 ' beginning-of-paragraph alias bop
 
 : end-of-paragraph
-    eol begin point char-at 32 <> while next-line-safe repeat
+    eol begin point char-at 32 <> at-end? not and while next-line repeat
     begin point char-at 32 = column 0<> and while backward-char repeat
     point char-at 32 <> if forward-char-safe then ;
 ' end-of-paragraph alias eop
