@@ -30,7 +30,8 @@ require @kernel/multiboot.fs
 dp-limit 2aligned constant heap-start
 mem-upper-limit 1- 2 cells - 2aligned constant heap-end
 
-heap-start heap-end - constant heap-size
+heap-end heap-start - constant heap-size
+
 
 struct
     ( reserved ) cell noname field                       
