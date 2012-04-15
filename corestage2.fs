@@ -27,6 +27,7 @@ LIGHT GRAY UPON BLACK
 require @tools.fs
 require @kernel/interrupts.fs
 require @kernel/exceptions.fs
+require @debugger.fs
 require @kernel/irq.fs
 require @kernel/timer.fs
 require @kernel/floppy.fs
@@ -38,7 +39,6 @@ require @kernel/cpuid.fs
 require @blocks.fs
 require @input.fs
 require @editor.fs
-require @debugger.fs
 
 \ Rebooting the machine
 

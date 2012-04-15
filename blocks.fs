@@ -25,6 +25,7 @@ require @structures.fs
 
 defer read-block-from-backend
 defer write-block-to-backend
+defer block-buffer
 
 :noname -100 throw ; is read-block-from-backend
 :noname -100 throw ; is write-block-to-backend
@@ -33,7 +34,6 @@ variable current-block
 -1 current-block !
 
 variable block-updated?
-' floppy-buffer alias block-buffer
 
 : update block-updated? on ;
 : updated? block-updated? @ ;
@@ -83,7 +83,40 @@ variable scr
     flush
     detect-drive not if -100 throw then
     ['] read-block-from-floppy is read-block-from-backend
-    ['] write-block-to-floppy is write-block-to-backend ;
+    ['] write-block-to-floppy is write-block-to-backend
+    ['] floppy-buffer is block-buffer ;
 
+\ Memory backend
+
+create memblock-buffer 1024 cells allot
+variable memblock-index
+variable #memblocks
+
+: &memblock ( u -- addr )
+    cells memblock-index @ + ;
+
+: allocate-memblock ( u -- addr )
+    1024 allocate throw tuck swap &memblock ! ;
+
+: check-valid-memblock
+    0 over #memblocks @ between not if -101 throw then ;
+
+: read-block-from-memory ( u -- )
+    check-valid-memblock
+    dup &memblock @ ?dup if nip else allocate-memblock then
+    memblock-buffer 1024 move ;
+
+: write-block-to-memory ( u -- )
+    check-valid-memblock
+    memblock-buffer swap &memblock @ 1024 move ;
+
+
+: use-memory flush
+    heap-size 1024 u/ #memblocks !
+    #memblocks @ cells allocate throw memblock-index !
+    memblock-index @ #memblocks @ cells 0 fill
+    ['] read-block-from-memory is read-block-from-backend
+    ['] write-block-to-memory is write-block-to-backend
+    ['] memblock-buffer is block-buffer ;
 
 \ blocks.fs ends here
