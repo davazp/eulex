@@ -216,7 +216,7 @@ EDITOR-CMDS DEFINITIONS
     backward-char delete-char ;
 
 : execute-extended-command
-    read-command ?dup if nt>xt execute then ;
+    read-command ?dup if nt>xt execute else abort then ;
 
 : save-buffer
     update flush s" Block changes saved." message ;
