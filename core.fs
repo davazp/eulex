@@ -428,9 +428,6 @@
 : min
     2dup > if nip else drop then ;
 
-: fill ( c-addr u c -- )
-    -rot 0 ?do 2dup c! 1+ loop 2drop ;
-
 : pick  ( xn ... x0 u -- xn ... x0 xu )
     1+ cells sp + @ ;
 

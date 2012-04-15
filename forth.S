@@ -437,6 +437,18 @@ BUILTIN_WORD_NAME(cmove_to, "cmove>")
 END_WORD(cmove_to)
 
 
+BUILTIN_WORD(fill)
+        pushl %edi
+        movl (%esi), %eax
+        movl 4(%esi), %ecx
+        movl 8(%esi), %edi
+        rep stosb
+        popl %edi
+        addl $12, %esi
+        ret
+END_WORD(fill)
+
+
 /* port -- n */
 BUILTIN_WORD(inputb)
         xorl %eax, %eax
@@ -575,6 +587,16 @@ BUILTIN_WORD_NAME(divide, "/")
         movl %eax, (%esi)
         ret
 END_WORD(divide)
+
+
+BUILTIN_WORD_NAME(udivide, "u/")
+        xorl %edx, %edx
+        movl 4(%esi), %eax
+        divl (%esi)
+	addl $4, %esi
+        movl %eax, (%esi)
+        ret
+END_WORD(udivide)
 
 
 BUILTIN_WORD(mod)
