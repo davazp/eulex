@@ -31,8 +31,12 @@ require @kernel/console.fs
 require @colors.fs
 require @blocks.fs
 
+variable nblock
 variable buffer
 variable &point
+
+: memshift> ( addr u c -- ) swap >r 2dup + swap r> - abs cmove> ;
+: <memshift ( addr u c -- ) tuck - abs >r over + swap r> cmove ;
 
 : point &point @ ;
 : goto-char &point ! ;
@@ -76,9 +80,10 @@ true value visible-bell
     page upon blue 80 spaces
     36 0 at-xy light cyan ." EDITOR " ;
 
+create minibuffer-string 79 chars allot
 : render-modeline-and-minibuffer
     00 23 at-xy upon blue 80 spaces
-    light gray upon black 79 spaces ;
+    light gray upon black minibuffer-string 79 type ;
 
 : render-application
     render-title box render-modeline-and-minibuffer ;
@@ -114,6 +119,8 @@ variable last-read-key
 create keymap 1024 cells zallot
 
 : out-of-range? 0 swap 1023 between not ;
+
+: at-beginning? point 0 = ;
 : at-end? point 1023 = ;
 
 : move-char ( n -- )
@@ -124,20 +131,32 @@ create keymap 1024 cells zallot
         i char-at 32 <> if unloop false exit then
     loop true ;
 
-: memshift> swap >r 2dup + swap r> - abs cmove> ;
-: <memshift tuck - abs >r over + swap r> cmove ;
+: shift> ( addr u c -- )
+    rot dup >r -rot dup >r memshift> r> r>  swap 32 fill ;
+: <shift ( addr u c -- )
+    2 pick 2 pick + over - >r dup >r <memshift r> r> swap 32 fill ;
 
-: [internal] also editor definitions ;
-: [end] previous definitions ;
+: [INTERNAL] also editor definitions ;
+: [END] previous definitions ;
 
-' point alias <e
-' goto-char alias e>
+' point alias <E
+' goto-char alias E>
 
-editor-cmds definitions
+: message ( addr u -- )
+    minibuffer-string 79 32 fill
+    79 min minibuffer-string swap move ;
 
-\ movements
+: clear-minibuffer
+    0 0 message ;
+
+EDITOR-CMDS DEFINITIONS
+
+\ Movements
 : forward-char 1 move-char ;            : backward-char -1 move-char ;
 : next-line 64 move-char ;              : previous-line -64 move-char ;
+
+: forward-char-safe at-end? if else forward-char then ;
+: next-line-safe line 15 <> if else next-line then ;
 
 : beginning-of-line line-beginning-position goto-char ;
 ' beginning-of-line alias bol
@@ -149,44 +168,41 @@ editor-cmds definitions
 
 : beginning-of-paragraph
     bol begin
-        point 0= if exit then
+        at-beginning? if exit then
     point 1- char-at 32 <> while
         previous-line
     repeat ;
 ' beginning-of-paragraph alias bop
 
 : end-of-paragraph
-    eol begin point char-at 32 <> at-end? not and while next-line repeat
+    eol begin point char-at 32 <> while next-line-safe repeat
     begin point char-at 32 = column 0<> and while backward-char repeat
-    point char-at 32 <> if forward-char then ;
+    point char-at 32 <> if forward-char-safe then ;
 ' end-of-paragraph alias eop
 
 
 [INTERNAL]
-\ extraction of substrings of a buffer
+\ Extraction of substrings of a buffer
 
 : substring ( position1 position2 -- )
     over - >r position>addr r> ;
 
-: whole-line      <e bol point eol point substring rot e> ;
-: whole-paragraph <e bop point eop point substring rot e> ;
-: whole-buffer    <e bob point eob point substring rot e> ;
+: whole-line      <E bol point eol point substring 1+ rot E> ;
+: whole-paragraph <E bop point eop point substring 1+ rot E> ;
+: whole-buffer    <E bob point eob point substring 1+ rot E> ;
 
-: rest-of-line      <e dup eol point substring 1+ rot e> ;
-: rest-of-paragraph <e dup eop point substring 1+ rot e> ;
-: rest-of-buffer    <e dup eob point substring 1+ rot e> ;
+: rest-of-line      <E dup eol point substring 1+ rot E> ;
+: rest-of-paragraph <E dup eop point substring 1+ rot E> ;
+: rest-of-buffer    <E dup eob point substring 1+ rot E> ;
 [END]
 
-: erase-buffer whole-buffer 32 fill ;
+: erase-buffer whole-buffer 32 fill bob ;
 
 : newline
     15 empty-line? not if abort then
-    line-end-position 1+ dup position>addr swap 1024 swap - 64 memshift>
-    line-end-position 1+ position>addr 64 32 fill
-    point>addr right-column 1+ 64 + right-column 1+ memshift>
-    point>addr right-column 1+ 32 fill
-    line-end-position 1+ &point !
-    redraw-buffer ;
+    <E next-line bol rest-of-buffer 64 shift> E>
+    point>addr right-column 65 + right-column 1+ shift>
+    eol forward-char redraw-buffer ;
 
 : self-insert-command
     rest-of-paragraph 1 memshift>
@@ -194,16 +210,16 @@ editor-cmds definitions
     forward-char redraw-buffer ;
 
 : delete-char
-    rest-of-paragraph 1 <memshift
-    point end-of-paragraph 32 point>addr c! goto-char
-    redraw-buffer ;
+    rest-of-paragraph 1 <shift redraw-buffer ;
 
 : delete-backward-char
-    column 0= if abort then
     backward-char delete-char ;
 
 : execute-extended-command
     read-command ?dup if nt>xt execute then ;
+
+: save-buffer
+    update flush s" Block changes saved." message ;
 
 : kill-editor editor-loop-quit on ;
 
@@ -224,7 +240,7 @@ ALSO EDITOR DEFINITIONS
 
 : C-X-dispatcher
     read-key case
-        [ C- s ]L of update flush endof
+        [ C- s ]L of save-buffer endof
         [ C- c ]L of kill-editor endof
         abort
     endcase ;
@@ -264,15 +280,16 @@ DEFINITIONS
     editor-loop-quit off
     begin
         render update-cursor redraw-line
-        read-key kbd-command ?dup if
+        read-key clear-minibuffer kbd-command ?dup if
             nt>xt ['] execute catch if drop alert then
         else alert then
         redraw-line
     editor-loop-quit @ until ;
 
 : edit ( u -- )
-    block buffer !
+    dup nblock ! block buffer !
     save-screen
+    clear-minibuffer
     0 goto-char
     render-application redraw-buffer
     editor-loop

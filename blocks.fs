@@ -32,15 +32,16 @@ defer write-block-to-backend
 variable current-block
 -1 current-block !
 
-variable updated?
+variable block-updated?
 ' floppy-buffer alias block-buffer
 
-: update updated? on ;
+: update block-updated? on ;
+: updated? block-updated? @ ;
 
 : flush
-    updated? @ if
+    updated? if
         current-block @ write-block-to-backend
-        updated? off
+        block-updated? off
     endif ;
 
 : block ( u -- addr )
