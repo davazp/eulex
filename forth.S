@@ -395,44 +395,34 @@ END_WORD(c_fetch)
 
 BUILTIN_WORD_NAME(cmove, "cmove")
         /* from to u -- */
-        pushf
-        cli
-        pushl %esi
-        pushl %edi
-	movl (%esi), %ecx
-	movl 4(%esi), %edi
-	movl 8(%esi), %esi
-        cld
-        rep
-        movsb
-        popl %edi
-        popl %esi
-        addl $12, %esi
-        popf
+        movl (%esi), %ecx
+        movl 4(%esi), %edx
+        movl 8(%esi), %ebp
+        xorl %ebx, %ebx
+1:      test %ecx, %ecx
+        jz 2f
+        decl %ecx
+        movb (%ebp, %ebx), %al
+        movb %al, (%edx, %ebx)
+        incl %ebx
+        jmp 1b
+2:      addl $12, %esi
         ret
 END_WORD(cmove)
 
         
 BUILTIN_WORD_NAME(cmove_to, "cmove>")
         /* from to u -- */
-        pushf
-        cli
-        pushl %esi
-        pushl %edi
-	movl (%esi), %ecx
-	movl 4(%esi), %edi
-	movl 8(%esi), %esi
-        addl %ecx, %edi
-        addl %ecx, %esi
-        decl %esi
-        decl %edi
-        std
-        rep
-        movsb
-        popl %edi
-        popl %esi
-        addl $12, %esi
-        popf
+        movl (%esi), %ecx
+        movl 4(%esi), %edx
+        movl 8(%esi), %ebp
+1:      test %ecx, %ecx
+        jz 2f
+        decl %ecx
+        movb (%ebp, %ecx), %al
+        movb %al, (%edx, %ecx)
+        jmp 1b
+2:      addl $12, %esi
         ret
 END_WORD(cmove_to)
 
