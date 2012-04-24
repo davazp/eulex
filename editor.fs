@@ -77,7 +77,7 @@ true value visible-bell
     box-corners ;
 
 : render-title 
-    page upon blue 80 spaces
+    upon blue 80 spaces
     36 0 at-xy light cyan ." EDITOR " ;
 
 create minibuffer-string 79 chars allot
@@ -91,7 +91,7 @@ create minibuffer-string 79 chars allot
     00 24 at-xy light gray upon black minibuffer-string 79 type ;
 
 : render-application
-    render-title box render-modeline render-minibuffer ;
+    page render-title box render-modeline render-minibuffer ;
 
 \ Bitmap of lines which need to be redrawn
 variable lines-to-render
@@ -247,9 +247,11 @@ EDITOR-CMDS DEFINITIONS
 
 : load-buffer
     save-screen
-    light gray upon black page update-hardware-cursor
+    light gray upon black
+    page update-hardware-cursor
     nblock @ load
-    restore-screen ;
+    restore-screen
+    redraw-buffer ;
 
 : save-buffer
     update flush s" Block changes saved." message ;
