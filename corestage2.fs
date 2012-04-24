@@ -38,7 +38,6 @@ require @tests/tests.fs
 require @kernel/cpuid.fs
 require @blocks.fs
 require @input.fs
-require @editor.fs
 
 \ Rebooting the machine
 

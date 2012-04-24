@@ -63,8 +63,7 @@ CREATE TIB video-width allot
         true
     else
         false
-    endif
-;
+    endif ;
 
 :noname
     refill-silent? @ not if
@@ -103,5 +102,20 @@ CREATE TIB video-width allot
     \ Restore the input source from the control stack
     r> dup begin dup 0 > while 1- r> -rot repeat drop
     restore-input ;
+
+
+\ Blocks
+variable blk?
+variable blk
+
+: b\ begin >IN @ 64 mod while parse-char drop repeat ; immediate
+: \ blk? @ if postpone b\ else postpone \ then ; immediate
+
+\ TODO: Not to use buffers to evaluate the blocks
+: load ( u -- )
+    blk? @
+    blk? on
+    blk @ swap dup blk ! block 1024 evaluate blk !
+    blk? ! ;
 
 \ input.fs ends here

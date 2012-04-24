@@ -137,6 +137,7 @@ tuck type typewhite u< unloop until value variable vocabulary vocs w!
 w@ while wordlist words xor
 }
 
+require @editor.fs
 
 START-USER-INTERACTION
 
