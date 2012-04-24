@@ -158,7 +158,7 @@ create keymap 1024 cells zallot
 : substring ( position1 position2 -- )
     over - >r position>addr r> ;
 
-: load-buffer ( u -- )
+: open-buffer ( u -- )
     dup nblock !
     block buffer !
     redraw-buffer render-modeline ;
@@ -245,11 +245,14 @@ EDITOR-CMDS DEFINITIONS
 : execute-extended-command
     read-command ?dup if nt>xt execute else abort then ;
 
+: execute-buffer
+;
+
 : save-buffer
     update flush s" Block changes saved." message ;
 
-: next-buffer nblock @ 1 + load-buffer ;
-: previous-buffer nblock @ ?dup if 1- load-buffer then ;
+: next-buffer nblock @ 1 + open-buffer ;
+: previous-buffer nblock @ ?dup if 1- open-buffer then ;
 
 : kill-editor editor-loop-quit on ;
 
@@ -296,6 +299,7 @@ C- n  key-for: next-line
 C- d  key-for: delete-char
 C- a  key-for: beginning-of-paragraph
 C- e  key-for: end-of-paragraph
+C- c  key-for: execute-buffer
 
 
 :noname
