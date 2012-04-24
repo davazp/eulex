@@ -81,12 +81,17 @@ true value visible-bell
     36 0 at-xy light cyan ." EDITOR " ;
 
 create minibuffer-string 79 chars allot
-: render-modeline-and-minibuffer
+: render-modeline
+    attr
     00 23 at-xy upon blue 80 spaces
-    light gray upon black minibuffer-string 79 type ;
+    03 23 at-xy light cyan ." Block: " nblock ?
+    attr! ;
+
+: render-minibuffer
+    00 24 at-xy light gray upon black minibuffer-string 79 type ;
 
 : render-application
-    render-title box render-modeline-and-minibuffer ;
+    render-title box render-modeline render-minibuffer ;
 
 \ Bitmap of lines which need to be redrawn
 variable lines-to-render
@@ -98,7 +103,7 @@ variable lines-to-render
     lines-to-render @
     16 0 ?do dup 1 and if i render-line endif 1 rshift loop
     lines-to-render !
-    render-modeline-and-minibuffer ;
+    render-minibuffer ;
 : redraw-line 1 line lshift lines-to-render or! ;
 : redraw-buffer -1 lines-to-render ! ;
 : redraw-lines ( from to -- )
@@ -128,10 +133,9 @@ create keymap 1024 cells zallot
 : move-char ( n -- )
     point + dup out-of-range? if abort else goto-char then ;
 
+: white-string? -trailing nip 0= ;
 : empty-line? ( u -- bool )
-    64 * dup 64 + swap ?do
-        i char-at 32 <> if unloop false exit then
-    loop true ;
+    960 position>addr 64 white-string? ;
 
 : shift> ( addr u c -- )
     rot dup >r -rot dup >r memshift> r> r>  swap 32 fill ;
@@ -151,49 +155,73 @@ create keymap 1024 cells zallot
 : clear-minibuffer
     0 0 message ;
 
+: substring ( position1 position2 -- )
+    over - >r position>addr r> ;
+
+: load-buffer ( u -- )
+    dup nblock !
+    block buffer !
+    redraw-buffer render-modeline ;
+
 EDITOR-CMDS DEFINITIONS
-
-\ Movements
-: forward-char 1 move-char ;            : backward-char -1 move-char ;
-: next-line 64 move-char ;              : previous-line -64 move-char ;
-
-: forward-char-safe at-end? if else forward-char then ;
-: next-line-safe line 15 <> if else next-line then ;
 
 : beginning-of-line line-beginning-position goto-char ;
 ' beginning-of-line alias bol
 : end-of-line line-end-position goto-char ;
 ' end-of-line alias eol
 
+[INTERNAL]
+: whole-line <E bol point eol point substring 1+ rot E> ;
+: rest-of-line <E dup eol point substring 1+ rot E> ;
+[END]
+
+: rewind
+    rest-of-line white-string? if
+        begin point char-at 32 = column 0<> and while -1 move-char repeat
+        point char-at 32 <> if 1 move-char then
+    then ;
+
+: next-line 64 move-char rewind ;
+: previous-line -64 move-char rewind ;
+
+: forward-char
+    rest-of-line tuck white-string? not if drop 1 then
+    move-char ;
+
+: backward-char
+    column 0= if previous-line eol rewind else -1 move-char endif ;
+
 : beginning-of-buffer 0 goto-char ;     : end-of-buffer 1023 goto-char ;
 ' beginning-of-buffer alias bob         ' end-of-buffer alias eob
 
 : beginning-of-paragraph
-    bol begin
-        at-beginning? if exit then
+    bol begin at-beginning? if exit then
     point 1- char-at 32 <> while
         previous-line
     repeat ;
 ' beginning-of-paragraph alias bop
 
 : end-of-paragraph
-    eol begin point char-at 32 <> at-end? not and while next-line repeat
-    begin point char-at 32 = column 0<> and while backward-char repeat
-    point char-at 32 <> if forward-char-safe then ;
+    eol begin point char-at 32 <> at-end? not and while
+        next-line
+    repeat
+    rewind ;
 ' end-of-paragraph alias eop
 
+: forward-word
+    begin point char-at 32  = at-end? not and while 1 move-char repeat
+    begin point char-at 32 <> at-end? not and while 1 move-char repeat ;
+
+: backward-word
+    at-beginning? not if -1 move-char then
+    begin point char-at 32  = at-beginning? not and while -1 move-char repeat
+    begin point char-at 32 <> at-beginning? not and while -1 move-char repeat
+    at-beginning? not if 1 move-char then ;
 
 [INTERNAL]
-\ Extraction of substrings of a buffer
-
-: substring ( position1 position2 -- )
-    over - >r position>addr r> ;
-
-: whole-line      <E bol point eol point substring 1+ rot E> ;
 : whole-paragraph <E bop point eop point substring 1+ rot E> ;
 : whole-buffer    <E bob point eob point substring 1+ rot E> ;
 
-: rest-of-line      <E dup eol point substring 1+ rot E> ;
 : rest-of-paragraph <E dup eop point substring 1+ rot E> ;
 : rest-of-buffer    <E dup eob point substring 1+ rot E> ;
 [END]
@@ -204,24 +232,24 @@ EDITOR-CMDS DEFINITIONS
     15 empty-line? not if abort then
     <E next-line bol rest-of-buffer 64 shift> E>
     point>addr right-column 65 + right-column 1+ shift>
-    eol forward-char redraw-buffer ;
+    eol 1 move-char redraw-buffer ;
 
 : self-insert-command
     rest-of-paragraph 1 memshift>
     last-read-key @ point>addr c!
-    forward-char redraw-buffer ;
+    1 move-char redraw-buffer ;
 
-: delete-char
-    rest-of-paragraph 1 <shift redraw-buffer ;
-
-: delete-backward-char
-    backward-char delete-char ;
+: delete-char rest-of-paragraph 1 <shift redraw-buffer ;
+: delete-backward-char backward-char delete-char ;
 
 : execute-extended-command
     read-command ?dup if nt>xt execute else abort then ;
 
 : save-buffer
     update flush s" Block changes saved." message ;
+
+: next-buffer nblock @ 1 + load-buffer ;
+: previous-buffer nblock @ ?dup if 1- load-buffer then ;
 
 : kill-editor editor-loop-quit on ;
 
@@ -257,6 +285,8 @@ RET   key-for: newline
 M- x  key-for: execute-extended-command
 M- <  key-for: beginning-of-buffer
 M- >  key-for: end-of-buffer
+M- f  key-for: forward-word
+M- b  key-for: backward-word
 
 C- x  key-for: C-X-dispatcher
 C- f  key-for: forward-char
