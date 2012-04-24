@@ -90,8 +90,10 @@ create minibuffer-string 79 chars allot
 
 \ Bitmap of lines which need to be redrawn
 variable lines-to-render
+: safe-emit dup 32 < if drop [char] . then emit ;
+: safe-type 0 ?do dup c@ safe-emit 1+ loop drop ;
 : render-line
-    64 * dup position>screen at-xy position>addr 64 type ;
+    64 * dup position>screen at-xy position>addr 64 safe-type ;
 : render
     lines-to-render @
     16 0 ?do dup 1 and if i render-line endif 1 rshift loop
