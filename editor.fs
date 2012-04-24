@@ -245,8 +245,11 @@ EDITOR-CMDS DEFINITIONS
 : execute-extended-command
     read-command ?dup if nt>xt execute else abort then ;
 
-: execute-buffer
-;
+: load-buffer
+    save-screen
+    light gray upon black page update-hardware-cursor
+    nblock @ load
+    restore-screen ;
 
 : save-buffer
     update flush s" Block changes saved." message ;
@@ -291,6 +294,9 @@ M- >  key-for: end-of-buffer
 M- f  key-for: forward-word
 M- b  key-for: backward-word
 
+$100 RIGHT + key-for: next-buffer
+$100 LEFT  + key-for: previous-buffer
+
 C- x  key-for: C-X-dispatcher
 C- f  key-for: forward-char
 C- b  key-for: backward-char
@@ -299,7 +305,7 @@ C- n  key-for: next-line
 C- d  key-for: delete-char
 C- a  key-for: beginning-of-paragraph
 C- e  key-for: end-of-paragraph
-C- c  key-for: execute-buffer
+C- c  key-for: load-buffer
 
 
 :noname

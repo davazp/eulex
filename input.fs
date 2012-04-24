@@ -108,8 +108,8 @@ CREATE TIB video-width allot
 variable blk?
 variable blk
 
-: block\ begin >IN @ 64 mod while parse-char drop repeat ; immediate
-: \ blk? @ if postpone block\ else postpone \ then ; immediate
+: b\ begin >IN @ 64 mod while parse-char drop repeat ; immediate
+: \ blk? @ if postpone b\ else postpone \ then ; immediate
 
 \ TODO: Not to use buffers to evaluate the blocks
 : load ( u -- )
