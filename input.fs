@@ -113,8 +113,9 @@ variable blk
 
 \ TODO: Not to use buffers to evaluate the blocks
 : load ( u -- )
+    blk? @
     blk? on
     blk @ swap dup blk ! block 1024 evaluate blk !
-    blk? off ;
+    blk? ! ;
 
 \ input.fs ends here
