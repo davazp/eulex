@@ -246,11 +246,11 @@ EDITOR-CMDS DEFINITIONS
     read-command ?dup if nt>xt execute else abort then ;
 
 : load-buffer
-    save-screen
+    save-screen sp >r
     light gray upon black
     page update-hardware-cursor
     nblock @ load
-    restore-screen
+    r> sp! restore-screen
     redraw-buffer ;
 
 : save-buffer
