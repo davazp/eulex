@@ -50,10 +50,19 @@ BPS SPT * 2 * constant BPC              \ bytes per cylinder
 true  constant device>memory
 false constant memory>device
 
-\ TODO: Implement a timeout here
+: reset-floppy
+    $00 DOR! $0C DOR! ;
+
 variable irq6-received
-: wait-irq ( -- )
-    begin irq6-received @ not while halt repeat ;
+: _wait-irq ( -- ) \ throws error 5 on timeout, defaulting to stopping the word unless a catch is implimented
+    time 4000 + begin dup time <= if 5 throw then irq6-received @ not while halt repeat drop ;
+
+: wait-irq ( -- ) \ wrapper for old wait-irq that resets the controller on timeout
+    ['] _wait-irq catch
+    case
+      5 of reset-floppy endof
+      dup throw
+    endcase ;
 
 : wait-ready
     128 0 ?do RQM if unloop exit endif 10 ms loop ;
@@ -182,9 +191,6 @@ here dma-buffer-size allot constant dma-buffer
 
 : setup-floppy
     $00 CCR! ;
-
-: reset-floppy
-    $00 DOR! $0C DOR! ;
 
 : irq-floppy
     irq6-received on

@@ -77,6 +77,8 @@ variable countdown
 
 : get-internal-run-time internal-run-time @ ;
 
+: time get-internal-run-time ;
+
 \ Wait for (rougly) N milliseconds.
 : ms ( n -- )
     set-countdown wait-for-countdown ;
