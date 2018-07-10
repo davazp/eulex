@@ -70,7 +70,7 @@ DECIMAL
 7 reg32 %edi     7 reg16 %di     7 reg8 %bh
 
 \ Immediate values
-: # OP-IMM ;
+: # OP-IMM swap ;
 
 
 \ Memory references
