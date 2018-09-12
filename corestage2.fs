@@ -125,6 +125,7 @@ variable bcd?
 
 enable-interrupts
 initialize-floppy
+QWERTY setxkmap
 
 require @user.fs
 
