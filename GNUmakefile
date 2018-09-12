@@ -65,7 +65,7 @@ HEADERS=multiboot.h
 OBJS = $(ASM_SRC:.S=.o) $(FORTH_SRC:.fs=.o) $(TESTING_SRC:.fs=.o) $(LISP_SRC:.lisp=.o)
 
 $(KERNEL): $(OBJS) $(LINKER_SCRIPT)
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $(OBJS)
 
 clean:
 	-rm -f *.[do] kernel/*.[do] tests/*.[do] app/*.[do] lisp/*.[do] $(KERNEL) BUILTIN-FILES.S
