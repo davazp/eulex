@@ -132,7 +132,7 @@ end-enum
 : end. tblsize 256 swap - zallot ;
 
 
-CREATE TBLSC
+CREATE TBLSC-QWERTY
 ( )
 ( ) 0 c, ESC c,
 ( )       | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 0 | - | =     BACK c,
@@ -143,9 +143,9 @@ CREATE TBLSC
 ( )
 ( ) TBLSC-SPECIAL
 ( )
-TBLSC END.
+TBLSC-QWERTY END.
 
-CREATE TBLSC-SHIFT
+CREATE TBLSC-QWERTY-SHIFT
 ( )
 ( ) 0 c, ESC c,
 ( )       | ! | @ | # | $ | % | ^ | & | * | ( | ) | _ | +     BACK c,
@@ -156,8 +156,43 @@ CREATE TBLSC-SHIFT
 ( )
 ( ) TBLSC-SPECIAL
 ( )
-TBLSC-SHIFT END.
+TBLSC-QWERTY-SHIFT END.
 
+CREATE TBLSC-DVORAK
+( )
+( ) 0 c, ESC c,
+( )       | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 0 | [ | ]     BACK c,
+( ) TAB c,  | ' | , | . | p | y | f | g | c | r | l | / | =    RET c,
+( ) CTRL c,  | a | o | e | u | i | d | h | t | n | s | - | \
+( ) SHIFT c,  | ; | ; | q | j | k | x | b | m | w | v | z    SHIFT c,
+( ) PRSCR c, ALT c,     ______SPACE______ c,       CAPSLOCK c,
+( )
+( ) TBLSC-SPECIAL
+( )
+TBLSC-DVORAK END.
+
+CREATE TBLSC-DVORAK-SHIFT
+( )
+( ) 0 c, ESC c,
+( )       | ! | @ | # | $ | % | ^ | & | * | ( | ) | _ | +     BACK c,
+( ) TAB c,  | " | < | > | P | Y | F | G | C | R | L | ? | +    RET c,
+( ) CTRL c,  | A | O | E | U | I | D | H | T | N | S | _ | |
+( ) SHIFT c,  | : | : | Q | J | K | X | B | M | W | V | Z    SHIFT c,
+( ) PRSCR c, ALT c,     ______SPACE______ c,      CAPSLOCK c,
+( )
+( ) TBLSC-SPECIAL
+( )
+TBLSC-DVORAK-SHIFT END.
+
+: QWERTY ['] TBLSC-QWERTY ['] TBLSC-QWERTY-SHIFT ;
+: DVORAK ['] TBLSC-DVORAK ['] TBLSC-DVORAK-SHIFT ;
+
+DEFER TBLSC
+DEFER TBLSC-SHIFT
+
+: setxkmap ( tblsc-addr tblsc-shift-addr )
+  IS TBLSC-SHIFT
+  IS TBLSC ;
 
 variable alt-level
 variable ctrl-level
