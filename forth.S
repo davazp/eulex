@@ -91,7 +91,7 @@ flush_gdt:
                                                /
                          +----------------+ <--
                          |   0xffffffff   |
-                         +---+------------+ <<<---------- Entry's descriptior pointer
+                         +---+------------+ <<<---------- Entry's descriptor pointer
   Size of the name  ->   | n |  name  | F | <--- Flags
                          +---+------------+
                          |      CFA       | <--- Code 32bit address where interpretation
